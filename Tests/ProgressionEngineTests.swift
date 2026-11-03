@@ -612,7 +612,9 @@ struct GymForgeChecks {
         check(QuotePicker.nextSlotStart(after: at16(26, 19), calendar: cal16) == at16(27, 8), "after 18:00 the next change is 8 am")
         let pool16 = QuotePicker.pool(topics: [.gym, .rest], tough: false)
         check(!pool16.isEmpty && pool16.allSatisfy { [.gym, .rest].contains($0.topic) && !$0.tough }, "only chosen topics, calm lines only")
-        check(zip(pool16, pool16.dropFirst()).allSatisfy { $0.topic != $1.topic } || pool16.count < 2, "topics take turns")
+        // MK19.3: topics have different sizes now, so they take turns while both still have quotes left.
+        let shared16 = 2 * min(pool16.filter { $0.topic == .gym }.count, pool16.filter { $0.topic == .rest }.count)
+        check(zip(pool16.prefix(shared16), pool16.prefix(shared16).dropFirst()).allSatisfy { $0.topic != $1.topic }, "topics take turns")
         check(Set((0..<pool16.count).map { QuotePicker.quote(slot: $0, offset: 0, topics: [.gym, .rest], tough: false).text }).count == pool16.count,
               "no repeats until the pool runs out")
         check(QuotePicker.pool(topics: [.gym], tough: true).contains { $0.tough }, "Tough adds Sergeant Cluck's lines")

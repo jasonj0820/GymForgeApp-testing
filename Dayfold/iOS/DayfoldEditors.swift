@@ -227,20 +227,28 @@ struct ReminderEditor: View {
     }
 }
 
-/// MK16: topics, tone and the three daily quote notifications. The widget follows the same settings.
+/// MK16 + MK19.3: topics, tone and the three daily quote notifications. The widget follows the same settings.
 struct MotivationSettingsView: View {
     @State private var topics = QuoteSettings.topics
     @State private var tough = QuoteSettings.tough
     @State private var notify = QuoteSettings.notify
+    @State private var offset = QuoteSettings.offset
 
     var body: some View {
         Form {
             Section {
-                let quote = QuotePicker.quote(slot: QuotePicker.slot(at: .now), offset: QuoteSettings.offset, topics: topics, tough: tough)
+                let quote = QuotePicker.quote(slot: QuotePicker.widgetSlot(at: .now), offset: offset, topics: topics, tough: tough)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(quote.text).font(.system(.title3, design: .serif))
                     if let author = quote.author { Text("— \(author)").font(.caption).foregroundStyle(.secondary) }
                 }.padding(.vertical, 6)
+                Button {
+                    offset += 1
+                    QuoteSettings.offset = offset
+                    QuoteNotifier.reschedule()
+                } label: {
+                    Label("Next quote", systemImage: "arrow.clockwise")
+                }
             } header: { Text("Showing now") }
             Section {
                 ForEach(QuoteTopic.allCases) { topic in

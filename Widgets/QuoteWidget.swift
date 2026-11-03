@@ -2,7 +2,6 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-/// MK16: Home Screen / Lock Screen quote widget. Changes at 8:00, 13:00 and 18:00; ↻ shows the next one.
 struct QuoteWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: QuoteSettings.widgetKind, provider: QuoteProvider()) { entry in
@@ -10,7 +9,7 @@ struct QuoteWidget: Widget {
                 .containerBackground(for: .widget) { QuoteBackground(topic: entry.quote.topic) }
         }
         .configurationDisplayName("Motivation")
-        .description("A quote from your chosen topics, three times a day. Pick topics in Dayfold → Settings → Motivation.")
+        .description("Rotates fresh quotes every 5 minutes from your chosen topics. Tap ↻ anytime for the next quote.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
     }
 }
@@ -24,22 +23,26 @@ struct QuoteProvider: TimelineProvider {
     func placeholder(in context: Context) -> QuoteEntry { QuoteEntry(date: .now, quote: QuoteLibrary.all[0]) }
 
     func getSnapshot(in context: Context, completion: @escaping (QuoteEntry) -> Void) {
-        completion(QuoteEntry(date: .now, quote: QuoteSettings.current()))
+        completion(QuoteEntry(date: .now, quote: QuoteSettings.widgetQuote()))
     }
 
-    /// Now plus the next three slot changes, then ask again.
+    /// Generates 48 timeline entries (every 5 minutes for the next 4 hours) for automatic updates.
     func getTimeline(in context: Context, completion: @escaping (Timeline<QuoteEntry>) -> Void) {
-        var dates = [Date.now]
-        for _ in 0..<3 { dates.append(QuotePicker.nextSlotStart(after: dates.last!)) }
-        completion(Timeline(entries: dates.map { QuoteEntry(date: $0, quote: QuoteSettings.current(at: $0)) }, policy: .atEnd))
+        let now = Date.now
+        let stepMinutes = 5
+        let entries: [QuoteEntry] = (0..<48).map { step in
+            let entryDate = now.addingTimeInterval(Double(step * stepMinutes * 60))
+            return QuoteEntry(date: entryDate, quote: QuoteSettings.widgetQuote(at: entryDate))
+        }
+        completion(Timeline(entries: entries, policy: .atEnd))
     }
 }
 
-/// The ↻ button: runs in the widget, no app launch.
 struct NextQuoteIntent: AppIntent {
     static var title: LocalizedStringResource = "Next quote"
     func perform() async throws -> some IntentResult {
         QuoteSettings.offset += 1
+        WidgetCenter.shared.reloadTimelines(ofKind: QuoteSettings.widgetKind)
         return .result()
     }
 }
@@ -48,9 +51,10 @@ struct QuoteBackground: View {
     let topic: QuoteTopic
     private var tint: Color {
         switch topic {
-        case .gym, .discipline: Color(red: 0.45, green: 0.22, blue: 0.08)
+        case .gym, .discipline, .basketball: Color(red: 0.45, green: 0.22, blue: 0.08)
+        case .legends: Color(red: 0.48, green: 0.14, blue: 0.14)
         case .lettingGo, .confidence: Color(red: 0.30, green: 0.22, blue: 0.45)
-        case .stoic, .career: Color(red: 0.20, green: 0.24, blue: 0.30)
+        case .stoic, .career, .wisdom: Color(red: 0.20, green: 0.24, blue: 0.30)
         case .rest: Color(red: 0.12, green: 0.18, blue: 0.36)
         }
     }
