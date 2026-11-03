@@ -1,0 +1,168 @@
+name: GymForge
+options:
+  minimumXcodeGenVersion: 2.45.3
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: H9GTGM97FP
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  GymForge:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Shared
+      - path: iOS
+      - path: Dayfold/Shared
+      - path: Dayfold/iOS
+      - path: Widgets/WorkoutActivityAttributes.swift
+      - path: Widgets/Cluck.swift
+      - path: Widgets/CluckView.swift
+      - path: Widgets/CluckActivity.swift
+      - path: Widgets/QuoteLibrary.swift
+      - path: Widgets/MTTimerActivity.swift
+    info:
+      path: Config/iOS-Info.plist
+      properties:
+        CFBundleDisplayName: Splitday
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jason.gymforge
+            CFBundleURLSchemes: [gymforge]
+        # MK12: long-press menu on the app icon.
+        UIApplicationShortcutItems:
+          - {UIApplicationShortcutItemType: "gymforge://winddown", UIApplicationShortcutItemTitle: Before bed, UIApplicationShortcutItemIconSymbolName: moon.stars.fill}
+          - {UIApplicationShortcutItemType: "gymforge://dayfold", UIApplicationShortcutItemTitle: Dayfold, UIApplicationShortcutItemIconSymbolName: checklist}
+          - {UIApplicationShortcutItemType: "gymforge://gym", UIApplicationShortcutItemTitle: GymForge, UIApplicationShortcutItemIconSymbolName: dumbbell.fill}
+        UIBackgroundModes: [audio, location]
+        NSLocationWhenInUseUsageDescription: Splitday uses GPS during outdoor runs recorded on your iPhone to measure distance and pace and save your route.
+        NSFaceIDUsageDescription: Splitday uses Face ID to unlock private sections.
+        NSPhotoLibraryUsageDescription: Splitday can import photos you choose and remove the originals if you ask it to.
+        NSCameraUsageDescription: Splitday uses the camera for progress photos, which are stored only inside the app.
+        NSUbiquitousContainers:
+          iCloud.com.jason.gymforge:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: GymForge
+            NSUbiquitousContainerSupportedFolderLevels: Any
+        NSHealthShareUsageDescription: Splitday reads weight, body fat, heart rate, sleep, resting heart rate, HRV and workout data from Apple Health to track your progress and recovery.
+        NSHealthUpdateUsageDescription: Splitday saves workouts and active energy data to Apple Health.
+    entitlements:
+      path: Config/iOS.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.security.application-groups:
+          - group.com.jason.gymforge
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jason.gymforge
+        PRODUCT_NAME: GymForge
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_ENTITLEMENTS: Config/iOS.entitlements
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    dependencies:
+      - target: GymForgeWatch
+        embed: true
+        copy:
+          destination: productsDirectory
+          subpath: $(CONTENTS_FOLDER_PATH)/Watch
+      - target: GymForgeWidgets
+        embed: true
+
+  GymForgeWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Widgets
+    entitlements:
+      path: Config/Widgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.jason.gymforge
+    info:
+      path: Config/Widgets-Info.plist
+      properties:
+        CFBundleDisplayName: Splitday
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jason.gymforge.widgets
+        PRODUCT_NAME: GymForgeWidgets
+        CODE_SIGN_ENTITLEMENTS: Config/Widgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        APPLICATION_EXTENSION_API_ONLY: YES
+
+  GymForgeWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: Shared
+      - path: watchOS
+      - path: Dayfold/Shared
+      - path: Dayfold/Watch
+      - path: Widgets/Cluck.swift
+    info:
+      path: Config/watchOS-Info.plist
+      properties:
+        CFBundleDisplayName: Splitday
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.jason.gymforge
+        WKBackgroundModes:
+          - workout-processing
+        NSLocationWhenInUseUsageDescription: Splitday uses GPS during outdoor runs to measure distance and pace and save your route to Apple Health.
+        NSHealthShareUsageDescription: Splitday reads heart rate and active energy during workouts.
+        NSHealthUpdateUsageDescription: Splitday saves strength workouts to Apple Health.
+    entitlements:
+      path: Config/watchOS.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.security.application-groups:
+          - group.com.jason.gymforge
+    dependencies:
+      - target: GymForgeWatchWidgets
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jason.gymforge.watchkitapp
+        PRODUCT_NAME: GymForge
+        TARGETED_DEVICE_FAMILY: "4"
+        CODE_SIGN_ENTITLEMENTS: Config/watchOS.entitlements
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+  GymForgeWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: WatchWidgets
+      - path: Widgets/Cluck.swift
+      - path: Widgets/CluckView.swift
+    info:
+      path: Config/WatchWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: Splitday
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Config/WatchWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.jason.gymforge
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jason.gymforge.watchkitapp.widgets
+        PRODUCT_NAME: GymForgeWatchWidgets
+        TARGETED_DEVICE_FAMILY: "4"
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CODE_SIGN_ENTITLEMENTS: Config/WatchWidgets.entitlements

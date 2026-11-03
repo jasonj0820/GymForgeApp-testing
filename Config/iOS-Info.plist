@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Splitday</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.jason.gymforge</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>gymforge</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Splitday uses the camera for progress photos, which are stored only inside the app.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Splitday uses Face ID to unlock private sections.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Splitday reads weight, body fat, heart rate, sleep, resting heart rate, HRV and workout data from Apple Health to track your progress and recovery.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Splitday saves workouts and active energy data to Apple Health.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Splitday uses GPS during outdoor runs recorded on your iPhone to measure distance and pace and save your route.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Splitday can import photos you choose and remove the originals if you ask it to.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.com.jason.gymforge</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>GymForge</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>Any</string>
+		</dict>
+	</dict>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>moon.stars.fill</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Before bed</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>gymforge://winddown</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>checklist</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Dayfold</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>gymforge://dayfold</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>dumbbell.fill</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>GymForge</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>gymforge://gym</string>
+		</dict>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>location</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+</dict>
+</plist>

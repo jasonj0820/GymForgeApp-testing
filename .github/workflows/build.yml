@@ -1,0 +1,35 @@
+# MK16: builds Splitday on GitHub's Macs on every push (and on demand: Actions → Build Splitday → Run workflow).
+# Runs the logic checks and Dayfold tests, then makes an unsigned IPA you install with SideStore / AltStore,
+# which sign it with your own Apple ID. Download it from the run's "Artifacts" section.
+name: Build Splitday
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Logic checks (GymForge)
+        run: zsh Scripts/run_checks.sh
+      - name: More Training checks
+        run: zsh Scripts/run_mt_checks.sh
+
+      - name: Scheduling tests (Dayfold)
+        run: cd Dayfold && swift test
+
+      - name: Build unsigned IPA
+        run: UNSIGNED=1 VERSION_NAME="build-${GITHUB_RUN_NUMBER}" zsh Scripts/build_ipa.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Splitday-IPA
+          path: build/ipa/*.ipa
+          if-no-files-found: error
