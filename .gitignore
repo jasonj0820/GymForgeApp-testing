@@ -1,4 +1,4 @@
 build/
-checks
+/checks-bin
 xcuserdata/
 .DS_Store
