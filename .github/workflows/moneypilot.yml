@@ -1,0 +1,33 @@
+# Builds MoneyPilot on GitHub's Macs when anything in MoneyPilot/ changes (or on demand: Actions → Build MoneyPilot → Run workflow).
+# Builds and runs the unit tests on a simulator, then makes an unsigned IPA you install with SideStore / AltStore.
+# Download it from the run's "Artifacts" section.
+name: Build MoneyPilot
+
+on:
+  push:
+    paths:
+      - 'MoneyPilot/**'
+      - '.github/workflows/moneypilot.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Build and run tests (simulator)
+        run: bash MoneyPilot/Tools/verify_on_mac.sh
+
+      - name: Build unsigned IPA
+        run: VERSION_NAME="MK4.0-build-${GITHUB_RUN_NUMBER}" zsh MoneyPilot/Tools/build_ipa.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoneyPilot-IPA
+          path: MoneyPilot/build/ipa/*.ipa
+          if-no-files-found: error

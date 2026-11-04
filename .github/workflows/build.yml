@@ -5,6 +5,9 @@ name: Build Splitday
 
 on:
   push:
+    paths-ignore: # MoneyPilot has its own build (moneypilot.yml)
+      - 'MoneyPilot/**'
+      - '.github/workflows/moneypilot.yml'
   workflow_dispatch:
 
 jobs:
