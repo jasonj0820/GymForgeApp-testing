@@ -1,5 +1,19 @@
 # Splitday MK19.1 — GymForge + Dayfold in one app (iPhone + Apple Watch)
 
+## Auto-refresh with Apple Health (your Mac does it)
+Sideloadly and SideStore re-sign the app and drop Apple Health. Instead, your Mac rebuilds Splitday with
+your own Xcode Personal Team and installs it straight onto the iPhone twice a week, so it never expires
+and Health keeps working. Your data stays (it installs over the existing app).
+1. Once: Xcode → Settings → Accounts → sign in with your Apple ID. Open `GymForge.xcodeproj`, and on all four
+   targets set Signing & Capabilities → Team to your Personal Team. Plug in the iPhone, and in
+   Window → Devices and Simulators tick **Connect via network**.
+2. Find the iPhone's name: `xcrun devicectl list devices`
+3. Test once: `zsh Scripts/auto_install.sh "Jason's iPhone"`
+4. Turn on the schedule (Mondays and Thursdays 12:30; runs on wake if the Mac was asleep):
+   `zsh Scripts/schedule_refresh.sh "Jason's iPhone"` · off: `zsh Scripts/schedule_refresh.sh --off`
+- Log: `~/Library/Logs/Splitday/refresh.log`. The Mac needs to be on (or wake) with you logged in, and the
+  iPhone on the same Wi-Fi or plugged in.
+
 ## MK19.1 — Progression fixes, +1 min, back to timer
 
 **Fixes**

@@ -20,7 +20,11 @@ if [[ "${1:-}" == "--off" ]]; then
   exit 0
 fi
 
-DEVICE="${1:?Usage: zsh Scripts/schedule_refresh.sh \"Jason's iPhone\"  (name from: xcrun devicectl list devices)}"
+DEVICE="${1:-}"
+if [[ -z "$DEVICE" ]]; then
+  echo "Usage: zsh Scripts/schedule_refresh.sh \"Jason's iPhone\"  (name from: xcrun devicectl list devices)" >&2
+  exit 1
+fi
 mkdir -p "$HOME/Library/LaunchAgents" "$LOG_DIR"
 
 cat > "$PLIST" <<EOF
