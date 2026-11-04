@@ -301,3 +301,51 @@ struct AutoPlanSheet: View {
         .onAppear { if weekdays.isEmpty { weekdays = store.usualTrainingWeekdays() } }
     }
 }
+
+/// MK20: today in the fixed split — what's on, why, and Friday's basketball question.
+struct SplitDayCard: View {
+    @EnvironmentObject private var store: PhoneAppStore
+
+    var body: some View {
+        let day = store.splitToday
+        VStack(alignment: .leading, spacing: 8) {
+            Text("TODAY IN YOUR SPLIT").font(.caption.bold()).foregroundStyle(.secondary)
+            Label(day.title, systemImage: symbol(day.kind)).font(.headline)
+            ForEach(day.notes, id: \.self) { note in
+                Text(note).font(.subheadline).foregroundStyle(.secondary)
+            }
+            if day.kind == .askCourt {
+                Text("Playing basketball today?").font(.subheadline)
+                VStack(spacing: 8) {
+                    Button { store.courtToday = .fullCourt } label: {
+                        Label("Full-court / hard pickup: skip chest", systemImage: "basketball.fill").frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Button { store.courtToday = .light } label: {
+                        Label("Light shootaround: 25-min micro chest", systemImage: "basketball").frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Button { store.courtToday = FixedSplit.Court.none } label: {
+                        Label("No basketball: full chest day", systemImage: "dumbbell.fill").frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .buttonStyle(.bordered)
+            } else if store.courtToday != nil {
+                Button("Change basketball answer") { store.courtToday = nil }.font(.caption)
+            }
+            if let routine = store.splitRoutineToday {
+                Text("Up next below: \(routine.name)").font(.caption).foregroundStyle(.tint)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+
+    private func symbol(_ kind: FixedSplit.Day.Kind) -> String {
+        switch kind {
+        case .train(.legs): return "figure.strengthtraining.functional"
+        case .train: return "dumbbell.fill"
+        case .microChest: return "timer"
+        case .basketball, .askCourt: return "basketball.fill"
+        case .rest: return "moon.zzz.fill"
+        }
+    }
+}

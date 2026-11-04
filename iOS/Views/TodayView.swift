@@ -106,6 +106,7 @@ struct TodayView: View {
                 .card()
 
                 Group {
+                    if store.fixedSplitOn { SplitDayCard() }
                     TodayPlanCard()
                     BlockReviewCard()
                     Group {

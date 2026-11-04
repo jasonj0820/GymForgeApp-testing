@@ -94,11 +94,80 @@ extension PhoneAppStore {
         return Set(spread[goal] ?? [2, 4, 6])
     }
 
+    // MARK: MK20 — fixed-day split (Shared/Planning.swift → FixedSplit)
+
+    /// On by default; Settings → Weekly split turns it off (back to rotating routines).
+    var fixedSplitOn: Bool {
+        get { UserDefaults.standard.object(forKey: "split.fixed") as? Bool ?? true }
+        set { objectWillChange.send(); UserDefaults.standard.set(newValue, forKey: "split.fixed") }
+    }
+
+    func splitRoutine(_ slot: FixedSplit.Slot) -> WorkoutRoutine? {
+        routines.first { !$0.exercises.isEmpty && FixedSplit.slot(of: $0) == slot }
+    }
+
+    /// What you trained, as split slots (basketball and runs don't count).
+    var splitDone: [(date: Date, slot: FixedSplit.Slot)] {
+        workoutLogs.compactMap { log in
+            if log.routineID == FixedSplit.microChestID { return (log.startedAt, .chest) }
+            guard let routine = routines.first(where: { $0.id == log.routineID }), let slot = FixedSplit.slot(of: routine) else { return nil }
+            return (log.startedAt, slot)
+        }
+    }
+
+    /// Friday's answer, kept for that day only.
+    var courtToday: FixedSplit.Court? {
+        get {
+            let today = Int(Calendar.current.startOfDay(for: .now).timeIntervalSince1970)
+            guard let saved = UserDefaults.standard.string(forKey: "split.court"), saved.hasPrefix("\(today)|") else { return nil }
+            return FixedSplit.Court(rawValue: String(saved.dropFirst("\(today)|".count)))
+        }
+        set {
+            objectWillChange.send()
+            let today = Int(Calendar.current.startOfDay(for: .now).timeIntervalSince1970)
+            UserDefaults.standard.set(newValue.map { "\(today)|\($0.rawValue)" }, forKey: "split.court")
+            if newValue == .fullCourt { setDay(.now, to: .basketball) }   // the week plan and Sergeant Cluck see it too
+        }
+    }
+
+    var splitToday: FixedSplit.Day { FixedSplit.day(.now, done: splitDone, court: courtToday) }
+
+    /// Today's split session, already adjusted (extra sets, lower-back swaps, micro chest). nil once done or on rest days.
+    var splitRoutineToday: WorkoutRoutine? {
+        guard fixedSplitOn else { return nil }
+        let day = splitToday
+        let doneToday = splitDone.filter { Calendar.current.isDateInToday($0.date) }.map(\.slot)
+        switch day.kind {
+        case .train(let slot):
+            guard !doneToday.contains(slot), var routine = splitRoutine(slot) else { return nil }
+            if day.compensate { routine = FixedSplit.compensated(routine, slot: slot) }
+            if day.protectLowerBack { routine = FixedSplit.protectingLowerBack(routine) }
+            return routine
+        case .microChest:
+            guard !doneToday.contains(.chest), let chest = splitRoutine(.chest) else { return nil }
+            return FixedSplit.microChest(from: chest)
+        case .basketball, .rest, .askCourt:
+            return nil
+        }
+    }
+
     /// Fills the open days: your routines in order on training days (continuing from the last one you did),
     /// and rest on the others if you want. Days already planned, and days gone, are left alone.
     func autoPlan(days: [Date], trainingWeekdays: Set<Int>, restOthers: Bool, calendar: Calendar = .current) {
-        let rotation = routines.filter { !$0.exercises.isEmpty && $0.exercises.contains { !$0.exercise.isCardio } }
         let today = calendar.startOfDay(for: .now)
+        // MK20: fixed days — Mon/Fri chest, Tue/Sat back, Wed legs, Sunday rest; Thursday stays open (buffer or makeup legs).
+        if fixedSplitOn, FixedSplit.Slot.allCases.allSatisfy({ splitRoutine($0) != nil }) {
+            for day in days.sorted() where calendar.startOfDay(for: day) >= today && dayChoice(on: day) == .unplanned {
+                let weekday = calendar.component(.weekday, from: day)
+                if let slot = FixedSplit.plannedSlot(weekday: weekday), let routine = splitRoutine(slot) {
+                    setDay(day, to: .routine(routine.id))
+                } else if weekday == 1, restOthers {
+                    setDay(day, to: .rest)
+                }
+            }
+            return
+        }
+        let rotation = routines.filter { !$0.exercises.isEmpty && $0.exercises.contains { !$0.exercise.isCardio } }
         var next = 0
         if let last = workoutLogs.filter({ log in rotation.contains { $0.id == log.routineID } }).max(by: { $0.startedAt < $1.startedAt }),
            let index = rotation.firstIndex(where: { $0.id == last.routineID }) {

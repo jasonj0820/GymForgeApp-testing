@@ -741,3 +741,166 @@ public extension Array where Element == WorkoutLog {
         return self.map { updated[$0.id] ?? $0 }
     }
 }
+
+// MARK: - MK20: fixed-day split
+
+/// Mon chest + side delts · Tue back + rear delts · Wed legs · Thu buffer (or legs if Wednesday was missed) ·
+/// Fri chest, light micro-session or basketball · Sat back · Sun rest. Missed Mon/Tue sessions are skipped,
+/// never shifted, so Friday and Saturday stay fresh.
+public enum FixedSplit {
+    public enum Slot: String, Codable, CaseIterable { case chest, back, legs }
+    /// Friday's basketball, asked on the day.
+    public enum Court: String, Codable { case fullCourt, light, none }
+
+    public struct Day: Equatable {
+        public enum Kind: Equatable { case train(Slot), microChest, basketball, rest, askCourt }
+        public var kind: Kind
+        public var title: String
+        public var notes: [String] = []
+        /// The muscle's other session this week was missed: +1 set on the main lifts, last sets to failure.
+        public var compensate = false
+        /// Legs moved to Thursday: Saturday back skips lower-back-heavy lifts.
+        public var protectLowerBack = false
+    }
+
+    /// Fixed routine ID for Friday's micro chest session, so it counts as chest in the week.
+    public static let microChestID = UUID(uuidString: "5F117000-0000-4000-8000-000000000001")!
+
+    /// Which slot a routine trains: the category most of its exercises belong to.
+    public static func slot(of routine: WorkoutRoutine) -> Slot? {
+        if routine.id == microChestID { return .chest }
+        var counts: [Slot: Int] = [:]
+        for item in routine.exercises {
+            switch item.exercise.category {
+            case .chest: counts[.chest, default: 0] += 1
+            case .back: counts[.back, default: 0] += 1
+            case .legs, .calves: counts[.legs, default: 0] += 1
+            default: break
+            }
+        }
+        return counts.max { $0.value == $1.value ? $0.key.rawValue > $1.key.rawValue : $0.value < $1.value }?.key
+    }
+
+    /// The slot planned for a weekday (1 = Sunday … 7 = Saturday); Thursday and Sunday have none.
+    public static func plannedSlot(weekday: Int) -> Slot? {
+        [2: .chest, 3: .back, 4: .legs, 6: .chest, 7: .back][weekday]
+    }
+
+    /// Today's plan from what you've trained this week (Monday-start week). `court` is Friday's answer.
+    public static func day(_ date: Date, done: [(date: Date, slot: Slot)], court: Court?, calendar: Calendar = .current) -> Day {
+        let today = calendar.startOfDay(for: date)
+        let weekday = calendar.component(.weekday, from: date)
+        let monday = calendar.date(byAdding: .day, value: -((weekday + 5) % 7), to: today) ?? today
+        let week = done.filter { $0.date >= monday && $0.date < today.addingTimeInterval(86_400) }
+        func did(_ slot: Slot, before: Date = today) -> Bool { week.contains { $0.slot == slot && $0.date < before } }
+        func didToday(_ slot: Slot) -> Bool { week.contains { $0.slot == slot && calendar.isDate($0.date, inSameDayAs: today) } }
+        let thursday = calendar.date(byAdding: .day, value: 3, to: monday) ?? today
+        let legsOnThursday = week.contains { $0.slot == .legs && calendar.isDate($0.date, inSameDayAs: thursday) }
+
+        switch weekday {
+        case 2: return Day(kind: .train(.chest), title: "Chest + side delts", notes: ["Heavy pressing day: flat bench, incline DB press, lateral raises."])
+        case 3: return Day(kind: .train(.back), title: "Back + rear delts", notes: ["Pulldowns, rows, then rear delts or face pulls."])
+        case 4: return Day(kind: .train(.legs), title: "Legs", notes: ["Mid-week so the weekend and early-week court sessions stay fresh."])
+        case 5:
+            if did(.legs) {
+                return Day(kind: .rest, title: "Buffer day", notes: ["Full recovery after legs. No lifting."])
+            }
+            return Day(kind: .train(.legs), title: "Legs (moved from Wednesday)",
+                       notes: ["Wednesday was missed, so legs move here. Saturday's back day will skip lower-back-heavy lifts."])
+        case 6:
+            let missedMonday = !did(.chest)
+            switch court {
+            case .fullCourt?:
+                let chestCount = did(.chest) ? 1 : 0
+                return Day(kind: .basketball, title: "Basketball: no chest today",
+                           notes: ["Full-court or hard pickup: skipping chest avoids injury and burnout."
+                                   + (chestCount == 0 ? " Chest got no session this week, so next Monday counts double: go hard." : "")])
+            case .light?:
+                return Day(kind: .microChest, title: "Light court + micro chest",
+                           notes: ["Under 25 min: 4 sets of bench press and 3 of lateral raises, to keep chest at 2× a week."])
+            case .none?:
+                return Day(kind: .train(.chest), title: "Chest + side delts", compensate: missedMonday)
+                    .with(missedMonday ? "Monday's chest was missed: +1 set on the main presses, last set of each exercise to failure (0 RIR)." : nil)
+            case nil:
+                return didToday(.chest) ? Day(kind: .train(.chest), title: "Chest + side delts") : Day(kind: .askCourt, title: "Basketball today?")
+            }
+        case 7:
+            let missedTuesday = !did(.back)
+            var day = Day(kind: .train(.back), title: "Back + rear delts", compensate: missedTuesday, protectLowerBack: legsOnThursday)
+            if missedTuesday { day = day.with("Tuesday's back was missed: +1 set on the main pulls, last set of each exercise to failure (0 RIR).") }
+            if legsOnThursday { day = day.with("Legs were on Thursday, so lower-back-heavy lifts become chest-supported rows and lat pulldowns.") }
+            return day
+        default:
+            return Day(kind: .rest, title: "Full rest", notes: ["Recover for Monday's heavy bench."])
+        }
+    }
+
+    /// The other session was missed: +1 set on the first two lifts for this slot, last set of every lift to failure.
+    public static func compensated(_ routine: WorkoutRoutine, slot: Slot) -> WorkoutRoutine {
+        var copy = routine
+        let main: ExerciseCategory = slot == .chest ? .chest : slot == .back ? .back : .legs
+        let primary = copy.exercises.indices.filter { copy.exercises[$0].exercise.category == main }.prefix(2)
+        for index in copy.exercises.indices where !copy.exercises[index].exercise.isCardio {
+            if primary.contains(index) { copy.exercises[index].exercise.defaultSets += 1 }
+            copy.exercises[index].exercise.notes = joined(copy.exercises[index].exercise.notes, "Only session this week: last set to failure (0 RIR).")
+        }
+        return copy
+    }
+
+    /// Legs were on Thursday: bent-over rows / deadlifts become chest-supported rows / lat pulldowns
+    /// (dropped instead if the routine already has that one).
+    public static func protectingLowerBack(_ routine: WorkoutRoutine) -> WorkoutRoutine {
+        var copy = routine
+        let names = Set(copy.exercises.map { ExerciseLog.key(for: $0.exercise.name) })
+        var result: [RoutineExercise] = []
+        for var item in copy.exercises {
+            let name = item.exercise.name.lowercased()
+            let replacement: String
+            if ["deadlift", "rack pull", "good morning"].contains(where: { name.contains($0) }) {
+                replacement = "Lat Pulldown"
+            } else if ["bent-over", "bent over", "barbell row", "pendlay"].contains(where: { name.contains($0) }) {
+                replacement = "Chest-Supported Row"
+            } else {
+                result.append(item)
+                continue
+            }
+            guard !names.contains(ExerciseLog.key(for: replacement)) else { continue }
+            var exercise = item.exercise
+            exercise.id = UUID()   // its own history (matched by name), not the deadlift's weights
+            exercise.name = replacement
+            exercise.alternatives = nil
+            exercise.notes = "Swapped in for \(item.exercise.name): legs were on Thursday."
+            item.exercise = exercise
+            result.append(item)
+        }
+        copy.exercises = result
+        return copy
+    }
+
+    /// Friday micro-session from your chest routine: 4 sets of bench press, 3 of lateral raises.
+    public static func microChest(from chest: WorkoutRoutine) -> WorkoutRoutine? {
+        let all = chest.allExercises
+        guard var press = all.first(where: { $0.name.lowercased().contains("bench press") && !$0.name.lowercased().contains("incline") })
+                ?? all.first(where: { $0.category == .chest }) else { return nil }
+        press.defaultSets = 4
+        var items = [RoutineExercise(exercise: press, order: 0)]
+        if var raise = all.first(where: { $0.name.lowercased().contains("lateral raise") }) ?? all.first(where: { $0.category == .shoulders }) {
+            raise.defaultSets = 3
+            items.append(RoutineExercise(exercise: raise, order: 1))
+        }
+        return WorkoutRoutine(id: microChestID, name: "Micro chest (Friday)", exercises: items)
+    }
+
+    private static func joined(_ a: String?, _ b: String) -> String {
+        guard let a, !a.isEmpty else { return b }
+        return a + "\n" + b
+    }
+}
+
+private extension FixedSplit.Day {
+    func with(_ note: String?) -> FixedSplit.Day {
+        var copy = self
+        if let note { copy.notes.append(note) }
+        return copy
+    }
+}

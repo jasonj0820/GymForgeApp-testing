@@ -211,7 +211,8 @@ final class PhoneAppStore: ObservableObject {
     /// The routine you've gone longest without doing.
     var suggestedRoutine: WorkoutRoutine? {
         // Today's planned workout first, otherwise the one you've gone longest without.
-        plannedRoutineToday ?? routines.filter { !$0.exercises.isEmpty }.min { lastDone($0) < lastDone($1) }
+        // MK20: the fixed split's session for today (with its extra sets / swaps) comes first.
+        splitRoutineToday ?? plannedRoutineToday ?? routines.filter { !$0.exercises.isEmpty }.min { lastDone($0) < lastDone($1) }
     }
 
     func lastDone(_ routine: WorkoutRoutine) -> Date {

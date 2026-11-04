@@ -619,6 +619,50 @@ struct GymForgeChecks {
               "no repeats until the pool runs out")
         check(QuotePicker.pool(topics: [.gym], tough: true).contains { $0.tough }, "Tough adds Sergeant Cluck's lines")
 
+        // MK20: fixed-day split
+        do {
+            let cal = Calendar(identifier: .gregorian)
+            // A known Monday: 2 Nov 2026.
+            let mon = cal.date(from: DateComponents(year: 2026, month: 11, day: 2, hour: 9))!
+            func day(_ offset: Int, hour: Int = 9) -> Date { cal.date(byAdding: .hour, value: offset * 24 + hour - 9, to: mon)! }
+            func plan(_ offset: Int, _ done: [(Int, FixedSplit.Slot)], court: FixedSplit.Court? = nil) -> FixedSplit.Day {
+                FixedSplit.day(day(offset, hour: 7), done: done.map { (day($0.0, hour: 18), $0.1) }, court: court, calendar: cal)
+            }
+            check(cal.component(.weekday, from: mon) == 2, "split fixture starts on a Monday")
+            check(plan(0, []).kind == .train(.chest) && plan(1, []).kind == .train(.back) && plan(2, []).kind == .train(.legs)
+                  && plan(6, []).kind == .rest, "Mon chest · Tue back · Wed legs · Sun rest")
+            check(plan(1, []).kind == .train(.back), "missed Monday isn't shifted: Tuesday is still back")
+            check(plan(3, [(2, .legs)]).kind == .rest, "legs done Wednesday → Thursday is a buffer day")
+            check(plan(3, [(0, .chest), (1, .back)]).kind == .train(.legs), "Wednesday missed → legs move to Thursday")
+            let sat = plan(5, [(0, .chest), (1, .back), (3, .legs), (4, .chest)])
+            check(sat.kind == .train(.back) && sat.protectLowerBack && !sat.compensate, "Thursday legs → Saturday back protects the lower back")
+            check(plan(5, [(0, .chest), (2, .legs)]).compensate, "Tuesday back missed → Saturday back gets the extra sets")
+            check(plan(4, [(1, .back)]).kind == .askCourt, "Friday asks about basketball first")
+            check(plan(4, [], court: .fullCourt).kind == .basketball, "full-court Friday → no chest")
+            check(plan(4, [], court: .light).kind == .microChest, "light court → micro chest session")
+            let fri = plan(4, [(1, .back), (2, .legs)], court: FixedSplit.Court.none)
+            check(fri.kind == .train(.chest) && fri.compensate, "no basketball, Monday chest missed → Friday chest compensates")
+            check(!plan(4, [(0, .chest)], court: FixedSplit.Court.none).compensate, "Monday chest done → normal Friday chest")
+
+            let chest = SeedData.chestRoutine, back = SeedData.backRoutine
+            check(FixedSplit.slot(of: chest) == .chest && FixedSplit.slot(of: back) == .back && FixedSplit.slot(of: SeedData.legRoutine) == .legs,
+                  "routines map to slots by their exercises")
+            let boosted = FixedSplit.compensated(chest, slot: .chest)
+            check(boosted.exercises.prefix(2).allSatisfy { $0.exercise.defaultSets == 4 } && boosted.exercises[2].exercise.defaultSets == 3
+                  && boosted.exercises.allSatisfy { $0.exercise.notes?.contains("0 RIR") == true || $0.exercise.isCardio },
+                  "compensation: +1 set on the first two presses, last sets to failure")
+            let micro = FixedSplit.microChest(from: chest)
+            check(micro?.exercises.map(\.exercise.name) == ["Bench Press", "Lateral Raise"] && micro?.exercises.map(\.exercise.defaultSets) == [4, 3]
+                  && micro.map(FixedSplit.slot(of:)) == .chest, "micro chest = 4 × bench + 3 × lateral raises, counts as chest")
+            let heavyBack = WorkoutRoutine(name: "Back", exercises: [
+                RoutineExercise(exercise: ExerciseDefinition(name: "Barbell Bent-Over Row", category: .back, repMin: 6, repMax: 10, defaultSets: 3, restSeconds: 120, weightIncrementKg: 2.5), order: 0),
+                RoutineExercise(exercise: ExerciseDefinition(name: "Deadlift", category: .back, repMin: 3, repMax: 6, defaultSets: 3, restSeconds: 180, weightIncrementKg: 5), order: 1),
+                RoutineExercise(exercise: ExerciseDefinition(name: "Lat Pulldown", category: .back, repMin: 8, repMax: 12, defaultSets: 3, restSeconds: 120, weightIncrementKg: 2.5), order: 2)])
+            check(FixedSplit.protectingLowerBack(heavyBack).exercises.map(\.exercise.name) == ["Chest-Supported Row", "Lat Pulldown"],
+                  "lower-back protection: bent-over row → chest-supported row, deadlift dropped (pulldown already there)")
+            check(FixedSplit.protectingLowerBack(back).exercises.count == back.exercises.count, "your back day has nothing to swap")
+        }
+
         // MK17 logic review — 1: bodyweight at the top of its range progresses the movement, not "+2.5 kg"
         let pushup = ExerciseDefinition(name: "Push-up", category: .chest, repMin: 10, repMax: 20, defaultSets: 3, restSeconds: 60, weightIncrementKg: 0)
         let pushTop = log(pushup, [(0, 20), (0, 20), (0, 20)])

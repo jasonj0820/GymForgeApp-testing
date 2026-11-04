@@ -1,4 +1,13 @@
-# Splitday MK19.1 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK20 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK20 — Fixed-day split
+- **Your week is fixed**: Mon chest + side delts · Tue back + rear delts · Wed legs · Thu buffer · Fri chest (or basketball) · Sat back · Sun rest. Uses your own Chest Day / Back Day / Leg Day (matched by their exercises). **Plan week → Auto-plan** fills Mon/Tue/Wed/Fri/Sat with them and Sunday as rest; Thursday stays open.
+- **Today → "Today in your split"** says what's on and why; **UP NEXT** starts it already adjusted.
+- **Missed Mon/Tue are skipped, never shifted**, so Friday and Saturday stay fresh.
+- **Wednesday missed → legs on Thursday**, and Saturday's back day swaps lower-back-heavy lifts (bent-over rows → chest-supported rows, deadlifts → lat pulldowns). Your current Back Day has none, so nothing changes unless you add them.
+- **Friday asks about basketball**: full-court/hard → no chest (planned as basketball); light shootaround → 25-min micro chest (4 × bench press, 3 × lateral raises, counts as your 2nd chest session); no basketball → full chest day.
+- **Volume top-up**: if Monday chest (or Tuesday back) was missed, Friday chest (or Saturday back) gets +1 set on its first two main lifts and every exercise's last set goes to failure (0 RIR).
+- **Settings → Weekly split** turns it off (back to rotating your routines).
 
 ## Auto-refresh with Apple Health (your Mac does it)
 Sideloadly and SideStore re-sign the app and drop Apple Health. Instead, your Mac rebuilds Splitday with

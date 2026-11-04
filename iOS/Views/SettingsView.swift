@@ -241,6 +241,14 @@ struct SettingsView: View {
                     }
                 }
 
+                Section {
+                    Toggle("Fixed-day split", isOn: Binding(get: { store.fixedSplitOn }, set: { store.fixedSplitOn = $0 }))
+                } header: {
+                    Text("Weekly split")
+                } footer: {
+                    Text("Mon chest · Tue back · Wed legs · Thu buffer (legs if Wednesday was missed) · Fri chest or basketball · Sat back · Sun rest. Missed days are skipped, never shifted. Off = rotate your routines on any days.")
+                }
+
                 Section("Apple Health") {
                     Button("Request Health access") {
                         Task { await store.requestHealthAccess() }
