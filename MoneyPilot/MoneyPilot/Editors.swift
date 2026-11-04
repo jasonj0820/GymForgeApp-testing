@@ -389,6 +389,7 @@ import WebKit
         .onAppear {
             if let h = existing { symbol = h.symbol; shares = String(h.shares); price = String(Double(h.priceUSD) / 100); cost = String(Double(h.costUSD) / 100) }
             if let buyMore { symbol = buyMore; mode = "buy" }
+            else if existing == nil && store.state.stakeCashUSD > 0 { mode = "buy" } // MK4.1: a new buy usually comes out of Stake cash
         }
         .task(id: "\(ticker)|\(hasKey)") { await lookUp() }
         .confirmationDialog("Remove \(ticker) from your portfolio?", isPresented: $removing, titleVisibility: .visible) {
@@ -924,11 +925,19 @@ struct WebPage: UIViewRepresentable {
     }
 }
 /// Signs in to PocketSmith's website out of sight (the page sits behind the app) and presses refresh on every bank feed.
-/// Steps: login → (any code you are asked for) → Feeds → press refresh. Only the Lock Screen and Dynamic Island show progress.
+/// Steps: login → (any code you are asked for) → Feeds → press refresh. Only a banner at the top of the app Island show progress.
 /// shortcut: relies on PocketSmith's login field IDs and refresh button wording; if they redesign, it stops and shows the page for you to finish by hand.
 @MainActor final class FeedRobot: NSObject, ObservableObject, WKNavigationDelegate {
     static let shared = FeedRobot()
-    let web = WKWebView() // Default data store keeps PocketSmith's "remember me" cookie, so later runs often skip the login page.
+    /// MK4.1: PocketSmith's desktop site, as Safari on a Mac sees it (wider, and steadier for the automatic sign-in).
+    /// The default data store keeps PocketSmith's "remember me" cookie, so later runs often skip the login page.
+    let web: WKWebView = {
+        let config = WKWebViewConfiguration()
+        config.defaultWebpagePreferences.preferredContentMode = .desktop
+        let view = WKWebView(frame: .zero, configuration: config)
+        view.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
+        return view
+    }()
     @Published private(set) var running = false
     @Published private(set) var stuck = false // true shows the page so you can finish
     @Published private(set) var visible = false // Started from Bank sync → Sync now: the page shows the whole time
@@ -959,14 +968,13 @@ struct WebPage: UIViewRepresentable {
         running = false; stuck = false
         let refreshed = reachedFeeds, manual = visible
         Task {
-            if manual { await LiveMoney.status("Syncing MoneyPilot…", store.engine); await store.syncPocketSmith(); await LiveMoney.status(nil, store.engine) }
-            else if refreshed { await store.afterFeedRefresh() } else { await LiveMoney.status(nil, store.engine) }
+            if manual { store.activity = "Syncing MoneyPilot…"; await store.syncPocketSmith(); store.activity = nil }
+            else if refreshed { await store.afterFeedRefresh() } else { store.activity = nil }
         }
     }
     private func say(_ text: String, stuck: Bool = false) {
         status = text; self.stuck = stuck
-        guard let store else { return }
-        Task { await LiveMoney.status(stuck ? "Open MoneyPilot to finish" : text, store.engine) }
+        store?.activity = stuck ? nil : text // When it needs you, the PocketSmith page itself comes up instead.
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { Task { await step() } }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

@@ -111,174 +111,15 @@
 			"path" = "Info.plist";
 			"sourceTree" = "<group>";
 		};
-		"9FD97C89ACBF2DA702A52E08" = {
-			"isa" = "PBXFileReference";
-			"lastKnownFileType" = "sourcecode.swift";
-			"path" = "MoneyActivity.swift";
-			"sourceTree" = "<group>";
-		};
-		"F33029FA04C778247166D365" = {
-			"isa" = "PBXFileReference";
-			"lastKnownFileType" = "sourcecode.swift";
-			"path" = "LiveActivity.swift";
-			"sourceTree" = "<group>";
-		};
 		"8ABC4C30DD86218FF0BF7335" = {
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
 			"path" = "Prices.swift";
 			"sourceTree" = "<group>";
 		};
-		"3AF03A1BBA911C44B0623F56" = {
-			"isa" = "PBXFileReference";
-			"lastKnownFileType" = "sourcecode.swift";
-			"path" = "MoneyPilotLive.swift";
-			"sourceTree" = "<group>";
-		};
-		"E6A152E080522638BB937F3E" = {
-			"isa" = "PBXFileReference";
-			"lastKnownFileType" = "text.plist.xml";
-			"path" = "Info.plist";
-			"sourceTree" = "<group>";
-		};
-		"4C297BA824FC039418C19DE9" = {
-			"isa" = "PBXFileReference";
-			"explicitFileType" = "wrapper.app-extension";
-			"path" = "MoneyPilotLive.appex";
-			"sourceTree" = "BUILT_PRODUCTS_DIR";
-		};
-		"1C5ABAC5C65DE1CEFE90ABC6" = {
-			"isa" = "PBXBuildFile";
-			"fileRef" = "9FD97C89ACBF2DA702A52E08";
-		};
-		"48DA33112DC5896C05257C88" = {
-			"isa" = "PBXBuildFile";
-			"fileRef" = "9FD97C89ACBF2DA702A52E08";
-		};
-		"00A7B5E621AD429BE4F3C142" = {
-			"isa" = "PBXBuildFile";
-			"fileRef" = "F33029FA04C778247166D365";
-		};
 		"F065595FB103948106DC367F" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "8ABC4C30DD86218FF0BF7335";
-		};
-		"9089D6BACA649D4F44981503" = {
-			"isa" = "PBXBuildFile";
-			"fileRef" = "3AF03A1BBA911C44B0623F56";
-		};
-		"3D2BFF345646CA44602148F9" = {
-			"isa" = "PBXBuildFile";
-			"fileRef" = "4C297BA824FC039418C19DE9";
-			"settings" = { "ATTRIBUTES" = ( "RemoveHeadersOnCopy", ); };
-		};
-		"530B1C02E183079896DF230A" = {
-			"isa" = "PBXGroup";
-			"children" = ( "9FD97C89ACBF2DA702A52E08", );
-			"path" = "Shared";
-			"sourceTree" = "<group>";
-		};
-		"38A3DCCC9EF2A4296706DE0F" = {
-			"isa" = "PBXGroup";
-			"children" = ( "3AF03A1BBA911C44B0623F56", "E6A152E080522638BB937F3E", );
-			"path" = "MoneyPilotLive";
-			"sourceTree" = "<group>";
-		};
-		"F6463F073C0973514E8BC1F4" = {
-			"isa" = "PBXSourcesBuildPhase";
-			"buildActionMask" = 2147483647;
-			"files" = ( "9089D6BACA649D4F44981503", "48DA33112DC5896C05257C88", );
-			"runOnlyForDeploymentPostprocessing" = 0;
-		};
-		"D18402B2ECFDC520E76A8A13" = {
-			"isa" = "PBXFrameworksBuildPhase";
-			"buildActionMask" = 2147483647;
-			"files" = ( );
-			"runOnlyForDeploymentPostprocessing" = 0;
-		};
-		"C8CA764F4D24C6D1C3B072A7" = {
-			"isa" = "PBXResourcesBuildPhase";
-			"buildActionMask" = 2147483647;
-			"files" = ( );
-			"runOnlyForDeploymentPostprocessing" = 0;
-		};
-		"4BFAA0454A607DD61009A805" = {
-			"isa" = "PBXCopyFilesBuildPhase";
-			"buildActionMask" = 2147483647;
-			"dstPath" = "";
-			"dstSubfolderSpec" = 13;
-			"files" = ( "3D2BFF345646CA44602148F9", );
-			"name" = "Embed Foundation Extensions";
-			"runOnlyForDeploymentPostprocessing" = 0;
-		};
-		"3BCD2043C44E6C8A6591C216" = {
-			"isa" = "PBXNativeTarget";
-			"buildConfigurationList" = "3F668916C94BAFAC9419F996";
-			"buildPhases" = ( "F6463F073C0973514E8BC1F4", "D18402B2ECFDC520E76A8A13", "C8CA764F4D24C6D1C3B072A7", );
-			"buildRules" = (  );
-			"dependencies" = (  );
-			"name" = "MoneyPilotLive";
-			"productName" = "MoneyPilotLive";
-			"productReference" = "4C297BA824FC039418C19DE9";
-			"productType" = "com.apple.product-type.app-extension";
-		};
-		"4AA66C6636E15EC721031189" = {
-			"isa" = "PBXContainerItemProxy";
-			"containerPortal" = "98F54143AB4E86B28C3AFEE0";
-			"proxyType" = 1;
-			"remoteGlobalIDString" = "3BCD2043C44E6C8A6591C216";
-			"remoteInfo" = "MoneyPilotLive";
-		};
-		"C3AB4D7724B1F8C3926BA8C7" = {
-			"isa" = "PBXTargetDependency";
-			"target" = "3BCD2043C44E6C8A6591C216";
-			"targetProxy" = "4AA66C6636E15EC721031189";
-		};
-		"9165ADB45AB153E32BA5D2DA" = {
-			"isa" = "XCBuildConfiguration";
-			"buildSettings" = {
-				"CODE_SIGN_STYLE" = "Automatic";
-				"CURRENT_PROJECT_VERSION" = "1";
-				"MARKETING_VERSION" = "2.0";
-				"GENERATE_INFOPLIST_FILE" = "YES";
-				"INFOPLIST_FILE" = "MoneyPilotLive/Info.plist";
-				"CODE_SIGN_ENTITLEMENTS" = "MoneyPilotLive/MoneyPilotLive.entitlements";
-				"INFOPLIST_KEY_CFBundleDisplayName" = "MoneyPilot";
-				"PRODUCT_NAME" = "$(TARGET_NAME)";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "com.jasonchang.MoneyPilot.LiveActivity";
-				"TARGETED_DEVICE_FAMILY" = "1";
-				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
-				"SKIP_INSTALL" = "YES";
-				"SWIFT_EMIT_LOC_STRINGS" = "YES";
-				"LD_RUNPATH_SEARCH_PATHS" = ( "$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
-			};
-			"name" = "Debug";
-		};
-		"D36AA1A86A539A9EDDC9F5A4" = {
-			"isa" = "XCBuildConfiguration";
-			"buildSettings" = {
-				"CODE_SIGN_STYLE" = "Automatic";
-				"CURRENT_PROJECT_VERSION" = "1";
-				"MARKETING_VERSION" = "2.0";
-				"GENERATE_INFOPLIST_FILE" = "YES";
-				"INFOPLIST_FILE" = "MoneyPilotLive/Info.plist";
-				"CODE_SIGN_ENTITLEMENTS" = "MoneyPilotLive/MoneyPilotLive.entitlements";
-				"INFOPLIST_KEY_CFBundleDisplayName" = "MoneyPilot";
-				"PRODUCT_NAME" = "$(TARGET_NAME)";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "com.jasonchang.MoneyPilot.LiveActivity";
-				"TARGETED_DEVICE_FAMILY" = "1";
-				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
-				"SKIP_INSTALL" = "YES";
-				"SWIFT_EMIT_LOC_STRINGS" = "YES";
-				"LD_RUNPATH_SEARCH_PATHS" = ( "$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
-			};
-			"name" = "Release";
-		};
-		"3F668916C94BAFAC9419F996" = {
-			"isa" = "XCConfigurationList";
-			"buildConfigurations" = ( "9165ADB45AB153E32BA5D2DA", "D36AA1A86A539A9EDDC9F5A4", );
-			"defaultConfigurationIsVisible" = 0;
-			"defaultConfigurationName" = "Release";
 		};
 		"75A3C4DEB496D660236B1300" = {
 			"isa" = "PBXFileReference";
@@ -292,7 +133,7 @@
 		};
 		"3A2A88DEEFF3D1D23E496597" = {
 			"isa" = "PBXGroup";
-			"children" = ( "8554C70467E57856E047533F", "6E5CB8E563B67D5800104272", "19BFBC84FD9B2B92C10227AA", "86A32B640CEA5DF835C475FC", "A2FA5F4F5D336DC8ECDF4BC3", "A6D1EABD8211EBDFB4F8CBEC", "2B97935E2984DBD78A9F4AD5", "5A1C0B7E9D2F4E6A8B3C1D02", "75A3C4DEB496D660236B1300", "F33029FA04C778247166D365", "8ABC4C30DD86218FF0BF7335", "96ED5C5789B174A01557791C", "5A1C0B7E9D2F4E6A8B3C1D04", "5A1C0B7E9D2F4E6A8B3C1D06", );
+			"children" = ( "8554C70467E57856E047533F", "6E5CB8E563B67D5800104272", "19BFBC84FD9B2B92C10227AA", "86A32B640CEA5DF835C475FC", "A2FA5F4F5D336DC8ECDF4BC3", "A6D1EABD8211EBDFB4F8CBEC", "2B97935E2984DBD78A9F4AD5", "5A1C0B7E9D2F4E6A8B3C1D02", "75A3C4DEB496D660236B1300", "8ABC4C30DD86218FF0BF7335", "96ED5C5789B174A01557791C", "5A1C0B7E9D2F4E6A8B3C1D04", "5A1C0B7E9D2F4E6A8B3C1D06", );
 			"path" = "MoneyPilot";
 			"sourceTree" = "<group>";
 		};
@@ -326,19 +167,19 @@
 		};
 		"FBDC4F23F93125BBEEAE800C" = {
 			"isa" = "PBXGroup";
-			"children" = ( "38A007151ABE87CC01A5B6E9", "B7480EC88B7F22D0A4757273", "4C297BA824FC039418C19DE9", );
+			"children" = ( "38A007151ABE87CC01A5B6E9", "B7480EC88B7F22D0A4757273", );
 			"name" = "Products";
 			"sourceTree" = "<group>";
 		};
 		"325F10A6957A34D66CB8C0E4" = {
 			"isa" = "PBXGroup";
-			"children" = ( "3A2A88DEEFF3D1D23E496597", "530B1C02E183079896DF230A", "38A3DCCC9EF2A4296706DE0F", "8B7A6DECC0651D269EA794C7", "FBDC4F23F93125BBEEAE800C", );
+			"children" = ( "3A2A88DEEFF3D1D23E496597", "8B7A6DECC0651D269EA794C7", "FBDC4F23F93125BBEEAE800C", );
 			"sourceTree" = "<group>";
 		};
 		"BCE16DD0260827ECF338C787" = {
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = 2147483647;
-			"files" = ( "C3ACB1B2C56D78BC810F56C8", "79AD7720C9CD57C5ADC83876", "487C502A5481E87001E8CC43", "86026A3D9A5173246E413ECC", "289C8D3C22097DA2A314830F", "614B4B7697321E24EDE03C80", "4AF090DF56D724E72C1CAF6A", "5A1C0B7E9D2F4E6A8B3C1D03", "44FBFFFDA545A7EE2C3206EB", "00A7B5E621AD429BE4F3C142", "F065595FB103948106DC367F", "1C5ABAC5C65DE1CEFE90ABC6", );
+			"files" = ( "C3ACB1B2C56D78BC810F56C8", "79AD7720C9CD57C5ADC83876", "487C502A5481E87001E8CC43", "86026A3D9A5173246E413ECC", "289C8D3C22097DA2A314830F", "614B4B7697321E24EDE03C80", "4AF090DF56D724E72C1CAF6A", "5A1C0B7E9D2F4E6A8B3C1D03", "44FBFFFDA545A7EE2C3206EB", "F065595FB103948106DC367F", );
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};
 		"0189424A5A60FED329FA868E" = {
@@ -386,9 +227,9 @@
 		"0E8A3AD980EC179856012B7E" = {
 			"isa" = "PBXNativeTarget";
 			"buildConfigurationList" = "60EA43DB068BD71C9709BED5";
-			"buildPhases" = ( "BCE16DD0260827ECF338C787", "7561BFB015D8F536760CB671", "0189424A5A60FED329FA868E", "4BFAA0454A607DD61009A805", );
+			"buildPhases" = ( "BCE16DD0260827ECF338C787", "7561BFB015D8F536760CB671", "0189424A5A60FED329FA868E", );
 			"buildRules" = (  );
-			"dependencies" = ( "C3AB4D7724B1F8C3926BA8C7", );
+			"dependencies" = ( );
 			"name" = "MoneyPilot";
 			"productName" = "MoneyPilot";
 			"productReference" = "38A007151ABE87CC01A5B6E9";
@@ -550,9 +391,6 @@
 						"CreatedOnToolsVersion" = "16.0";
 						"TestTargetID" = "0E8A3AD980EC179856012B7E";
 					};
-					"3BCD2043C44E6C8A6591C216" = {
-						"CreatedOnToolsVersion" = "16.0";
-					};
 				};
 			};
 			"buildConfigurationList" = "BC7E287B75C6D3E574547D08";
@@ -564,7 +402,7 @@
 			"productRefGroup" = "FBDC4F23F93125BBEEAE800C";
 			"projectDirPath" = "";
 			"projectRoot" = "";
-			"targets" = ( "0E8A3AD980EC179856012B7E", "0A06C5E2DA34E686D888A695", "3BCD2043C44E6C8A6591C216", );
+			"targets" = ( "0E8A3AD980EC179856012B7E", "0A06C5E2DA34E686D888A695", );
 		};
 	};
 	"rootObject" = "98F54143AB4E86B28C3AFEE0";

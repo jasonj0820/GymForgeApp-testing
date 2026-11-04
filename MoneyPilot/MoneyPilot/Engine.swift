@@ -10,10 +10,25 @@ struct BudgetLine: Identifiable {
 struct Suggestion: Identifiable {
     var id: String; var title: String; var detail: String; var action: String? = nil
 }
-struct Engine {
+/// Works out every figure from your data. MK4.1: one Engine per version of your data, and it remembers each answer,
+/// so a screen asking for the same number many times (or one figure needing another) only works it out once.
+/// It used to recalculate everything from every transaction on each request, which made the app lag.
+final class Engine {
     let state: FinanceState
+    let made = Date() // Answers depend on today's date too, so the Store replaces an Engine after a minute.
+    var version = 0   // Which version of the Store's data this Engine was made from
+    private var memo: [String: Any] = [:]
+    init(state: FinanceState) { self.state = state }
+    /// The remembered answer for `key`, worked out on first use.
+    func cached<T>(_ key: String, _ make: () -> T) -> T {
+        if let stored = memo[key], let hit = stored as? T { return hit } // Unwrap first: an optional answer must not read as a hit.
+        let value = make(); memo[key] = value; return value
+    }
     func inPeriod(_ date: Date) -> Bool { date >= state.periodStart && date < state.periodEnd }
     func accountBalance(_ id: UUID, before date: Date = .distantFuture) -> Money {
+        cached("balance-\(id)-\(date.timeIntervalSince1970)") { balance(id, before: date) }
+    }
+    private func balance(_ id: UUID, before date: Date) -> Money {
         let opening = state.accounts.first { $0.id == id }?.openingBalance ?? 0
         return state.entries.filter { $0.date < date }.reduce(opening) { total, e in
             var delta: Money = 0
@@ -27,20 +42,21 @@ struct Engine {
         guard let link = state.pocketsmith else { return 0 }
         return link.accountMap.filter { $0.value == id }.reduce(0) { $0 + (link.pending?[$1.key] ?? 0) }
     }
-    var bankCash: Money { state.accounts.reduce(0) { $0 + accountBalance($1.id) } }
+    var bankCash: Money { cached("bankCash") { state.accounts.reduce(0) { $0 + accountBalance($1.id) } } }
     var afterpayDebt: Money { state.plans.reduce(0) { $0 + $1.outstanding } }
     var goalReserves: Money { state.goals.reduce(0) { $0 + $1.reserved } }
     var protected: Money { state.savings + state.emergency + state.investmentReserve }
     /// MK3.3: only Afterpay due before your next payday comes out of today's cash; later instalments come out of later pays.
     var unreservedCash: Money { bankCash - protected - afterpayDueBeforePay - goalReserves }
     /// The next payday after today that actually pays. MK3.6: paydays inside time off are skipped.
-    var nextPayDate: Date {
+    var nextPayDate: Date { cached("nextPayDate") { payDate() } }
+    private func payDate() -> Date {
         let c = Calendar.current, today = c.startOfDay(for: Date())
         guard state.settings.expectedWages > 0 else { return state.periodEnd }
         return state.payingPayday(onOrAfter: c.date(byAdding: .day, value: 1, to: today)!)
     }
-    var afterpayDueBeforePay: Money {
-        let end = nextPayDate
+    var afterpayDueBeforePay: Money { cached("afterpayDueBeforePay") { afterpayDue(before: nextPayDate) } }
+    private func afterpayDue(before end: Date) -> Money {
         return state.plans.flatMap(\.installments).filter { $0.paidOn == nil && $0.due < end }.reduce(0) { $0 + $1.amount }
     }
     /// Why cash and budgets don't line up: every amount taken off your bank cash, in order (MK3.3).
@@ -80,7 +96,8 @@ struct Engine {
         }.filter { $0.amount > 0 }.sorted { $0.amount > $1.amount }
     }
     func baseLimit(_ category: Category) -> Money { category == .shopping ? 0 : state.budgets.first { $0.category == category }?.limit ?? 0 }
-    func line(_ category: Category) -> BudgetLine {
+    func line(_ category: Category) -> BudgetLine { cached("line-\(category)") { makeLine(category) } }
+    private func makeLine(_ category: Category) -> BudgetLine {
         let u = used(category, from: state.periodStart, to: state.periodEnd)
         return BudgetLine(category: category, limit: baseLimit(category), spent: u.spent, committed: u.afterpay, goalReserved: 0)
     }
@@ -94,9 +111,9 @@ struct Engine {
             return BudgetLine(category: c, limit: limit, spent: u.spent, committed: u.afterpay, goalReserved: 0)
         }
     }
-    var lines: [BudgetLine] { Category.budgeted.map(line) }
+    var lines: [BudgetLine] { cached("lines") { Category.budgeted.map(line) } }
     // Debt and goal reserves were already deducted in unreservedCash.
-    var unallocated: Money { unreservedCash - lines.reduce(0) { $0 + max(0, $1.remaining) } }
+    var unallocated: Money { cached("unallocated") { unreservedCash - lines.reduce(0) { $0 + max(0, $1.remaining) } } }
     func spendable(_ category: Category) -> Money {
         let otherEnvelopes = lines.filter { $0.category != category }.reduce(Money(0)) { $0 + max(0, $1.remaining) }
         return max(0, min(line(category).remaining, unreservedCash - otherEnvelopes))
@@ -115,7 +132,8 @@ struct Engine {
     /// Apple Pay deposits don't always say "Stake" in the bank description.
     var stakeDeposits: [Entry] { state.entries.filter { $0.kind == .investment && ($0.usd != nil || !Engine.isOtherBroker($0.name)) } }
     var stakeWithdrawals: [Entry] { state.entries.filter { $0.kind == .fromStake } }
-    var stakeMoney: StakeMoney {
+    var stakeMoney: StakeMoney { cached("stakeMoney") { makeStakeMoney() } }
+    private func makeStakeMoney() -> StakeMoney {
         let before = state.stakeBefore ?? StakeHistory(), fee = state.fxFee
         // shortcut: withdrawals before MoneyPilot are assumed to have broken even; enter them as "Before MoneyPilot" totals.
         var m = StakeMoney(sentAUD: before.sentAUD, backAUD: before.backAUD, withdrawnCostAUD: before.backAUD)
@@ -213,9 +231,25 @@ struct Engine {
     func learnedCategory(_ name: String, excluding id: UUID? = nil) -> Category? {
         let key = Engine.groupKey(name)
         guard !key.isEmpty else { return nil }
-        let peers = state.entries.filter { $0.id != id && ($0.kind == .expense || $0.kind == .refund) && $0.category != .other && Engine.groupKey($0.name) == key }
-        return Dictionary(grouping: peers, by: \.category).max { $0.value.count < $1.value.count }?.key
+        var votes = merchantVotes[key] ?? [:]
+        if let id, let own = entryByID[id], own.category != .other, own.kind == .expense || own.kind == .refund, Engine.groupKey(own.name) == key {
+            votes[own.category, default: 0] -= 1 // Leave the transaction being sorted out of its own vote.
+        }
+        return votes.filter { $0.value > 0 }.max { $0.value < $1.value || ($0.value == $1.value && $0.key.rawValue > $1.key.rawValue) }?.key
     }
+    /// MK4.1: for each merchant, how many of your purchases and refunds are filed under each category (Other left out),
+    /// counted once instead of re-reading every transaction for each one being sorted.
+    private var merchantVotes: [String: [Category: Int]] {
+        cached("merchantVotes") {
+            var votes: [String: [Category: Int]] = [:]
+            for e in state.entries where (e.kind == .expense || e.kind == .refund) && e.category != .other {
+                let key = Engine.groupKey(e.name)
+                if !key.isEmpty { votes[key, default: [:]][e.category, default: 0] += 1 }
+            }
+            return votes
+        }
+    }
+    private var entryByID: [UUID: Entry] { cached("entryByID") { Dictionary(state.entries.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) } }
     /// Best category for a transaction and why: your rules, then how you filed this merchant before, then known merchants, then PocketSmith's category.
     func autoCategory(_ name: String, hint: String? = nil, excluding id: UUID? = nil) -> (category: Category, reason: String) {
         if let rule = ruleCategory(name) { return (rule, "Your rule for this merchant") }
@@ -231,7 +265,8 @@ struct Engine {
     static func isOtherBroker(_ name: String) -> Bool { let n = name.lowercased(); return !n.contains("stake") && brokers.contains { n.contains($0) } }
     struct Proposal: Identifiable { var id: UUID; var name: String; var amount: Money; var date: Date; var category: Category; var reason: String; var stockDeposit = false }
     /// Spending still in Other that the engine can now file, and payments to brokers that should be stock deposits.
-    var organiseProposals: [Proposal] {
+    var organiseProposals: [Proposal] { cached("organiseProposals") { makeProposals() } }
+    private func makeProposals() -> [Proposal] {
         state.entries.filter { $0.kind == .expense && Engine.isStockDeposit($0.name) }.map {
             Proposal(id: $0.id, name: $0.name, amount: $0.amount, date: $0.date, category: .other, reason: "Payment to a share-trading platform", stockDeposit: true)
         } + state.entries.filter { ($0.kind == .expense || $0.kind == .refund) && $0.category == .other && $0.needsReview != true && !Engine.isStockDeposit($0.name) }.compactMap { e in
@@ -255,7 +290,8 @@ struct Engine {
     /// MK3.7: the balance an account has once matched to PocketSmith: its figure less pending transactions.
     func matched(_ drift: (pocketsmithID: String, account: Account, theirs: Money)) -> Money { drift.theirs + pending(drift.account.id) }
     /// `theirs` is PocketSmith's own figure, which leaves out pending transactions; compare with `matched(_:)`.
-    var drifted: [(pocketsmithID: String, account: Account, theirs: Money)] {
+    var drifted: [(pocketsmithID: String, account: Account, theirs: Money)] { cached("drifted") { findDrift() } }
+    private func findDrift() -> [(pocketsmithID: String, account: Account, theirs: Money)] {
         guard let link = state.pocketsmith else { return [] }
         return link.accountMap.compactMap { id, mine in
             guard let account = state.accounts.first(where: { $0.id == mine }), let theirs = link.balances[id], theirs + pending(mine) != accountBalance(mine) else { return nil }
@@ -313,7 +349,8 @@ struct Engine {
         return String(letters).split(separator: " ").prefix(2).joined(separator: " ")
     }
     /// Charges that repeat at a steady interval and similar amount, not yet tracked.
-    func detectedSubscriptions() -> [Subscription] {
+    func detectedSubscriptions() -> [Subscription] { cached("detectedSubscriptions") { findSubscriptions() } }
+    private func findSubscriptions() -> [Subscription] {
         let tracked = state.subs.map { $0.keyword.lowercased() }
         let since = Calendar.current.date(byAdding: .day, value: -400, to: Date())!
         let groups = Dictionary(grouping: state.entries.filter { $0.kind == .expense && $0.date >= since }) { Engine.merchantKey($0.name) }
@@ -338,7 +375,8 @@ struct Engine {
         return found.sorted { $0.cycle.monthly($0.amount) > $1.cycle.monthly($1.amount) }
     }
     // Forecast is explicitly hypothetical: regular spending + unpaid instalments + scheduled income.
-    func forecast(days: Int = 35) -> [(date: Date, balance: Money)] {
+    func forecast(days: Int = 35) -> [(date: Date, balance: Money)] { cached("forecast-\(days)") { makeForecast(days) } }
+    private func makeForecast(_ days: Int) -> [(date: Date, balance: Money)] {
         let calendar = Calendar.current; let today = calendar.startOfDay(for: Date())
         let end = calendar.date(byAdding: .day, value: days + 1, to: today)!
         // Instalments for budgeted categories are part of those budgets; they're applied on their own dates instead.

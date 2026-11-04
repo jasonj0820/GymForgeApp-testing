@@ -21,6 +21,6 @@ for path in files:
     assert f'"{path.name}"' in project, f'Missing source: {path.name}'
 ET.parse(root/'MoneyPilot.xcodeproj/xcshareddata/xcschemes/MoneyPilot.xcscheme')
 plistlib.loads((root/'MoneyPilot/PrivacyInfo.xcprivacy').read_bytes())
-assert len(re.findall(r'func test\w+\(', (root/'MoneyPilotTests/EngineTests.swift').read_text())) == 74
+assert len(re.findall(r'func test\w+\(', (root/'MoneyPilotTests/EngineTests.swift').read_text())) == 75
 print(f'Project integrity: {len(objects)} IDs, {len(files)} Swift files, shared scheme and privacy manifest OK')
-print('74 XCTest cases present; NOT executed. Xcode build and on-device QA still required.')
+print('75 XCTest cases present; NOT executed. Xcode build and on-device QA still required.')

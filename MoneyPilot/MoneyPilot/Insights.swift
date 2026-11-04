@@ -58,7 +58,8 @@ extension Engine {
         state.entries.filter { $0.date >= from && $0.date < to && ($0.kind.income || ($0.kind == .otherIncome && $0.needsReview != true)) }.reduce(Money(0)) { $0 + $1.amount }
     }
     /// Share of income kept (not spent) over recent months, once there are at least four weeks of history.
-    var keptRate: (rate: Double, days: Int)? {
+    var keptRate: (rate: Double, days: Int)? { cached("keptRate") { findKeptRate() } }
+    private func findKeptRate() -> (rate: Double, days: Int)? {
         guard let first = state.entries.map(\.date).min() else { return nil }
         let days = min(90, Calendar.current.dateComponents([.day], from: first, to: now).day ?? 0)
         guard days >= 28 else { return nil }
@@ -74,7 +75,8 @@ extension Engine {
         return total * 30 / 90
     }
     /// The lowest point of the cash forecast, and how far it is above or below your protected savings.
-    var forecastLow: (date: Date, balance: Money, free: Money)? {
+    var forecastLow: (date: Date, balance: Money, free: Money)? { cached("forecastLow") { findLow() } }
+    private func findLow() -> (date: Date, balance: Money, free: Money)? {
         // Without expected pay the forecast has no income in it, so it would always look like running out.
         guard state.settings.expectedWages > 0 || state.settings.expectedAllowance > 0 else { return nil }
         return forecast().map { (date: $0.date, balance: $0.balance, free: $0.balance - protected) }.min { $0.free < $1.free }
@@ -104,7 +106,8 @@ extension Engine {
         return nil
     }
     // MARK: Insights
-    var insights: [Insight] {
+    var insights: [Insight] { cached("insights") { makeInsights() } }
+    private func makeInsights() -> [Insight] {
         var out: [Insight] = []
         let c = Calendar.current, today = c.startOfDay(for: now), period = periodName
 
@@ -335,7 +338,8 @@ extension Engine {
     }
 
     // MARK: Score
-    var score: MoneyScore {
+    var score: MoneyScore { cached("score") { makeScore() } }
+    private func makeScore() -> MoneyScore {
         var parts: [MoneyScore.Part] = []
         let limit = lines.reduce(Money(0)) { $0 + $1.limit }
         if limit > 0 {
@@ -395,7 +399,8 @@ struct SavingsRule {
 extension Engine {
     /// Everyday pays all your spending (every budget, subscriptions and Afterpay) until next pay; Emergency and Savings hold
     /// their reservations; money set aside for investing goes to Stake; the spare-money (Shopping) account keeps whatever is left.
-    var moneyPlan: MoneyPlan? {
+    var moneyPlan: MoneyPlan? { cached("moneyPlan") { makePlan() } }
+    private func makePlan() -> MoneyPlan? {
         let c = Calendar.current, today = c.startOfDay(for: Date())
         var byRole: [AccountRole: Account] = [:]
         for a in state.accounts { if let r = a.effectiveRole, byRole[r] == nil { byRole[r] = a } }
@@ -470,7 +475,8 @@ struct SpareMoney {
     var reserved: Money        // Already set aside for goals
 }
 extension Engine {
-    var spareMoney: SpareMoney? {
+    var spareMoney: SpareMoney? { cached("spareMoney") { makeSpare() } }
+    private func makeSpare() -> SpareMoney? {
         guard let account = state.accounts.first(where: { $0.effectiveRole == .shopping }) else { return nil }
         let income = expectedIncome(per: .fortnight).total
         let split = allocation(income)
@@ -508,6 +514,9 @@ extension Engine {
     /// - the buffer kept from last period; and, when time off falls before then, the allowance due meanwhile (negative).
     /// `cushion` adds 5% to budgets in case one runs over.
     func needs(until end: Date, cushion: Bool = true, buffer: Bool = true) -> [MoneyPlan.Need] {
+        cached("needs-\(end.timeIntervalSince1970)-\(cushion)-\(buffer)") { makeNeeds(end, cushion, buffer) }
+    }
+    private func makeNeeds(_ end: Date, _ cushion: Bool, _ buffer: Bool) -> [MoneyPlan.Need] {
         let c = Calendar.current, today = c.startOfDay(for: Date())
         func days(_ a: Date, _ b: Date) -> Int64 { Int64(max(0, c.dateComponents([.day], from: a, to: b).day ?? 0)) }
         let live = state.periodStart <= today && state.periodEnd > today
@@ -583,7 +592,8 @@ extension Engine {
     /// When budgets and reservations add up to more than your cash: correct balances, release goal money, then lower
     /// budgets evenly (takeaway, entertainment and other first; groceries and fuel last). Bills, subscriptions, savings,
     /// emergency and investing are never touched.
-    var fixPlan: FixPlan? {
+    var fixPlan: FixPlan? { cached("fixPlan") { makeFixPlan() } }
+    private func makeFixPlan() -> FixPlan? {
         guard unallocated < 0 else { return nil }
         var plan = FixPlan(), over = -unallocated
         plan.balances = drifted

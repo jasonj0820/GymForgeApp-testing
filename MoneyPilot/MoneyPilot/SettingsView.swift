@@ -89,9 +89,8 @@ import SwiftUI
                     Toggle("Auto-organise transactions", isOn: Binding(get: { draft.settings.autoOrganise != false }, set: { draft.settings.autoOrganise = $0 }))
                     Stepper("First warning: \(draft.settings.warningPercent)%", value: $draft.settings.warningPercent, in: 50...89)
                     Toggle("Notifications enabled", isOn: $draft.settings.notifications)
-                    Toggle("Lock Screen & Dynamic Island", isOn: Binding(get: { draft.settings.liveActivity ?? false }, set: { draft.settings.liveActivity = $0 }))
                     Button("Request iPhone notification permission") { Task { await store.enableNotifications(); draft.settings.notifications = store.state.settings.notifications } }
-                    Text("Alerts at your first warning, 90% and 100%, showing amount and days left. They run whenever new transactions arrive, including background checks. The Lock Screen view shows what is safe to spend today; iOS ends it after about 8 hours and MoneyPilot starts a new one when you next open the app.").font(.caption)
+                    Text("Alerts at your first warning, 90% and 100%, showing amount and days left. They run whenever new transactions arrive, including background checks.").font(.caption)
                 }
                 Section("Data") {
                     Button("Back up everything", systemImage: "externaldrive.badge.checkmark") { backingUp = true }
@@ -115,7 +114,6 @@ import SwiftUI
                         // Only editable fields are copied; transaction updates and permission changes are not overwritten.
                         store.change { s in let chosen = draft.period; var settings = draft.settings; settings.budgetPeriod = s.settings.budgetPeriod; settings.monthlyBudget = s.settings.monthlyBudget; s.settings = settings; s.switchPeriod(to: chosen); s.accounts = draft.accounts; s.savings = draft.savings; s.emergency = draft.emergency; s.investmentReserve = draft.investmentReserve; if draft.stakeCashUSD != openedCash { s.correctStakeCash(to: draft.stakeCashUSD) } }
                         if store.error == nil {
-                            if draft.settings.liveActivity == true { LiveMoney.start(store.engine) } else { Task { await LiveMoney.end() } }
                             dismiss()
                         }
                     }

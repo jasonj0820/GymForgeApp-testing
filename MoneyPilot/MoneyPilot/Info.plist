@@ -8,8 +8,6 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>MoneyPilot uses Face ID to keep your finances private.</string>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

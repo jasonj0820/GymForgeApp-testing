@@ -24,7 +24,7 @@ jobs:
         run: bash MoneyPilot/Tools/verify_on_mac.sh
 
       - name: Build unsigned IPA
-        run: VERSION_NAME="MK4.0-build-${GITHUB_RUN_NUMBER}" zsh MoneyPilot/Tools/build_ipa.sh
+        run: VERSION_NAME="MK4.1-build-${GITHUB_RUN_NUMBER}" zsh MoneyPilot/Tools/build_ipa.sh
 
       - uses: actions/upload-artifact@v4
         with:

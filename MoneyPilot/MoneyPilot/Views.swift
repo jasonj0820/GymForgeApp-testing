@@ -58,14 +58,19 @@ let panel = Color(red: 0.075, green: 0.115, blue: 0.15)
                 store.reloadIfNeeded()
                 // A finished budget period closes itself (leftovers roll forward once).
                 if Date() >= store.state.periodEnd { store.closePeriod() } // MK3.6: weekly budgets used to be left out and never rolled.
-                WidgetSnapshot.publish(store.engine) // Days left and safe-to-spend change with the date, not only with data.
-                if LiveMoney.wanted(store.engine) { LiveMoney.start(store.engine) }
                 Task { await store.syncIfDue() }
                 if !lockOn && store.feedRefreshDue { feeds.start(store) } // With Face ID on, the unlock starts it.
             }
             if now == .background { scheduleBackgroundCheck() }
         }
         // Hides balances in the app switcher and until unlocked.
+        // MK4.1: PocketSmith sign-in progress, in the app instead of the Dynamic Island.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let activity = store.activity {
+                Label(activity, systemImage: "building.columns.fill").font(.footnote.weight(.semibold)).foregroundStyle(.mint)
+                    .padding(.vertical, 6).frame(maxWidth: .infinity).background(.bar)
+            }
+        }
         .overlay { if lockOn && (locked || phase != .active) { LockScreen(unlock: unlock).transition(.opacity) } }
         .task { if lockOn { locked = true; unlock() } }
         // While MoneyPilot is open, check the bank every hour as well.
@@ -902,6 +907,9 @@ extension Category {
                     HStack(alignment: .firstTextBaseline) {
                         Text("Transfer \(money(t.amount))").font(.subheadline.bold())
                         Text("from \(name(t.from)) to \(name(t.to))").font(.subheadline)
+                        // MK4.1: replaces "Transfer now" on the Dynamic Island: copy, switch to Suncorp, paste.
+                        Button { UIPasteboard.general.string = String(format: "%.2f", Double(t.amount) / 100) } label: { Image(systemName: "doc.on.doc") }
+                            .buttonStyle(.borderless).accessibilityLabel("Copy \(money(t.amount))")
                         Spacer()
                     }
                 }
@@ -909,14 +917,8 @@ extension Category {
                     Label("Your free cash is \(money(plan.shortfall)) short of essentials until \(until). Lower a budget, or take from savings only if you must.", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
                 }
                 if !plan.transfers.isEmpty {
-                    HStack {
-                        Button("Transfer now", systemImage: "arrow.up.right.square") {
-                            let steps = plan.transfers.map { MoneyActivityAttributes.TransferStep(from: name($0.from), to: name($0.to), amount: $0.amount) }
-                            Task { if !(await LiveMoney.showTransfers(steps, store.engine)) { store.error = "Turn on Live Activities for MoneyPilot in iPhone Settings → MoneyPilot to show transfers on the Dynamic Island." } }
-                        }.buttonStyle(.borderedProminent).foregroundStyle(ink)
-                        Button("I've made them…") { confirming = true }.buttonStyle(.bordered)
-                    }
-                    Text("Transfer now puts each transfer on the Dynamic Island and copies its amount. Open the Suncorp app, paste, then tap Done on the island for the next one.").font(.caption2).foregroundStyle(.secondary)
+                    Button("I've made them…") { confirming = true }.buttonStyle(.borderedProminent).foregroundStyle(ink)
+                    Text("Tap the copy button next to a transfer, open the Suncorp app and paste the amount. Then tell MoneyPilot which ones you made.").font(.caption2).foregroundStyle(.secondary)
                 }
                 DisclosureGroup("Why these amounts", isExpanded: $why) {
                     VStack(alignment: .leading, spacing: 6) {

@@ -881,4 +881,19 @@ final class EngineTests: XCTestCase {
         XCTAssertEqual(old.state.accounts.count, 2); XCTAssertNil(old.secrets)
     }
     #endif
+    func testDashboardNumbersAreFastWithAYearOfTransactions() {
+        var s = fourAccounts(); s.settings.budgetPeriod = "fortnight"; s.periodStart = s.start(of: .fortnight)
+        s.budgets = Category.allCases.map { Budget(category: $0, limit: 20_000) }
+        let cats = Category.allCases
+        for i in 0..<2_000 {
+            s.entries.append(Entry(date: day(-i * 365 / 2_000), name: "Shop \(i % 40)", amount: Money(1_000 + i % 5_000), kind: .expense, category: cats[i % cats.count], accountID: s.accounts[i % 2].id))
+        }
+        s.plans = (0..<5).map { k in AfterpayPlan(name: "P\(k)", purchased: day(-k), installments: (0..<4).map { Installment(due: day($0 * 14 - k), amount: 2_500) }) }
+        let start = Date(), e = Engine(state: s)
+        // One redraw of the home screen asks for these many times over; 20 rounds is a few redraws.
+        for _ in 0..<20 { _ = e.insights; _ = e.moneyPlan; _ = e.spareMoney; _ = e.lines; _ = e.unallocated; _ = e.bankCash; _ = e.takeawayLeft; _ = e.score }
+        let seconds = Date().timeIntervalSince(start)
+        print("Dashboard x20 with 2,000 transactions: \(String(format: "%.2f", seconds)) s")
+        XCTAssertLessThan(seconds, 1.0)
+    }
 }

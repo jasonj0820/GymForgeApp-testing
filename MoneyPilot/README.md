@@ -1,4 +1,10 @@
-# MoneyPilot — MK4.0 for iPhone
+# MoneyPilot — MK4.1 for iPhone
+
+MK4.1: faster, simpler.
+- **Speed:** every figure used to be recalculated from every transaction each time a screen asked, and the screens ask dozens of times per redraw. Now each figure is worked out once per change and remembered, sorting suggestions count each shop's categories once, and saving happens in the background. With a year of transactions (2,000), the home-screen numbers went from 17.1 s to 0.09 s for 20 redraws (a speed test now runs with every build).
+- **Removed the Live Activity and the widget.** PocketSmith sign-in progress shows as a banner at the top of the app; Move money has a copy button next to each transfer instead of "Transfer now"; the payday card and 2pm reminder stay. No App Group or Live Activity permissions any more.
+- **PocketSmith in desktop mode:** the sign-in page (hidden daily run and Sync now) loads PocketSmith's desktop site.
+- **Stocks:** a price refresh no longer stops when one ticker or the exchange-rate service fails; sold-out holdings aren't looked up; a new buy defaults to "Paid with Stake cash" when you have Stake cash.
 
 MK4.0: **Back up everything** (Settings → Data).
 - One file with all your data: transactions, accounts, budgets, Afterpay, goals, Stake, time off and every setting.

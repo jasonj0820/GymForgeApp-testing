@@ -7,14 +7,20 @@ import CryptoKit
 import CommonCrypto
 
 @MainActor final class Store: ObservableObject {
-    @Published var state = FinanceState()
+    @Published var state = FinanceState() { didSet { version += 1 } }
     @Published var error: String?
     @Published var notice: String?
     private var loadFailed = false
     private var refreshing = false
     private var refreshAgain = false
     private let url: URL
-    var engine: Engine { Engine(state: state) }
+    /// MK4.1: one Engine per version of your data (it remembers its answers); a fresh one after a minute, for the date.
+    private var cachedEngine: Engine?
+    var engine: Engine {
+        if let e = cachedEngine, e.version == version, Date().timeIntervalSince(e.made) < 60 { return e }
+        let e = Engine(state: state); e.version = version; cachedEngine = e; return e
+    }
+    private var version = 0
     init() {
         url = URL.documentsDirectory.appending(path: "MoneyPilot-v1.json")
         load()
@@ -37,6 +43,7 @@ import CommonCrypto
         change { $0 = restored }
         if error == nil { notice = "Backup restored: \(restored.entries.count) transactions." }
     }
+    private static let saveQueue = DispatchQueue(label: "MoneyPilot.save", qos: .userInitiated)
     func change(_ action: (inout FinanceState) throws -> Void) {
         guard !loadFailed else { error = "Saved data could not be loaded. Recover the JSON file using Xcode’s device container before continuing."; return }
         var next = state
@@ -45,13 +52,15 @@ import CommonCrypto
             let e = Engine(state: next)
             let point = HistoryPoint(date: Date(), assets: e.assets, netWorth: e.netWorth, emergency: next.emergency, investments: e.investmentsAUD)
             if let i = next.history.lastIndex(where: { Calendar.current.isDateInToday($0.date) }) { next.history[i] = point } else { next.history.append(point) }
-            let data = try JSONEncoder().encode(next)
-            try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             state = next
-            WidgetSnapshot.publish(Engine(state: next))
+            // MK4.1: the file is written in the background, in order, so taps don't wait for it.
+            let snapshot = next, url = self.url
+            Store.saveQueue.async {
+                do { try JSONEncoder().encode(snapshot).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
+                catch { DispatchQueue.main.async { self.error = "Couldn't save your last change: \(error.localizedDescription)" } }
+            }
             Task {
                 await refreshNotifications()
-                await LiveMoney.update(Engine(state: next)) // Only updates one that is already showing.
             }
         } catch { self.error = error.localizedDescription }
     }
@@ -125,8 +134,6 @@ import CommonCrypto
     func recalculate() {
         if Date() >= state.periodEnd { closePeriod() } // Weekly budgets roll too (MK3.6).
         objectWillChange.send()
-        WidgetSnapshot.publish(engine)
-        Task { await LiveMoney.update(engine) }
     }
     func closePeriod() {
         change { s in
@@ -143,6 +150,8 @@ import CommonCrypto
     }
     // MARK: PocketSmith
     @Published var syncing = false
+    /// MK4.1: what the PocketSmith sign-in is doing, shown as a banner at the top of the app (it used to be a Live Activity).
+    @Published var activity: String?
     static let historyDays = 120
     func linkPocketSmith(key: String, choices: [UUID: Int], accounts: [PSAccount], wage: String, allowance: String) async {
         guard !choices.isEmpty, Set(choices.values).count == choices.count else { error = "Choose a different PocketSmith account for each MoneyPilot account you want to sync."; return }
@@ -227,18 +236,24 @@ import CommonCrypto
     /// Refreshes AUD/USD and, with a Finnhub key, each holding's price. `quiet` hides errors for automatic refreshes.
     func refreshPrices(quiet: Bool = false) async {
         guard !state.holdings.isEmpty || state.stakeCashUSD > 0 else { return }
-        do {
-            let rate = try await Prices.audPerUSD()
-            var quotes: [String: Money] = [:]
-            if let key = Keychain.read("finnhub") {
-                for symbol in Set(state.holdings.map(\.symbol)) { if let price = try await Prices.quote(symbol, key: key) { quotes[symbol] = price } }
+        // MK4.1: each piece is fetched on its own, so one unknown ticker or a busy service doesn't stop the rest.
+        var problem: Error?
+        var rate: Double?
+        do { rate = try await Prices.audPerUSD() } catch { problem = error }
+        var quotes: [String: Money] = [:]
+        if let key = Keychain.read("finnhub") {
+            for symbol in Set(state.holdings.filter { $0.shares > 0 }.map(\.symbol)) { // Sold-out holdings don't need a price.
+                do { if let price = try await Prices.quote(symbol, key: key) { quotes[symbol] = price } } catch { problem = problem ?? error }
             }
+        }
+        if rate != nil || !quotes.isEmpty {
             change { s in
-                s.settings.audPerUSD = rate
+                if let rate { s.settings.audPerUSD = rate }
                 for i in s.holdings.indices { if let price = quotes[s.holdings[i].symbol] { s.holdings[i].priceUSD = price; s.holdings[i].updated = Date() } }
             }
             pricesUpdated = Date()
-        } catch { if !quiet { report(error) } }
+        }
+        if let problem, !quiet { report(problem) }
     }
     func refreshPricesIfDue() async {
         guard (pricesUpdated.map { Date().timeIntervalSince($0) > 3_600 }) ?? true else { return }
@@ -263,11 +278,11 @@ import CommonCrypto
         var extra = UIBackgroundTaskIdentifier.invalid
         extra = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(extra) }
         defer { UIApplication.shared.endBackgroundTask(extra) }
-        await LiveMoney.status("Waiting for your bank…", engine)
-        try? await Task.sleep(for: .seconds(20)) // If iOS pauses the app anyway, the status expires and the hourly check imports it.
-        await LiveMoney.status("Syncing MoneyPilot…", engine)
+        activity = "Waiting for your bank…"
+        try? await Task.sleep(for: .seconds(20)) // If iOS pauses the app anyway, the hourly check imports it.
+        activity = "Syncing MoneyPilot…"
         await syncPocketSmith()
-        await LiveMoney.status(nil, engine)
+        activity = nil
     }
     func unlinkPocketSmith() {
         Keychain.delete(); Keychain.delete("login"); Keychain.delete("password")
