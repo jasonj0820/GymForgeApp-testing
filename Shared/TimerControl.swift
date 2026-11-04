@@ -26,7 +26,7 @@ enum TimerControl {
     static let changed = Notification.Name("ductile.timerChanged")
 
     static func start(_ block: Block) {
-        let timer = ActiveTimer(blockID: block.id, ends: Date().addingTimeInterval(Double(block.minutes) * 60))
+        let timer = ActiveTimer(blockID: block.id, ends: Date().addingTimeInterval(Double(block.focus) * 60))
         save(timer)
         scheduleEndAlert(for: timer, title: block.title)
         _ = try? Activity.request(attributes: BlockActivity(title: block.title),

@@ -5,14 +5,27 @@ struct Block: Codable, Identifiable, Hashable {
     var id = UUID()
     var title: String
     var start: Date
+    /// Length of the window, e.g. 1:00–3:30 = 150.
     var minutes: Int
     var fullTask = ""
     var minTask = ""
     var outcome: Outcome? = nil
+    /// Uninterrupted focus to do somewhere inside the window. Optional so blocks saved before MK1.3 still load.
+    var focusMinutes: Int? = nil
 
     enum Outcome: String, Codable { case full, minimum }
 
     var end: Date { start.addingTimeInterval(Double(minutes) * 60) }
+    /// What the timer and Focus run for.
+    var focus: Int { min(focusMinutes ?? minutes, minutes) }
+    /// Latest start that still fits the focus target in the window.
+    var startBy: Date { end.addingTimeInterval(-Double(focus) * 60) }
+}
+
+/// 150 → "2h 30m", 120 → "2h", 45 → "45m".
+func durationText(_ minutes: Int) -> String {
+    let h = minutes / 60, m = minutes % 60
+    return h == 0 ? "\(m)m" : m == 0 ? "\(h)h" : "\(h)h \(m)m"
 }
 
 /// The block whose timer is running right now.

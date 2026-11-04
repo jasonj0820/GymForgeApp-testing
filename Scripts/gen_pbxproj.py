@@ -41,7 +41,7 @@ proj_list = cfg_list("project",
 
 def target_settings(bundle, plist, ents, extra):
     return s(CODE_SIGN_ENTITLEMENTS=ents, CODE_SIGN_STYLE="Automatic", CURRENT_PROJECT_VERSION="1",
-             DEVELOPMENT_TEAM=TEAM, GENERATE_INFOPLIST_FILE="NO", INFOPLIST_FILE=plist, MARKETING_VERSION="1.2",
+             DEVELOPMENT_TEAM=TEAM, GENERATE_INFOPLIST_FILE="NO", INFOPLIST_FILE=plist, MARKETING_VERSION="1.3",
              PRODUCT_BUNDLE_IDENTIFIER=bundle, PRODUCT_NAME='"$(TARGET_NAME)"', SWIFT_EMIT_LOC_STRINGS="YES",
              TARGETED_DEVICE_FAMILY="1", **extra)
 app_set = target_settings("com.jason.ductile", "Config/App-Info.plist", "Config/App.entitlements",

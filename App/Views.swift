@@ -31,7 +31,7 @@ struct CalendarView: View {
             .navigationTitle(day.formatted(.dateTime.weekday(.wide).day().month()))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                Button { editing = Block(title: "", start: newStart, minutes: 90) } label: { Image(systemName: "plus") }
+                Button { editing = Block(title: "", start: newStart, minutes: 150, focusMinutes: 120) } label: { Image(systemName: "plus") }
             }
             .sheet(item: $editing) { BlockEditor(block: $0).environmentObject(model) }
             .fullScreenCover(isPresented: .constant(model.active != nil)) { TimerView().environmentObject(model) }
@@ -87,12 +87,14 @@ struct BlockRow: View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(block.start, style: .time).font(.subheadline.monospacedDigit())
-                Text("\(block.minutes) min").font(.caption).foregroundStyle(.secondary)
+                Text(block.end, style: .time).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
             }
             .frame(width: 70, alignment: .trailing)
             RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 4)
             VStack(alignment: .leading, spacing: 3) {
                 Text(block.title).font(.headline).strikethrough(block.outcome != nil)
+                Text("\(durationText(block.focus)) focus · start by \(block.startBy.formatted(date: .omitted, time: .shortened))")
+                    .font(.caption).foregroundStyle(.secondary)
                 if !block.fullTask.isEmpty { Label(block.fullTask, systemImage: "bolt.fill").font(.caption) }
                 if !block.minTask.isEmpty {
                     Label(block.minTask, systemImage: "leaf.fill").font(.caption).foregroundStyle(.secondary)
@@ -124,8 +126,14 @@ struct BlockEditor: View {
         NavigationStack {
             Form {
                 TextField("Subject, e.g. Steel design", text: $block.title)
-                DatePicker("Start", selection: $block.start)
-                Stepper("Length: \(block.minutes) min", value: $block.minutes, in: 15...240, step: 15)
+                Section {
+                    DatePicker("From", selection: $block.start)
+                    DatePicker("Until", selection: windowEnd, in: block.start.addingTimeInterval(15 * 60)...,
+                               displayedComponents: .hourAndMinute)
+                    Stepper("Focus: \(durationText(block.focus))", value: focus, in: 15...max(15, block.minutes), step: 15)
+                } footer: {
+                    Text("Start anytime before \(block.startBy.formatted(date: .omitted, time: .shortened)) and do \(durationText(block.focus)) without stopping.")
+                }
                 Section("Full version (100%)") {
                     TextField("e.g. Timed past paper + marking", text: $block.fullTask)
                 }
@@ -143,6 +151,15 @@ struct BlockEditor: View {
                 }
             }
         }
+    }
+
+    /// Moving "Until" resizes the window; the focus target shrinks with it if it no longer fits.
+    private var windowEnd: Binding<Date> {
+        Binding(get: { block.end }, set: { block.minutes = max(15, Int($0.timeIntervalSince(block.start) / 60)) })
+    }
+
+    private var focus: Binding<Int> {
+        Binding(get: { block.focus }, set: { block.focusMinutes = $0 })
     }
 
     private var isNew: Bool { !model.blocks.contains { $0.id == block.id } }

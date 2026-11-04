@@ -1,9 +1,9 @@
 # Ductile
 
-A study calendar made of blocks. Tap a block (in the app or on the widget) and it:
+A study calendar made of blocks. Each block is a **window** (e.g. 1:00–3:30) with a **focus target** inside it (e.g. 2h uninterrupted). Start anytime before the "start by" time. Tap a block (in the app or on the widget) and it:
 
-1. starts a countdown timer,
-2. runs a Shortcut that turns your Focus on **until the block ends** (so it switches off by itself),
+1. starts a countdown for the focus target,
+2. runs a Shortcut that turns your Focus on **until the focus target ends** (so it switches off by itself),
 3. notifies you when time's up so you can tick it off as **Full** or **Minimum**. Both count.
 
 Stopping early runs a second Shortcut that turns Focus off.

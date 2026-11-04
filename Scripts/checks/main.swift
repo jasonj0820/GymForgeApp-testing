@@ -32,4 +32,14 @@ assert(t0.left(at: morning.addingTimeInterval(700)) == 0, "never negative")
 let old = #"{"blockID":"\#(a.id.uuidString)","ends":0}"#.data(using: .utf8)!
 assert((try? JSONDecoder().decode(ActiveTimer.self, from: old))?.isPaused == false, "timers saved before pause existed still load")
 
+// Window + focus target: 1:00–3:30 with 2h focus → start by 1:30.
+let one = cal.date(from: DateComponents(year: 2026, month: 11, day: 4, hour: 13))!
+let w = Block(title: "Timber", start: one, minutes: 150, focusMinutes: 120)
+assert(w.focus == 120 && w.startBy == one.addingTimeInterval(30 * 60), "start by 1:30")
+assert(Block(title: "x", start: one, minutes: 60, focusMinutes: 120).focus == 60, "focus never longer than the window")
+assert(Block(title: "x", start: one, minutes: 90).focus == 90, "no target = whole window")
+let mk12 = #"[{"id":"\#(UUID().uuidString)","title":"Old","start":0,"minutes":90,"fullTask":"","minTask":""}]"#.data(using: .utf8)!
+assert((try? JSONDecoder().decode([Block].self, from: mk12))?.first?.focus == 90, "MK1.2 blocks still load")
+assert(durationText(150) == "2h 30m" && durationText(120) == "2h" && durationText(45) == "45m")
+
 print("✓ checks passed")

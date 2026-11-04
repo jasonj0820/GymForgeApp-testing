@@ -44,7 +44,7 @@ final class Model: ObservableObject {
         guard active == nil else { return }
         TimerControl.start(block)
         // The Shortcut turns Focus on *until* the end time, so it switches off by itself even if Ductile is closed.
-        UIApplication.shared.open(Links.runShortcut(Links.focusOn, text: String(block.minutes)))
+        UIApplication.shared.open(Links.runShortcut(Links.focusOn, text: String(block.focus)))
     }
 
     func togglePause() { Task { await TimerControl.togglePause() } }

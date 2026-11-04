@@ -17,7 +17,7 @@ struct Entry: TimelineEntry {
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> Entry {
-        Entry(date: .now, blocks: [Block(title: "Steel design", start: .now, minutes: 90)], active: nil)
+        Entry(date: .now, blocks: [Block(title: "Steel design", start: .now, minutes: 150, focusMinutes: 120)], active: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
@@ -98,7 +98,7 @@ struct TodayView: View {
             RoundedRectangle(cornerRadius: 2).fill(isRunning ? Color.orange : .accentColor).frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(block.title).font(.subheadline.bold()).lineLimit(1)
-                Text("\(block.start.formatted(date: .omitted, time: .shortened)) · \(block.minutes) min")
+                Text("\(block.start.formatted(date: .omitted, time: .shortened))–\(block.end.formatted(date: .omitted, time: .shortened)) · \(durationText(block.focus))")
                     .font(.caption2).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)

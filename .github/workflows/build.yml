@@ -15,7 +15,7 @@ jobs:
       - name: Logic checks
         run: swiftc Shared/Block.swift Scripts/checks/main.swift -o checks-bin && ./checks-bin
       - name: Build unsigned IPA
-        run: zsh Scripts/build_ipa.sh "MK1.2-build-${GITHUB_RUN_NUMBER}"
+        run: zsh Scripts/build_ipa.sh "MK1.3-build-${GITHUB_RUN_NUMBER}"
       - uses: actions/upload-artifact@v4
         with:
           name: Ductile-IPA
