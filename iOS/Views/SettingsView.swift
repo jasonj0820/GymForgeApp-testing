@@ -248,6 +248,13 @@ struct SettingsView: View {
                     Button("Refresh Health data") {
                         Task { await store.appBecameActive() }
                     }
+                    // MK19.3.1: say what happened — iOS only shows the Health pop-up once, so a second tap looks dead.
+                    if let error = store.healthKit.authorizationError {
+                        Text("Health said: \(error)").font(.footnote).foregroundStyle(.red)
+                    } else if store.healthKit.hasRequestedAuthorization {
+                        Text("Asked ✓ iOS only shows the Health pop-up the first time. To change what Splitday can see: Settings → Health → Data Access & Devices → GymForge (or Splitday).")
+                            .font(.footnote).foregroundStyle(.green)
+                    }
                     Text("If weight, body fat or sleep doesn't appear: Settings → Health → Data Access & Devices → GymForge, and turn on Weight, Body Fat Percentage, Sleep, Resting Heart Rate and Heart Rate Variability.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)

@@ -9,7 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION_NAME="${VERSION_NAME:-MK19.3}"
+VERSION_NAME="${VERSION_NAME:-MK19.3.1}"
 OUT="build/ipa"
 ARCHIVE="$OUT/GymForge.xcarchive"
 rm -rf "$OUT"

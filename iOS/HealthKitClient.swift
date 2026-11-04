@@ -24,6 +24,7 @@ final class HealthKitClient: ObservableObject {
     }
 
     func requestAuthorization() async {
+        authorizationError = nil   // MK19.3.1: a fresh result each tap, shown under the button in Settings
         guard HKHealthStore.isHealthDataAvailable() else {
             authorizationError = "Health data isn't available on this device."
             return
