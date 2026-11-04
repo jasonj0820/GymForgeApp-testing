@@ -1,0 +1,4 @@
+build/
+checks
+xcuserdata/
+.DS_Store

@@ -1,0 +1,23 @@
+# Builds Ductile on GitHub's Macs on every push (or Actions → Build Ductile → Run workflow).
+# Download the IPA from the run's "Artifacts" section and install it with SideStore.
+name: Build Ductile
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Logic checks
+        run: swiftc Shared/Block.swift Scripts/checks/main.swift -o checks && ./checks
+      - name: Build unsigned IPA
+        run: zsh Scripts/build_ipa.sh "MK1.2-build-${GITHUB_RUN_NUMBER}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ductile-IPA
+          path: build/ipa/*.ipa
+          if-no-files-found: error
