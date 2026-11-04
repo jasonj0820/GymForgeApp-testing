@@ -256,7 +256,7 @@ final class Engine {
         if let learned = learnedCategory(name, excluding: id) { return (learned, "Like your other \(Engine.groupKey(name).capitalized) transactions") }
         let known = categorise(name)
         if known != .other { return (known, "Recognised merchant") }
-        if let hint, case let fromHint = categorise(hint), fromHint != .other { return (fromHint, "PocketSmith category “\(hint)”") }
+        if let hint, case let fromHint = categorise(hint), fromHint != .other { return (fromHint, "Bank category “\(hint)”") }
         return (.other, "")
     }
     /// Share-trading platforms whose deposits are investing, not spending.

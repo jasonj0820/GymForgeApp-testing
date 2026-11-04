@@ -20,6 +20,10 @@ struct PocketSmithLink: Codable {
     var feedsRefreshed: Date? = nil
     // MK2.19: pending (not yet posted) amounts per PocketSmith account, replaced at every sync. Negative = money going out.
     var pending: [String: Money]? = nil
+    // MK4.2: which bank feed this link reads. nil = PocketSmith (older files), "up" = Up Bank's own API.
+    var source: String? = nil
+    var isUp: Bool { source == "up" }
+    var bankName: String { isUp ? "Up" : "PocketSmith" }
     /// Once a day at most, when you open MoneyPilot.
     func feedRefreshDue(hasLogin: Bool, now: Date = Date()) -> Bool {
         autoRefresh == true && hasLogin && now.timeIntervalSince(feedsRefreshed ?? .distantPast) > 20 * 3_600
@@ -79,6 +83,88 @@ struct PocketSmithClient {
             if batch.count < 1000 { break }
         }
         return all
+    }
+}
+
+// MK4.2: Up Bank's free personal API (developer.up.com.au). Up's data is turned into the same shapes PocketSmith gives,
+// so the one importer handles transfers, Afterpay, Stake deposits, wages and pending for both.
+struct UpClient {
+    let token: String
+    struct Value: Decodable { var valueInBaseUnits: Int64 }
+    struct Rel: Decodable { var data: D?; struct D: Decodable { var id: String } }
+    struct Page<T: Decodable>: Decodable { var data: [T]; var links: Links?; struct Links: Decodable { var next: String? } }
+    struct UpAccount: Decodable {
+        var id: String; var attributes: A
+        struct A: Decodable { var displayName: String; var accountType: String?; var ownershipType: String?; var balance: Value }
+    }
+    struct UpTransaction: Decodable {
+        var id: String; var attributes: A; var relationships: R
+        struct A: Decodable { var status: String; var description: String; var amount: Value; var roundUp: RoundUp?; var createdAt: String }
+        struct RoundUp: Decodable { var amount: Value }
+        struct R: Decodable { var account: Rel; var category: Rel? }
+    }
+    /// Up IDs are UUID strings; MoneyPilot stores bank IDs as numbers, so each one gets a fixed 62-bit number (FNV-1a).
+    static func number(_ id: String) -> Int {
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in id.utf8 { hash = (hash ^ UInt64(byte)) &* 0x100000001b3 }
+        return Int(hash & 0x3fff_ffff_ffff_ffff)
+    }
+    private static let plain = ISO8601DateFormatter()
+    private static let fraction: ISO8601DateFormatter = { let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]; return f }()
+    static func date(_ text: String) -> Date? { plain.date(from: text) ?? fraction.date(from: text) }
+    private func get(_ url: URL) async throws -> Data {
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        switch (response as? HTTPURLResponse)?.statusCode ?? 0 {
+        case 200: return data
+        case 401: throw AppError.invalid("Up didn't accept the token. Make a new one at api.up.com.au (only the newest token works) and link again.")
+        case 429: throw AppError.invalid("Up is busy with too many requests. MoneyPilot will try again at the next check.")
+        case let status: throw AppError.invalid("Up could not be reached (error \(status)). Try again later.")
+        }
+    }
+    /// Follows `links.next` until Up says there are no more pages.
+    private func all<T: Decodable>(_ first: String) async throws -> [T] {
+        var items: [T] = [], next: String? = first
+        while let link = next, let url = URL(string: link) {
+            let page = try JSONDecoder().decode(Page<T>.self, from: try await get(url))
+            items += page.data; next = page.links?.next
+        }
+        return items
+    }
+    static let base = "https://api.up.com.au/api/v1"
+    func rawAccounts() async throws -> [UpAccount] { try await all(Self.base + "/accounts?page%5Bsize%5D=100") }
+    /// Accounts for choosing matches when linking.
+    func accounts() async throws -> [PSAccount] { Self.convert(try await rawAccounts(), []).accounts }
+    /// Every account and every transaction (settled and held) since `from`.
+    func feed(from: Date) async throws -> (transactions: [PSTransaction], accounts: [PSAccount]) {
+        let since = ISO8601DateFormatter().string(from: from).addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+        let transactions: [UpTransaction] = try await all(Self.base + "/transactions?page%5Bsize%5D=100&filter%5Bsince%5D=\(since)")
+        return Self.convert(try await rawAccounts(), transactions)
+    }
+    /// Up's balance already takes off money on hold, while MoneyPilot adds pending on top of the posted balance,
+    /// so the held total is taken off here to land on Up's figure.
+    static func convert(_ accounts: [UpAccount], _ transactions: [UpTransaction]) -> (transactions: [PSTransaction], accounts: [PSAccount]) {
+        var list: [PSTransaction] = [], held: [Int: Int64] = [:]
+        for t in transactions {
+            guard let accountID = t.relationships.account.data?.id, let when = date(t.attributes.createdAt) else { continue }
+            let account = number(accountID), status = t.attributes.status == "HELD" ? "pending" : "posted"
+            let day = PocketSmithClient.day.string(from: when)
+            let hint = t.relationships.category?.data?.id.replacingOccurrences(of: "-", with: " ")
+            func add(_ id: String, _ name: String, _ cents: Int64, _ category: String?) {
+                list.append(PSTransaction(id: number(id), payee: name, originalPayee: nil, date: day, amount: Double(cents) / 100, type: cents < 0 ? "debit" : "credit",
+                                          status: status, transactionAccount: .init(id: account), category: category.map { .init(title: $0) }))
+                if status == "pending" { held[account, default: 0] += cents }
+            }
+            add(t.id, t.attributes.description, t.attributes.amount.valueInBaseUnits, hint)
+            // A Round Up leaves the spending account on top of the purchase and arrives in a saver as its own transaction.
+            if let round = t.attributes.roundUp?.amount.valueInBaseUnits, round != 0 { add(t.id + "#roundup", "Round Up", round, nil) }
+        }
+        let mapped = accounts.map { a in
+            let id = number(a.id), name = a.attributes.ownershipType == "JOINT" ? "\(a.attributes.displayName) (2Up)" : a.attributes.displayName
+            return PSAccount(id: id, name: name, number: nil, currentBalance: Double(a.attributes.balance.valueInBaseUnits - (held[id] ?? 0)) / 100, institution: .init(title: "Up"))
+        }
+        return (list, mapped)
     }
 }
 

@@ -131,6 +131,11 @@ import CommonCrypto
         }
     }
     /// Pull down: work everything out again from the numbers already in MoneyPilot. Never contacts PocketSmith.
+    /// MK4.2: Up is live, so pulling down fetches from it. PocketSmith only updates once or twice a day, so then it just recalculates.
+    func pullToRefresh() async {
+        if state.pocketsmith?.isUp == true { await syncPocketSmith() }
+        recalculate()
+    }
     func recalculate() {
         if Date() >= state.periodEnd { closePeriod() } // Weekly budgets roll too (MK3.6).
         objectWillChange.send()
@@ -153,9 +158,9 @@ import CommonCrypto
     /// MK4.1: what the PocketSmith sign-in is doing, shown as a banner at the top of the app (it used to be a Live Activity).
     @Published var activity: String?
     static let historyDays = 120
-    func linkPocketSmith(key: String, choices: [UUID: Int], accounts: [PSAccount], wage: String, allowance: String) async {
-        guard !choices.isEmpty, Set(choices.values).count == choices.count else { error = "Choose a different PocketSmith account for each MoneyPilot account you want to sync."; return }
-        guard Keychain.save(key) else { error = "Could not store the developer key in the iPhone Keychain."; return }
+    func linkPocketSmith(key: String, choices: [UUID: Int], accounts: [PSAccount], wage: String, allowance: String, up: Bool = false) async {
+        guard !choices.isEmpty, Set(choices.values).count == choices.count else { error = "Choose a different bank account for each MoneyPilot account you want to sync."; return }
+        guard Keychain.save(key, account: up ? "up-token" : "developer-key") else { error = "Could not store the key in the iPhone Keychain."; return }
         change { s in
             if s.demo {
                 // Real bank data must not mix with demo examples. Keep account IDs so the chosen matches still apply.
@@ -164,23 +169,20 @@ import CommonCrypto
                 s = fresh
             }
             var link = PocketSmithLink(wageKeyword: wage, allowanceKeyword: allowance)
+            if up { link.source = "up" }
             for (mine, theirs) in choices { link.accountMap[String(theirs)] = mine }
             s.pocketsmith = link
             s.recordAccounts(accounts)
         }
         await importHistory()
-        if error == nil { notice = "PocketSmith linked. The last \(Self.historyDays) days of transactions are in Activity, and balances match PocketSmith. MoneyPilot now checks for new transactions automatically." }
+        if error == nil { notice = "\(up ? "Up" : "PocketSmith") linked. The last \(Self.historyDays) days of transactions are in Activity, and balances match \(up ? "Up" : "PocketSmith"). MoneyPilot now checks for new transactions automatically." }
     }
     /// Imports past transactions that are not in MoneyPilot yet, then matches balances to PocketSmith.
     func importHistory() async {
-        guard state.pocketsmith != nil, let key = Keychain.read() else { return }
+        guard let link = state.pocketsmith else { return }
         syncing = true; defer { syncing = false }
         do {
-            let client = PocketSmithClient(key: key)
-            let from = Calendar.current.date(byAdding: .day, value: -Self.historyDays, to: Date())!
-            var transactions: [PSTransaction] = []
-            for id in (state.pocketsmith?.accountMap ?? [:]).keys.compactMap(Int.init) { transactions += try await client.transactions(account: id, from: from) }
-            let accounts = try await client.accounts()
+            let (transactions, accounts) = try await feed(link, from: Calendar.current.date(byAdding: .day, value: -Self.historyDays, to: Date())!)
             change { s in
                 // Only transactions that became entries count as done; MK1.2 skipped the 30 days before linking.
                 s.pocketsmith?.seen = Set(s.entries.compactMap(\.externalID) + s.entries.compactMap(\.pairedID))
@@ -193,15 +195,10 @@ import CommonCrypto
     }
     func syncPocketSmith() async {
         guard let link = state.pocketsmith, !syncing else { return }
-        guard let key = Keychain.read() else { error = "The PocketSmith developer key is missing. Disconnect and link again."; return }
         syncing = true; defer { syncing = false }
         do {
-            let client = PocketSmithClient(key: key)
             // Overlap the last sync by two weeks to catch late-posting transactions; seen IDs prevent duplicates.
-            let from = Calendar.current.date(byAdding: .day, value: -14, to: link.lastSync ?? Date())!
-            var transactions: [PSTransaction] = []
-            for id in link.accountMap.keys.compactMap(Int.init) { transactions += try await client.transactions(account: id, from: from) }
-            let accounts = try await client.accounts()
+            let (transactions, accounts) = try await feed(link, from: Calendar.current.date(byAdding: .day, value: -14, to: link.lastSync ?? Date())!)
             var added = 0
             change { s in
                 added = s.importPocketSmith(transactions)
@@ -211,6 +208,18 @@ import CommonCrypto
             }
             if added > 0 && state.entries.contains(where: { $0.needsReview == true }) { notice = "\(added) bank transactions imported. Some need a quick review in Activity." }
         } catch { report(error) }
+    }
+    /// MK4.2: new transactions and balances from whichever bank feed is linked.
+    private func feed(_ link: PocketSmithLink, from: Date) async throws -> (transactions: [PSTransaction], accounts: [PSAccount]) {
+        if link.isUp {
+            guard let token = Keychain.read("up-token") else { throw AppError.invalid("The Up token is missing. Disconnect and link again.") }
+            return try await UpClient(token: token).feed(from: from)
+        }
+        guard let key = Keychain.read() else { throw AppError.invalid("The PocketSmith developer key is missing. Disconnect and link again.") }
+        let client = PocketSmithClient(key: key)
+        var transactions: [PSTransaction] = []
+        for id in link.accountMap.keys.compactMap(Int.init) { transactions += try await client.transactions(account: id, from: from) }
+        return (transactions, try await client.accounts())
     }
     /// Links a PocketSmith account found at a check, either to an existing MoneyPilot account or as a new one.
     func linkAccount(_ pocketsmithID: String, to account: UUID?) async {
@@ -285,7 +294,7 @@ import CommonCrypto
         activity = nil
     }
     func unlinkPocketSmith() {
-        Keychain.delete(); Keychain.delete("login"); Keychain.delete("password")
+        Keychain.delete(); Keychain.delete("login"); Keychain.delete("password"); Keychain.delete("up-token")
         change { $0.pocketsmith = nil }
     }
     /// Confirms an imported entry. `kind == nil` removes it because it was already recorded manually.
@@ -382,7 +391,7 @@ struct FullBackup: Codable {
     var state: FinanceState
     var secrets: Sealed? = nil
     struct Sealed: Codable { var salt: Data; var box: Data }
-    static let keychainItems = ["developer-key", "login", "password", "finnhub"]
+    static let keychainItems = ["developer-key", "login", "password", "finnhub", "up-token"]
     static func key(_ password: String, salt: Data) -> SymmetricKey {
         var out = [UInt8](repeating: 0, count: 32)
         _ = salt.withUnsafeBytes { s in

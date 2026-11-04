@@ -1,4 +1,11 @@
-# MoneyPilot — MK4.1 for iPhone
+# MoneyPilot — MK4.2 for iPhone
+
+MK4.2: **Up Bank sync** (Activity → Bank sync → Up).
+- Paste a personal access token from api.up.com.au (scan the QR with the Up app). It lives in the Keychain, is read-only, and is included in an encrypted backup if you choose.
+- Match Up's Spending account and Savers to your MoneyPilot accounts. The last 120 days come in as history and balances match Up; your older PocketSmith/Suncorp history stays.
+- Money on hold in Up shows as pending straight away and comes in once when it settles. Round Ups move Spending → the Saver as a transfer, not spending. Moves between linked Up accounts pair into one transfer.
+- Up is live, so pulling down on Home syncs with it (with PocketSmith it still only recalculates). It also checks on open, hourly while open and in the background.
+- PocketSmith still works for other banks: disconnect it, then link Up.
 
 MK4.1: faster, simpler.
 - **Speed:** every figure used to be recalculated from every transaction each time a screen asked, and the screens ask dozens of times per redraw. Now each figure is worked out once per change and remembered, sorting suggestions count each shop's categories once, and saving happens in the background. With a year of transactions (2,000), the home-screen numbers went from 17.1 s to 0.09 s for 20 redraws (a speed test now runs with every build).

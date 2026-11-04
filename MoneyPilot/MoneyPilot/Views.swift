@@ -113,7 +113,7 @@ let panel = Color(red: 0.075, green: 0.115, blue: 0.15)
                 SyncPill()
             }.padding(.top, 12)
             hero
-            if !e.drifted.isEmpty { Label("\(e.drifted.count == 1 ? "An account balance differs" : "\(e.drifted.count) account balances differ") from PocketSmith. Check Activity → Bank sync.", systemImage: "exclamationmark.arrow.triangle.2.circlepath").font(.subheadline).foregroundStyle(.orange) }
+            if !e.drifted.isEmpty { Label("\(e.drifted.count == 1 ? "An account balance differs" : "\(e.drifted.count) account balances differ") from \(store.state.pocketsmith?.bankName ?? "your bank"). Check Activity → Bank sync.", systemImage: "exclamationmark.arrow.triangle.2.circlepath").font(.subheadline).foregroundStyle(.orange) }
             if e.unallocated < 0 {
                 Button { fixing = true } label: { Label("Your plan is overallocated by \(money(-e.unallocated)). Tap to see why and fix it.", systemImage: "exclamationmark.triangle.fill").font(.subheadline).foregroundStyle(.orange) }
                     .buttonStyle(.plain).sheet(isPresented: $fixing) { FixPlanView() }
@@ -184,7 +184,7 @@ let panel = Color(red: 0.075, green: 0.115, blue: 0.15)
                 MoneyRow(label: "Investments", value: e.investmentsAUD)
             }
         }
-        .refreshable { store.recalculate() } // PocketSmith only updates once or twice a day, so pulling down never calls it.
+        .refreshable { await store.pullToRefresh() } // Syncs with Up; with PocketSmith (once or twice a day) it only recalculates.
         .sheet(item: $selected) { EntryDetail(entry: $0) }
         .animation(.snappy, value: store.state.entries.count)
         .onAppear { withAnimation(.spring(duration: 1.0)) { appeared = true } }
@@ -385,7 +385,7 @@ let panel = Color(red: 0.075, green: 0.115, blue: 0.15)
                 Button("Auto-organise\(store.engine.organiseProposals.isEmpty ? "" : " · \(store.engine.organiseProposals.count) to sort")", systemImage: "wand.and.stars") { organising = true }
                 Button("Subscriptions · \(money(store.engine.monthlySubscriptions)) a month", systemImage: "repeat") { subscriptions = true }
                 Button("Manage Afterpay", systemImage: "calendar.badge.clock") { afterpay = true }
-                Button(store.state.pocketsmith == nil ? "Connect bank sync" : "Bank sync · PocketSmith", systemImage: "building.columns") { bank = true }
+                Button(store.state.pocketsmith == nil ? "Connect bank sync" : "Bank sync · \(store.state.pocketsmith?.bankName ?? "")", systemImage: "building.columns") { bank = true }
             }
             let review = store.state.entries.filter { $0.needsReview == true }.sorted { $0.date > $1.date }
             if !review.isEmpty {
@@ -413,7 +413,7 @@ let panel = Color(red: 0.075, green: 0.115, blue: 0.15)
             .sheet(isPresented: $bank) { PocketSmithView() }
             .sheet(isPresented: $subscriptions) { SubscriptionsView() }
             .sheet(isPresented: $organising) { OrganiseView() }
-            .refreshable { store.recalculate() }
+            .refreshable { await store.pullToRefresh() }
             .sheet(item: $selected) { EntryDetail(entry: $0) }
     }
     private func row(_ entry: Entry) -> some View {
@@ -457,7 +457,7 @@ let panel = Color(red: 0.075, green: 0.115, blue: 0.15)
                     Button { balanceFor = a } label: { HStack { MoneyRow(label: a.name, value: e.accountBalance(a.id)); Image(systemName: "pencil").font(.caption).foregroundStyle(.secondary) } }.buttonStyle(.plain)
                 }
                 Text("Tap an account to set its balance from your bank app.").font(.caption2).foregroundStyle(.secondary)
-                if let last = store.state.pocketsmith?.lastSync { Text("Synced with PocketSmith \(last.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(.secondary) }
+                if let last = store.state.pocketsmith?.lastSync { Text("Synced with \(store.state.pocketsmith?.bankName ?? "your bank") \(last.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(.secondary) }
                 else { Text("Manual balances · no bank connection").font(.caption).foregroundStyle(.orange) }
             }
             Card {

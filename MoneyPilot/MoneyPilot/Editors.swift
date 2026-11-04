@@ -576,7 +576,7 @@ import WebKit
                 }
                 if !plan.balances.isEmpty {
                     Section("Correct balances") {
-                        ForEach(plan.balances.indices, id: \.self) { i in MoneyRow(label: "\(plan.balances[i].account.name) → PocketSmith's balance less pending", value: e.matched(plan.balances[i])) }
+                        ForEach(plan.balances.indices, id: \.self) { i in MoneyRow(label: "\(plan.balances[i].account.name) → \(store.state.pocketsmith?.bankName ?? "bank")'s balance", value: e.matched(plan.balances[i])) }
                     }
                 }
                 if plan.releaseGoals > 0 { Section("Release goal savings") { MoneyRow(label: "Back to spendable", value: plan.releaseGoals) } }
@@ -615,7 +615,7 @@ import WebKit
                 Button("Set balance") { if let value = cents(amount) { store.setBalance(id, to: value); dismiss() } }.disabled(cents(amount) == nil)
             } footer: { Text("Use the available balance in your bank app; it already includes pending transactions. Budgets, spare money and transfer suggestions use it straight away, and new transactions carry on from here. It stays until you change it.") }
             if let drift = e.drifted.first(where: { $0.account.id == id }) {
-                Section { Button("PocketSmith says \(money(e.matched(drift))) after pending · Use this") { store.matchBalance(drift.pocketsmithID, to: drift.theirs); dismiss() } }
+                Section { Button("\(store.state.pocketsmith?.bankName ?? "Your bank") says \(money(e.matched(drift))) · Use this") { store.matchBalance(drift.pocketsmithID, to: drift.theirs); dismiss() } }
             }
         }
     }
@@ -693,6 +693,7 @@ import WebKit
     @State private var disconnecting = false
     @State private var login = ""
     @State private var password = ""
+    @State private var up = true // MK4.2: Up is the default bank; PocketSmith stays for other banks.
     var body: some View {
         NavigationStack {
             Form {
@@ -706,15 +707,18 @@ import WebKit
     }
     @ViewBuilder private var setup: some View {
         Section {
-            SecureField("PocketSmith developer key", text: $key).textInputAutocapitalization(.never).autocorrectionDisabled()
+            Picker("Bank", selection: $up) { Text("Up").tag(true); Text("PocketSmith").tag(false) }.pickerStyle(.segmented)
+                .onChange(of: up) { key = ""; accounts = []; choices = [:] }
+            SecureField(up ? "Up personal access token" : "PocketSmith developer key", text: $key).textInputAutocapitalization(.never).autocorrectionDisabled()
             Button(loading ? "Finding accounts…" : "Find my accounts") {
                 loading = true
                 Task {
-                    do { accounts = try await PocketSmithClient(key: key.trimmingCharacters(in: .whitespaces)).accounts() } catch { store.error = error.localizedDescription }
+                    let typed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+                    do { accounts = up ? try await UpClient(token: typed).accounts() : try await PocketSmithClient(key: typed).accounts() } catch { store.error = error.localizedDescription }
                     loading = false
                 }
             }.disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || loading)
-        } header: { Text("1 · Developer key") } footer: { Text("In PocketSmith on the web: Settings → Security → Manage developer keys → create a key. It is stored in this iPhone's Keychain and only reads your PocketSmith data. It is never included in backups.") }
+        } header: { Text(up ? "1 · Up token" : "1 · Developer key") } footer: { Text(up ? "On any device, open api.up.com.au, scan the QR code with the Up app, then copy the token (it starts with up:yeah:). Only the newest token works, so making another one stops this one. It is stored in this iPhone's Keychain, reads your Up data only, and can't move money." : "In PocketSmith on the web: Settings → Security → Manage developer keys → create a key. It is stored in this iPhone's Keychain and only reads your PocketSmith data. It is never included in backups.") }
         if !accounts.isEmpty {
             Section("2 · Match your accounts") {
                 ForEach(store.state.accounts) { mine in
@@ -729,10 +733,10 @@ import WebKit
                 TextField("Allowance payer contains, e.g. parent’s name", text: $allowance)
             } header: { Text("3 · Recognise your income · optional") } footer: { Text("Matching deposits are recorded as wages or allowance and your savings rule is applied. Other deposits wait in Activity for you to review.") }
             Section {
-                Button(store.syncing ? "Linking…" : "Link and use PocketSmith balances") {
-                    Task { await store.linkPocketSmith(key: key.trimmingCharacters(in: .whitespaces), choices: choices, accounts: accounts, wage: wage, allowance: allowance) }
+                Button(store.syncing ? "Linking…" : "Link and use \(up ? "Up" : "PocketSmith") balances") {
+                    Task { await store.linkPocketSmith(key: key.trimmingCharacters(in: .whitespacesAndNewlines), choices: choices, accounts: accounts, wage: wage, allowance: allowance, up: up) }
                 }.disabled(choices.isEmpty || store.syncing)
-            } footer: { Text(store.state.demo ? "Demo data is loaded. Linking removes all demo examples first, then sets each matched account's balance to match PocketSmith today. Re-enter your savings, emergency and investment amounts in Settings afterwards." : "Each matched account's balance is set to match PocketSmith today. Transactions from before linking are not imported again. Your savings, emergency and investment reservations stay as they are.") }
+            } footer: { Text(store.state.demo ? "Demo data is loaded. Linking removes all demo examples first, then sets each matched account's balance to match PocketSmith today. Re-enter your savings, emergency and investment amounts in Settings afterwards." : "Each matched account's balance is set to match \(up ? "Up" : "PocketSmith") today, and its last \(Store.historyDays) days come in as history. Transactions already in MoneyPilot stay. Your savings, emergency and investment reservations stay as they are.\(up ? " Match Up's Spending account to Everyday and your Savers to the accounts they're for." : "")") }
         }
     }
     @ViewBuilder private func linked(_ link: PocketSmithLink) -> some View {
@@ -740,9 +744,9 @@ import WebKit
             if let last = link.lastSync { LabeledContent("Last sync", value: last.formatted(date: .abbreviated, time: .shortened)) }
             Button(store.syncing ? "Syncing…" : "Sync now") {
                 // With a saved login, sign in to PocketSmith in view and refresh the feeds first; it syncs when that finishes.
-                if Keychain.read("password") != nil { feeds.start(store, visible: true) } else { Task { await store.syncPocketSmith() } }
+                if !link.isUp && Keychain.read("password") != nil { feeds.start(store, visible: true) } else { Task { await store.syncPocketSmith() } }
             }.disabled(store.syncing || feeds.running)
-        } footer: { Text("Checks automatically when you open MoneyPilot (at most every 15 minutes) and in the background every few hours when iOS allows. Each check imports new transactions, refreshes balances and looks for new PocketSmith accounts. PocketSmith usually refreshes from your bank about once a day.") }
+        } footer: { Text(link.isUp ? "Up is live: MoneyPilot checks when you open it (at most every 15 minutes), every hour while it's open, in the background when iOS allows, and when you pull down on Home. Money on hold shows as pending straight away." : "Checks automatically when you open MoneyPilot (at most every 15 minutes) and in the background every few hours when iOS allows. Each check imports new transactions, refreshes balances and looks for new PocketSmith accounts. PocketSmith usually refreshes from your bank about once a day.") }
         let unlinked = (link.known ?? [:]).filter { link.accountMap[$0.key] == nil }.sorted { $0.value < $1.value }
         if !unlinked.isEmpty {
             Section {
@@ -752,7 +756,7 @@ import WebKit
                         ForEach(store.state.accounts.filter { a in !link.accountMap.values.contains(a.id) }) { a in Button("Use for \(a.name)") { Task { await store.linkAccount(item.key, to: a.id) } } }
                     } label: { Label(item.value, systemImage: "plus.circle") }
                 }
-            } header: { Text("Found in PocketSmith · not synced") } footer: { Text("Linking imports this account's last \(Store.historyDays) days and matches its balance.") }
+            } header: { Text("Found in \(link.bankName) · not synced") } footer: { Text("Linking imports this account's last \(Store.historyDays) days and matches its balance.") }
         }
         Section {
             ForEach(store.state.accounts.filter { link.accountMap.values.contains($0.id) }) { account in
@@ -761,13 +765,13 @@ import WebKit
             }
             ForEach(store.engine.drifted, id: \.pocketsmithID) { item in
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(item.account.name): PocketSmith shows \(money(item.theirs)) (\(money(store.engine.matched(item))) after pending), a difference of \(money(store.engine.matched(item) - store.engine.accountBalance(item.account.id))).").font(.caption).foregroundStyle(.orange)
-                    Button("Match PocketSmith balance") { store.matchBalance(item.pocketsmithID, to: item.theirs) }.font(.caption)
+                    Text(link.isUp ? "\(item.account.name): Up shows \(money(store.engine.matched(item))), a difference of \(money(store.engine.matched(item) - store.engine.accountBalance(item.account.id)))." : "\(item.account.name): PocketSmith shows \(money(item.theirs)) (\(money(store.engine.matched(item))) after pending), a difference of \(money(store.engine.matched(item) - store.engine.accountBalance(item.account.id))).").font(.caption).foregroundStyle(.orange)
+                    Button("Match \(link.bankName) balance") { store.matchBalance(item.pocketsmithID, to: item.theirs) }.font(.caption)
                 }
             }
             Button(store.syncing ? "Importing…" : "Import past \(Store.historyDays) days & match balances") { Task { await store.importHistory() } }.disabled(store.syncing)
-        } header: { Text("Accounts & balance check") } footer: { Text("Pending transactions are already taken off these balances. Importing past days adds anything missing, without applying your savings rule to old income, then sets balances to PocketSmith's.") }
-        Section {
+        } header: { Text("Accounts & balance check") } footer: { Text("Pending transactions are already taken off these balances. Importing past days adds anything missing, without applying your savings rule to old income, then sets balances to \(link.bankName)'s.") }
+        if !link.isUp { Section {
             TextField("PocketSmith email or username", text: $login).textContentType(.username).textInputAutocapitalization(.never).autocorrectionDisabled()
             SecureField(Keychain.read("password") == nil ? "PocketSmith password" : "Password saved · type to change", text: $password).textContentType(.password)
             Button("Save login") {
@@ -776,14 +780,14 @@ import WebKit
             }.disabled(login.trimmingCharacters(in: .whitespaces).isEmpty || password.isEmpty)
             Toggle("Refresh bank feeds when I open MoneyPilot", isOn: Binding(get: { link.autoRefresh == true }, set: { on in store.change { $0.pocketsmith?.autoRefresh = on } }))
             if let at = link.feedsRefreshed { LabeledContent("Feeds last refreshed", value: at.formatted(date: .abbreviated, time: .shortened)) }
-        } header: { Text("Sign in for me") } footer: { Text("MoneyPilot signs in to the PocketSmith website out of sight while you use the app, presses refresh on each bank feed, then imports what arrives. Sync now signs you in and leaves PocketSmith open for you; tap Done to import. The daily refresh runs out of sight, with only the Dynamic Island showing it. Automatic refresh runs at most once a day. Your login is kept in this iPhone's Keychain and never backed up. The PocketSmith page only appears if it needs you, for example to type a code. Keep MoneyPilot open for the few seconds it takes; iOS pauses it if you leave.") }
+        } header: { Text("Sign in for me") } footer: { Text("MoneyPilot signs in to the PocketSmith website out of sight while you use the app, presses refresh on each bank feed, then imports what arrives. Sync now signs you in and leaves PocketSmith open for you; tap Done to import. The daily refresh runs out of sight, with only the Dynamic Island showing it. Automatic refresh runs at most once a day. Your login is kept in this iPhone's Keychain and never backed up. The PocketSmith page only appears if it needs you, for example to type a code. Keep MoneyPilot open for the few seconds it takes; iOS pauses it if you leave.") } }
         Section("Recognise your income") {
             TextField("Wages payer contains", text: $wage)
             TextField("Allowance payer contains", text: $allowance)
             Button("Save income rules") { store.change { $0.pocketsmith?.wageKeyword = wage; $0.pocketsmith?.allowanceKeyword = allowance } }
         }
-        Section { Button("Disconnect PocketSmith", role: .destructive) { disconnecting = true } } footer: { Text("Imported transactions stay in MoneyPilot.") }
-            .confirmationDialog("Stop syncing with PocketSmith?", isPresented: $disconnecting, titleVisibility: .visible) { Button("Disconnect", role: .destructive) { store.unlinkPocketSmith() } }
+        Section { Button("Disconnect \(link.bankName)", role: .destructive) { disconnecting = true } } footer: { Text(link.isUp ? "Imported transactions stay in MoneyPilot." : "Imported transactions stay in MoneyPilot. Moving to Up? Disconnect here, then link Up; your history stays.") }
+            .confirmationDialog("Stop syncing with \(link.bankName)?", isPresented: $disconnecting, titleVisibility: .visible) { Button("Disconnect", role: .destructive) { store.unlinkPocketSmith() } }
     }
 }
 @MainActor struct SubscriptionsView: View {

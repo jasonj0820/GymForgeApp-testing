@@ -100,7 +100,7 @@ import SwiftUI
                     Text("Stored locally with iOS file protection. Backup exports contain your financial data. No analytics or bank credentials are collected. Keep your backup private.").font(.caption)
                 }
                 Section("Connections") {
-                    Label(store.state.pocketsmith == nil ? "Banks · not connected" : "Banks · PocketSmith sync", systemImage: "building.columns")
+                    Label(store.state.pocketsmith == nil ? "Banks · not connected" : "Banks · \(store.state.pocketsmith?.bankName ?? "") sync", systemImage: "building.columns")
                     Label("Stake · manual holdings", systemImage: "chart.line.uptrend.xyaxis")
                     Text("Manage bank sync from Activity. Automatic Stake reconciliation is not built yet. MoneyPilot only reads data; it cannot send payments or change your bank accounts.").font(.caption)
                 }

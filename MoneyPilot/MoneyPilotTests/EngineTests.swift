@@ -868,6 +868,39 @@ final class EngineTests: XCTestCase {
         s.pocketsmith?.balances["11"] = 100_000
         XCTAssertTrue(Engine(state: s).drifted.isEmpty) // Already matches once pending is counted.
     }
+    func testUpFeedImportsHeldAsPendingPairsRoundUpsAndMatchesUpBalance() throws {
+        let now = ISO8601DateFormatter().string(from: Date())
+        func t(_ id: String, _ account: String, _ text: String, _ cents: Int, _ status: String = "SETTLED", round: Int? = nil, category: String? = nil) -> String {
+            let roundUp = round.map { "{\"amount\":{\"valueInBaseUnits\":\($0)}}" } ?? "null"
+            let cat = category.map { "{\"data\":{\"id\":\"\($0)\"}}" } ?? "{\"data\":null}"
+            return "{\"id\":\"\(id)\",\"attributes\":{\"status\":\"\(status)\",\"description\":\"\(text)\",\"amount\":{\"valueInBaseUnits\":\(cents)},\"roundUp\":\(roundUp),\"createdAt\":\"\(now)\"},\"relationships\":{\"account\":{\"data\":{\"id\":\"\(account)\"}},\"category\":\(cat)}}"
+        }
+        let accountsJSON = #"{"data":[{"id":"acc-spend","attributes":{"displayName":"Spending","accountType":"TRANSACTIONAL","ownershipType":"INDIVIDUAL","balance":{"valueInBaseUnits":100000}}},{"id":"acc-save","attributes":{"displayName":"Savings","accountType":"SAVER","ownershipType":"INDIVIDUAL","balance":{"valueInBaseUnits":5050}}}],"links":{"next":null}}"#
+        let txJSON = "{\"data\":[" + [t("t1", "acc-spend", "Woolworths", -4_550, round: -50, category: "groceries"), t("t2", "acc-save", "Round Up", 50),
+                                       t("t3", "acc-spend", "Coles", -1_000, "HELD"), t("t4", "acc-spend", "ACME PTY LTD", 50_000)].joined(separator: ",") + "],\"links\":{\"next\":null}}"
+        let accounts = try JSONDecoder().decode(UpClient.Page<UpClient.UpAccount>.self, from: Data(accountsJSON.utf8)).data
+        let transactions = try JSONDecoder().decode(UpClient.Page<UpClient.UpTransaction>.self, from: Data(txJSON.utf8)).data
+        let feed = UpClient.convert(accounts, transactions)
+        var s = base()
+        let spend = String(UpClient.number("acc-spend")), save = String(UpClient.number("acc-save"))
+        s.pocketsmith = PocketSmithLink(accountMap: [spend: s.accounts[0].id, save: s.accounts[1].id], wageKeyword: "acme", source: "up")
+        _ = s.importPocketSmith(feed.transactions, historical: true)
+        s.recordAccounts(feed.accounts)
+        s.matchBalances(s.pocketsmith?.balances ?? [:])
+        let e = Engine(state: s)
+        XCTAssertEqual(e.pending(s.accounts[0].id), -1_000) // The held Coles payment
+        XCTAssertEqual(e.accountBalance(s.accounts[0].id), 100_000) // Up's balance, which already has the hold taken off
+        XCTAssertEqual(e.accountBalance(s.accounts[1].id), 5_050)
+        XCTAssertTrue(e.drifted.isEmpty)
+        XCTAssertFalse(s.entries.contains { $0.name == "Coles" }) // Held money is pending, not an entry yet
+        XCTAssertEqual(s.entries.first { $0.name == "Woolworths" }?.category, .groceries)
+        XCTAssertEqual(s.entries.filter { $0.kind == .transfer }.count, 1) // Round Up: Spending → Savings, not spending
+        XCTAssertEqual(s.entries.first { $0.name == "ACME PTY LTD" }?.kind, .wage)
+        // When the hold settles it keeps its ID and comes in once.
+        let settled = UpClient.convert(accounts, try JSONDecoder().decode(UpClient.Page<UpClient.UpTransaction>.self, from: Data(txJSON.replacingOccurrences(of: "HELD", with: "SETTLED").utf8)).data)
+        XCTAssertEqual(s.importPocketSmith(settled.transactions), 1)
+        XCTAssertEqual(Engine(state: s).pending(s.accounts[0].id), 0)
+    }
     #if canImport(CryptoKit) // Runs in Xcode; the Linux check has no CryptoKit.
     func testBackupLocksKeysWithThePasswordAndReadsOldBackups() throws {
         let sealed = try FullBackup.seal(["password": "hunter2", "developer-key": "abc"], password: "correct horse")
