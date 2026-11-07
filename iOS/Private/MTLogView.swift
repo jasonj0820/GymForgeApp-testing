@@ -141,43 +141,58 @@ struct MTLogView: View {
     // MARK: Daily routine (MK11.3)
 
     private var routineSection: some View {
-        let day = MTPlan.day(vault.data.sessions)
+        let suggested = MTPlan.day(vault.data.sessions)
+        let doneToday = MTPlan.options.contains { MTPlan.isComplete(MTPlan.done(vault.data.sessions, day: $0), day: $0) }
+        return Section {
+            ForEach(MTPlan.options, id: \.title) { option in
+                routineOptionRow(option, suggested: option == suggested)
+            }
+            pacGuideLink
+        } header: {
+            Text(doneToday ? "Daily routine · done today ✓" : "Daily routine · pick one")
+        } footer: {
+            Text("NIR + PAC: 15 min extending with NIR, then 35 min without, then guided PAC (25 min). "
+                 + "No NIR: 40 min extending, then static pump 4 × 5 min. "
+                 + "Take turns day to day — \"Today\" is the one you didn't do last time.")
+        }
+    }
+
+    private func routineOptionRow(_ day: MTPlan.Day, suggested: Bool) -> some View {
         let done = MTPlan.done(vault.data.sessions, day: day)
         let complete = MTPlan.isComplete(done, day: day)
         let pumpName = day.pumpType == .pac ? "PAC" : "Pump"
+        let tint: Color = day.nir ? .indigo : .teal
         func mins(_ value: Double, _ goal: Double) -> String { "\(Int(min(value, goal).rounded()))/\(Int(goal))" }
-        return Section {
-            HStack(spacing: 12) {
-                Image(systemName: complete ? "checkmark.circle.fill" : "arrow.left.and.right")
-                    .font(.title2)
-                    .foregroundStyle(complete ? Color.green : Color.indigo)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(complete ? "Routine done today ✓" : (day.nir ? "Today's routine · NIR day" : "Today's routine")).font(.headline)
-                    Text("HTE \(mins(done.extender, day.extenderMinutes)) min" + (day.nir ? " (NIR \(mins(done.nir, MTPlan.nirMinutes)))" : "")
-                         + " · \(pumpName) \(mins(done.pump, day.pumpMinutes)) min")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                }
-                Spacer()
-                if !complete {
-                    Button("Start") {
-                        let steps = MTPlan.steps(day, pressure: vault.data.lastPressure(for: day.pumpType),
-                                                 tension: vault.data.lastTension(for: .highTensionExtender))
-                        Task { await vault.startInterval(name: "Daily routine", steps: steps) }
+        return HStack(spacing: 12) {
+            Image(systemName: complete ? "checkmark.circle.fill" : (day.nir ? "light.max" : "circle.circle"))
+                .font(.title2)
+                .foregroundStyle(complete ? Color.green : tint)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(day.title).font(.headline)
+                    if suggested && !complete {
+                        Text("Today")
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(tint.opacity(0.2), in: Capsule())
+                            .foregroundStyle(tint)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.indigo)
-                    .disabled(vault.data.isBusy)
                 }
+                Text("HTE \(mins(done.extender, day.extenderMinutes)) min" + (day.nir ? " (NIR \(mins(done.nir, MTPlan.nirMinutes)))" : "")
+                     + " · \(pumpName) \(mins(done.pump, day.pumpMinutes)) min")
+                    .font(.subheadline).foregroundStyle(.secondary)
             }
-            if day.pumpType == .pac { pacGuideLink }
-        } header: {
-            Text("Daily routine · NIR every other day")
-        } footer: {
-            Text((day.nir
-                  ? "Today: 15 min extending with NIR, then 35 min without"
-                  : "Today: 40 min extending (NIR is tomorrow)")
-                 + (pumpName == "PAC" ? ", then guided PAC (25 min)." : ", then static pump 4 × 5 min.")
-                 + " Static pump and PAC take turns day to day.")
+            Spacer()
+            if !complete {
+                Button("Start") {
+                    let steps = MTPlan.steps(day, pressure: vault.data.lastPressure(for: day.pumpType),
+                                             tension: vault.data.lastTension(for: .highTensionExtender))
+                    Task { await vault.startInterval(name: day.title, steps: steps) }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(tint)
+                .disabled(vault.data.isBusy)
+            }
         }
     }
 

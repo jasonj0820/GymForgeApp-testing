@@ -1,6 +1,6 @@
 import Foundation
 
-// MK18: the daily routine (NIR every other day, pump and PAC alternating) and when to progress.
+// MK18: the daily routine and when to progress. MK20.1: two options — NIR + PAC, or no NIR + static pump.
 // The rule throughout: only step up when the current settings stop doing their job, one or two
 // things at a time, in small steps, and judge long-term results 2–3 months after a change.
 // Foundation-only, so Scripts/run_mt_checks.sh can test it.
@@ -13,26 +13,34 @@ enum MTPlan {
     static let pumpRoundMinutes = 5.0
 
     struct Day: Equatable {
-        /// NIR every other day: 15 min of the extending is with NIR, then 35 min without.
+        /// NIR days: 15 min of the extending is with NIR, then 35 min without.
         var nir: Bool
-        var pumpType: MTType   // .pump (static) or .pac, alternating day to day
+        var pumpType: MTType   // .pump (static) or .pac
         var extenderMinutes: Double { nir ? MTPlan.nirMinutes + MTPlan.afterNIRMinutes : MTPlan.plainMinutes }
         var pumpMinutes: Double {
             pumpType == .pac ? MTPlan.pacSteps.reduce(0) { $0 + $1.workMinutes } : Double(MTPlan.pumpRounds) * MTPlan.pumpRoundMinutes
         }
+        var title: String { nir ? "NIR + PAC" : "No NIR · static pump" }
     }
 
-    /// Worked out from what you've logged, so a missed day doesn't break the rhythm: NIR today unless you
-    /// did NIR yesterday; pump or PAC = whichever you didn't do last time (or what you've already started today).
+    /// MK20.1: the two routines you pick from. NIR always goes with PAC; static pump days have no NIR.
+    static let nirPAC = Day(nir: true, pumpType: .pac)
+    static let pumpOnly = Day(nir: false, pumpType: .pump)
+    static let options = [nirPAC, pumpOnly]
+
+    /// The option marked "Today", worked out from what you've logged so a missed day doesn't break the rhythm:
+    /// whatever you've already started today; otherwise the one you didn't do on your last training day.
+    /// Starting fresh → NIR + PAC.
     static func day(_ sessions: [MTSession], now: Date = .now, calendar: Calendar = .current) -> Day {
+        func isNIRPAC(_ s: MTSession) -> Bool { s.nir == true || s.type == .pac }
+        let relevant = sessions.filter { isNIRPAC($0) || $0.type == .pump }
+        let todays = relevant.filter { calendar.isDate($0.start, inSameDayAs: now) }
+        if todays.contains(where: isNIRPAC) { return nirPAC }
+        if !todays.isEmpty { return pumpOnly }
         let today = calendar.startOfDay(for: now)
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
-        let nirDays = Set(sessions.filter { $0.nir == true }.map { calendar.startOfDay(for: $0.start) })
-        let nir = nirDays.contains(today) || !nirDays.contains(yesterday)
-        let pumps = sessions.filter { $0.type == .pump || $0.type == .pac }.sorted { $0.start < $1.start }
-        let todays = pumps.last { calendar.isDate($0.start, inSameDayAs: now) }?.type
-        let before = pumps.last { $0.start < today }?.type
-        return Day(nir: nir, pumpType: todays ?? (before == .pump ? .pac : .pump))
+        guard let last = relevant.filter({ $0.start < today }).max(by: { $0.start < $1.start }) else { return nirPAC }
+        let lastDay = relevant.filter { calendar.isDate($0.start, inSameDayAs: last.start) }
+        return lastDay.contains(where: isNIRPAC) ? pumpOnly : nirPAC
     }
 
     /// Timer steps for the day: extender (with NIR first on NIR days), 2 min to switch, then 4 × 5 min.

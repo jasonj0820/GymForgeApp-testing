@@ -1,4 +1,9 @@
-# Splitday MK20 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK20.1 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK20.1 — More Training: two routine options
+- **Daily routine now shows two options**, each with its own Start: **NIR + PAC** (extender 15 min with NIR, then 35 min without, then guided PAC 25 min) and **No NIR · static pump** (extender 40 min, then static pump 4 × 5 min). NIR always goes with PAC; static pump days have no NIR.
+- The one you didn't do on your last training day is tagged **Today** (fresh start → NIR + PAC; once you've started one today, that one stays Today). You can still start the other.
+- More Training checks: 41.
 
 ## MK20 — Fixed-day split
 - **Your week is fixed**: Mon chest + side delts · Tue back + rear delts · Wed legs · Thu buffer · Fri chest (or basketball) · Sat back · Sun rest. Uses your own Chest Day / Back Day / Leg Day (matched by their exercises). **Plan week → Auto-plan** fills Mon/Tue/Wed/Fri/Sat with them and Sunday as rest; Thursday stays open.

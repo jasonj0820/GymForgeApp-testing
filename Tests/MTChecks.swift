@@ -21,16 +21,19 @@ struct MTChecks {
             return s
         }
 
-        // Routine: NIR every other day, static pump and PAC taking turns
-        check(MTPlan.day([], now: now) == MTPlan.Day(nir: true, pumpType: .pump), "first day: NIR day, static pump")
-        let yesterday = [session(.highTensionExtender, 1, minutes: 15, nir: true), session(.pump, 1, minutes: 20, pressure: 8.5)]
+        // Routine (MK20.1): two options — NIR + PAC, or no NIR + static pump — taking turns
+        check(MTPlan.options == [MTPlan.Day(nir: true, pumpType: .pac), MTPlan.Day(nir: false, pumpType: .pump)], "two options: NIR + PAC, no NIR + static pump")
+        check(MTPlan.day([], now: now) == MTPlan.nirPAC, "first day: NIR + PAC")
+        let yesterday = [session(.highTensionExtender, 1, minutes: 15, nir: true), session(.pac, 1, minutes: 25, pressure: 10)]
         let today = MTPlan.day(yesterday, now: now)
-        check(!today.nir && today.pumpType == .pac, "NIR and pump yesterday → no NIR, PAC today")
-        check(today.extenderMinutes == 40 && today.pumpMinutes == 25, "non-NIR PAC day is 40 min extending + 25 min guided PAC")
-        let dayAfter = MTPlan.day([session(.highTensionExtender, 2, minutes: 15, nir: true), session(.pac, 1, minutes: 20)], now: now)
-        check(dayAfter.nir && dayAfter.pumpType == .pump && dayAfter.extenderMinutes == 50, "NIR two days ago → NIR today (50 min), pump after PAC")
+        check(today == MTPlan.pumpOnly, "NIR + PAC yesterday → no NIR + static pump today")
+        check(today.extenderMinutes == 40 && today.pumpMinutes == 20, "static pump day is 40 min extending + 4 × 5 min pump")
+        let dayAfter = MTPlan.day([session(.highTensionExtender, 3, minutes: 15, nir: true), session(.pump, 2, minutes: 20)], now: now)
+        check(dayAfter == MTPlan.nirPAC && dayAfter.extenderMinutes == 50 && dayAfter.pumpMinutes == 25, "pump last time (missed a day) → NIR + PAC (50 + 25 min)")
         let started = MTPlan.day(yesterday + [session(.pump, 0, minutes: 5)], now: now)
-        check(started.pumpType == .pump, "already pumped today → today stays pump")
+        check(started == MTPlan.pumpOnly, "already pumped today → today stays static pump")
+        let pickedAgain = MTPlan.day(yesterday + [session(.highTensionExtender, 0, minutes: 15, nir: true)], now: now)
+        check(pickedAgain == MTPlan.nirPAC, "picked NIR + PAC again today → today shows NIR + PAC")
         let steps = MTPlan.steps(MTPlan.Day(nir: true, pumpType: .pac), pressure: 8.5, tension: 3)
         check(steps.count == 7 && steps[0].nir == true && steps[0].workMinutes == 15 && steps[1].nir == nil && steps[1].workMinutes == 35
               && steps[2...].allSatisfy { $0.type == .pac && $0.cue != nil }, "NIR PAC day timer: HTE 15 NIR → HTE 35 → 5 guided PAC steps")
@@ -82,10 +85,10 @@ struct MTChecks {
               "pain logged last night → no 'Time to train' for the 2 rest days the safety check asks for")
         check(run.phases.filter { $0.stepIndex >= 2 }.allSatisfy { $0.kind == .work }, "guided PAC runs straight through, no rests")
         let plain = MTPlan.steps(MTPlan.Day(nir: false, pumpType: .pump), pressure: nil, tension: nil)
-        check(plain.count == 2 && plain[0].workMinutes == 40, "non-NIR timer: HTE 40 → pump 4 × 5")
-        let doneToday = [session(.highTensionExtender, 0, minutes: 15, nir: true), session(.highTensionExtender, 0, minutes: 35), session(.pump, 0, minutes: 20)]
-        let nirDay = MTPlan.Day(nir: true, pumpType: .pump)
-        check(MTPlan.isComplete(MTPlan.done(doneToday, day: nirDay, now: now), day: nirDay), "50 min (15 NIR) + 20 min pump completes a NIR day")
+        check(plain.count == 2 && plain[0].workMinutes == 40, "no-NIR timer: HTE 40 → static pump 4 × 5")
+        let doneToday = [session(.highTensionExtender, 0, minutes: 15, nir: true), session(.highTensionExtender, 0, minutes: 35), session(.pac, 0, minutes: 25)]
+        let nirDay = MTPlan.nirPAC
+        check(MTPlan.isComplete(MTPlan.done(doneToday, day: nirDay, now: now), day: nirDay), "50 min (15 NIR) + 25 min PAC completes NIR + PAC")
         check(!MTPlan.isComplete(MTPlan.done(Array(doneToday.dropFirst()), day: nirDay, now: now), day: nirDay), "skipping the NIR part isn't complete")
 
         func pacWeek(_ days: [Double]) -> Bool {

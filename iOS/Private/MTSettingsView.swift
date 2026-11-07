@@ -69,8 +69,8 @@ struct MTSettingsView: View {
                 Text("Plan")
             } footer: {
                 Text(vault.data.settings.dailyRoutineOn
-                     ? "Every day: high tension extender 50 min on NIR days (15 min with NIR, then 35 without) or 40 min on the others, NIR every other day; then static pump or PAC 4 × 5 min, taking turns day to day. The PAC every-other-day plan and its reminders are off. Turn this off to go back to it and your old weekly goal."
-                     : "Off: PAC every other day. On: extender every day (NIR every other day) plus static pump and PAC 4 × 5 min on alternating days.")
+                     ? "Every day, pick one of two: NIR + PAC (extender 15 min with NIR, then 35 without, then guided PAC 25 min) or no NIR + static pump (extender 40 min, then static pump 4 × 5 min). Take turns day to day. The PAC every-other-day plan and its reminders are off. Turn this off to go back to it and your old weekly goal."
+                     : "Off: PAC every other day. On: extender every day, with two options — NIR + PAC, or no NIR + static pump.")
             }
 
             Section {
