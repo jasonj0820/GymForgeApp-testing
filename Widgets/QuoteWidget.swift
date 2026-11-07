@@ -71,22 +71,25 @@ struct QuoteBackground: View {
 /// and a hairline edge, so the text reads easily without the panel looking glossy or see-through.
 struct MatteGlassPanel: View {
     var cornerRadius: CGFloat
+    /// MK20.2.1: 30% more see-through than the first version (1.0 = original).
+    static let strength = 0.7
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let k = Self.strength
         shape
-            .fill(.black.opacity(0.26))                       // smoked matte body
-            .overlay(shape.fill(.white.opacity(0.06)))          // frost lift, keeps it from looking like a hole
+            .fill(.black.opacity(0.26 * k))                       // smoked matte body
+            .overlay(shape.fill(.white.opacity(0.06 * k)))          // frost lift, keeps it from looking like a hole
             .overlay(                                           // soft light from the top, fading out — matte, no hard shine
-                shape.fill(LinearGradient(colors: [.white.opacity(0.10), .white.opacity(0.0)],
+                shape.fill(LinearGradient(colors: [.white.opacity(0.10 * k), .white.opacity(0.0)],
                                           startPoint: .top, endPoint: .center))
             )
             .overlay(                                           // hairline glass edge, brighter on top
-                shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.28), .white.opacity(0.06), .white.opacity(0.12)],
+                shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.28 * k), .white.opacity(0.06 * k), .white.opacity(0.12 * k)],
                                                   startPoint: .topLeading, endPoint: .bottomTrailing),
                                    lineWidth: 0.75)
             )
-            .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
+            .shadow(color: .black.opacity(0.25 * k), radius: 8, y: 3)
     }
 }
 
@@ -97,9 +100,22 @@ struct QuoteWidgetView: View {
 
     var body: some View {
         if family == .accessoryRectangular {
+            // Lock Screen: the system's frosted backdrop, a bit more see-through, behind the quote.
             Text(entry.quote.text)
                 .font(.system(.caption, design: .serif))
                 .minimumScaleFactor(0.7)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background {
+                    let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    ZStack {
+                        AccessoryWidgetBackground()
+                        shape.strokeBorder(.white.opacity(0.25), lineWidth: 0.5)   // hairline glass edge
+                    }
+                    .clipShape(shape)
+                    .opacity(MatteGlassPanel.strength)
+                }
         } else {
             ZStack(alignment: .bottomTrailing) {
                 VStack(spacing: 8) {

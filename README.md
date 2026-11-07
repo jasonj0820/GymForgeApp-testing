@@ -4,7 +4,7 @@
 - **Sunday weigh-in**: type in your weight (kg) and body fat (%) — **Body → Sunday weigh-in → Log**, the card on **Today** on Sundays, or tap the reminder. One entry per day (saving again replaces it); tap an entry to edit, long-press to delete.
 - **Reminder at 9:00am every Sunday** you haven't logged yet ("Sunday weigh-in"). Switch it off on the Body card.
 - Typed-in weigh-ins show with your Apple Health readings everywhere — Body charts, lean mass, coach, calorie and protein targets, monthly report — and tick Dayfold's weigh-in task. They're stored in the app (and its backups), not written to Apple Health.
-- **Quote widget**: the quote sits on a frosted, matte glass panel (smoked tint, soft top sheen, hairline edge) so it's easier to read. Tinted / clear Home Screens skip the panel and use the system's own glass.
+- **Quote widget** (Lock Screen and Home Screen): the quote sits on a frosted, matte glass panel, 30% more see-through than first drafted (`MatteGlassPanel.strength`) (smoked tint, soft top sheen, hairline edge) so it's easier to read. Tinted / clear Home Screens skip the panel and use the system's own glass.
 
 ## MK20.1 — More Training: two routine options
 - **Daily routine now shows two options**, each with its own Start: **NIR + PAC** (extender 15 min with NIR, then 35 min without, then guided PAC 25 min) and **No NIR · static pump** (extender 40 min, then static pump 4 × 5 min). NIR always goes with PAC; static pump days have no NIR.
