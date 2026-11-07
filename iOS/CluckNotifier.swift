@@ -181,6 +181,8 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
             AppLink.open(URL(string: "gymforge://wakeup")!)
         } else if response.notification.request.identifier.hasPrefix("gymforge.sleep.wind") {
             AppLink.open(URL(string: "gymforge://winddown")!)
+        } else if response.notification.request.content.userInfo["open"] as? String == "weighin" {
+            AppLink.open(URL(string: "gymforge://weighin")!)
         } else if response.notification.request.content.userInfo["open"] as? String == "review" {
             PhoneAppDelegate.pendingReview = true
             NotificationCenter.default.post(name: .openWeeklyReview, object: nil)

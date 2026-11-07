@@ -25,6 +25,8 @@ public struct GymExtras: Codable, Equatable {
     public var plannedRestDays: [Date]
     /// MK11.3: "Give me a break" history (the newest may be running).
     public var breaks: [GymBreak]
+    /// MK20.2: weight and body fat you typed in (the Sunday weigh-in), merged with Apple Health.
+    public var weighIns: [WeighIn]
 
     public init(restDays: [Date] = [], painFlags: [PainFlag] = [], nutrition: [NutritionDay] = [],
                 tape: [TapeEntry] = [], nutritionPhase: NutritionPhase? = nil, phases: [PhaseRecord] = [],
@@ -42,11 +44,12 @@ public struct GymExtras: Codable, Equatable {
         self.declinedProposals = [:]
         self.plannedRestDays = []
         self.breaks = []
+        self.weighIns = []
     }
 
     enum CodingKeys: String, CodingKey {
         case restDays, painFlags, nutrition, tape, nutritionPhase, phases, miniCutThreshold
-        case dayPlans, suggestions, priorityMuscles, declinedProposals, plannedRestDays, breaks
+        case dayPlans, suggestions, priorityMuscles, declinedProposals, plannedRestDays, breaks, weighIns
     }
 
     public init(from decoder: Decoder) throws {
@@ -64,6 +67,12 @@ public struct GymExtras: Codable, Equatable {
         declinedProposals = try c.decodeIfPresent([String: Date].self, forKey: .declinedProposals) ?? [:]
         plannedRestDays = try c.decodeIfPresent([Date].self, forKey: .plannedRestDays) ?? []
         breaks = try c.decodeIfPresent([GymBreak].self, forKey: .breaks) ?? []
+        weighIns = try c.decodeIfPresent([WeighIn].self, forKey: .weighIns) ?? []
+    }
+
+    /// MK20.2: the weigh-in logged on the same day as `date`, if any.
+    public func weighIn(on date: Date, calendar: Calendar = .current) -> WeighIn? {
+        weighIns.last { calendar.isDate($0.date, inSameDayAs: date) }
     }
 
     public var currentPhaseRecord: PhaseRecord? { phases.last(where: { $0.end == nil }) }
@@ -249,6 +258,33 @@ public enum TapeSite: String, Codable, CaseIterable, Identifiable {
         case .thigh: return "Thigh"
         case .calf: return "Calf"
         }
+    }
+}
+
+/// MK20.2: a weigh-in you typed in yourself — weight (kg), body fat (%), or both.
+public struct WeighIn: Identifiable, Codable, Equatable {
+    public var id: UUID
+    public var date: Date
+    public var weightKg: Double?
+    public var bodyFatPercent: Double?
+
+    public init(id: UUID = UUID(), date: Date = .now, weightKg: Double?, bodyFatPercent: Double?) {
+        self.id = id
+        self.date = date
+        self.weightKg = weightKg
+        self.bodyFatPercent = bodyFatPercent
+    }
+
+    public var points: [BodyMetricPoint] {
+        [weightKg.map { BodyMetricPoint(id: id, metric: .bodyWeight, date: date, value: $0) },
+         bodyFatPercent.map { BodyMetricPoint(metric: .bodyFatPercentage, date: date, value: $0) }].compactMap { $0 }
+    }
+
+    /// The Sunday this weigh-in is for: today if it's Sunday, otherwise the most recent Sunday.
+    public static func sunday(onOrBefore date: Date, calendar: Calendar = .current) -> Date {
+        let day = calendar.startOfDay(for: date)
+        let back = (calendar.component(.weekday, from: day) - 1 + 7) % 7   // weekday 1 = Sunday
+        return calendar.date(byAdding: .day, value: -back, to: day) ?? day
     }
 }
 

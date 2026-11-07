@@ -13,6 +13,7 @@ struct GymForgeApp: App {
     @AppStorage("app.mode") private var mode = "gym"
     @State private var showWindDown = false
     @State private var showWakeUp = false
+    @State private var showWeighIn = false
 
     var body: some Scene {
         WindowGroup {
@@ -33,6 +34,9 @@ struct GymForgeApp: App {
             }
             .sheet(isPresented: $showWakeUp) {
                 WakeUpView().environmentObject(store).environmentObject(dayfold)
+            }
+            .sheet(isPresented: $showWeighIn) {
+                WeighInSheet().environmentObject(store)
             }
             .task {
                 // One permission prompt at a time: Health first, then notifications,
@@ -64,7 +68,7 @@ struct GymForgeApp: App {
         dayfold.notifications.refreshPermission()
     }
 
-    /// gymforge://bedtime · winddown · gym · dayfold[/daily|weekly|monthly|yearly]
+    /// gymforge://bedtime · winddown · gym · weighin · dayfold[/daily|weekly|monthly|yearly]
     private func open(_ url: URL) {
         AppLink.pending = nil
         guard url.scheme == "gymforge" else { return }
@@ -78,6 +82,9 @@ struct GymForgeApp: App {
             showWindDown = true
         case "gym":
             mode = "gym"
+        case "weighin":   // MK20.2: the Sunday 9am reminder.
+            mode = "gym"
+            showWeighIn = true
         case "mt":   // MK17: the More Training timer card. Still unlocked mid-timer; otherwise asks first.
             let wasDayfold = mode == "dayfold"
             mode = "gym"

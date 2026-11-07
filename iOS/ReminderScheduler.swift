@@ -107,3 +107,40 @@ enum ReminderScheduler {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [restID])
     }
 }
+
+/// MK20.2: "Sunday weigh-in" at 9:00am every Sunday you haven't logged one yet (the next 8 Sundays,
+/// replanned each time the app opens). Tapping it opens the weigh-in sheet.
+@MainActor
+enum WeighInReminder {
+    static let enabledKey = "weighin.remind"
+    private static let ids = (0..<8).map { "gymforge.weighin.\($0)" }
+    static let hour = 9, minute = 0
+
+    static var enabled: Bool {
+        get { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+    }
+
+    static func reschedule(weighIns: [WeighIn], now: Date = .now) {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        guard enabled else { return }
+        let calendar = Calendar.current
+        var next = WeighIn.sunday(onOrBefore: now, calendar: calendar)
+        var index = 0
+        while index < ids.count {
+            defer { next = calendar.date(byAdding: .day, value: 7, to: next) ?? next.addingTimeInterval(7 * 86_400) }
+            guard let fire = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: next), fire > now,
+                  !weighIns.contains(where: { calendar.isDate($0.date, inSameDayAs: next) }) else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "Sunday weigh-in"
+            content.body = "Log your weight and body fat for the week."
+            content.sound = .default
+            content.userInfo = ["open": "weighin"]
+            let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            center.add(UNNotificationRequest(identifier: ids[index], content: content,
+                                             trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)))
+            index += 1
+        }
+    }
+}

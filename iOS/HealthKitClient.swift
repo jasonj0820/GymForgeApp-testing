@@ -14,6 +14,12 @@ final class HealthKitClient: ObservableObject {
     @Published var hasRequestedAuthorization = false
 
     private let healthStore = HKHealthStore()
+    /// MK20.2: Apple Health readings and the weigh-ins you typed in. `bodyWeight` / `bodyFat` are both merged.
+    private var healthWeight: [BodyMetricPoint] = []
+    private var healthFat: [BodyMetricPoint] = []
+    private var manualWeight: [BodyMetricPoint] = []
+    private var manualFat: [BodyMetricPoint] = []
+    private var manualSource: [WeighIn]?
     /// Retained so the mirrored session from the Watch isn't deallocated immediately.
     private var mirroredSession: HKWorkoutSession?
 
@@ -132,8 +138,24 @@ final class HealthKitClient: ObservableObject {
             transform: { $0 * 100 }
         )
 
-        bodyWeight = await weight
-        bodyFat = await fat
+        healthWeight = await weight
+        healthFat = await fat
+        mergeBodyMetrics()
+    }
+
+    /// MK20.2: your typed-in weigh-ins, shown alongside Apple Health everywhere (charts, coach, calories).
+    func setManual(_ weighIns: [WeighIn]) {
+        guard weighIns != manualSource else { return }
+        manualSource = weighIns
+        let points = weighIns.flatMap(\.points)
+        manualWeight = points.filter { $0.metric == .bodyWeight }
+        manualFat = points.filter { $0.metric == .bodyFatPercentage }
+        mergeBodyMetrics()
+    }
+
+    private func mergeBodyMetrics() {
+        bodyWeight = (healthWeight + manualWeight).sorted { $0.date < $1.date }
+        bodyFat = (healthFat + manualFat).sorted { $0.date < $1.date }
     }
 
     /// Sleep, resting heart rate and HRV for readiness and the monthly report (last ~120 days).

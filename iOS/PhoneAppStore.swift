@@ -79,6 +79,7 @@ final class PhoneAppStore: ObservableObject {
 
     init() {
         load()
+        healthKit.setManual(extras.weighIns)
         ensurePhaseRecord()
         migrateAssistedPullUps()
         backupReady = hadLocalData
@@ -412,6 +413,7 @@ final class PhoneAppStore: ObservableObject {
         var reminderProfile = profile
         if activeBreak?.mode == .full { reminderProfile.reminders = false }
         ReminderScheduler.reschedule(profile: reminderProfile, logs: workoutLogs.filter(\.countsAsTraining), weeklyGoal: max(thisWeekGoal, 1))
+        WeighInReminder.reschedule(weighIns: extras.weighIns)
         refreshCluck()
     }
 
@@ -676,6 +678,36 @@ final class PhoneAppStore: ObservableObject {
         }
     }
 
+    // MARK: Sunday weigh-in (MK20.2)
+
+    /// Saves a typed-in weigh-in. One per day: a second one the same day replaces the first.
+    func saveWeighIn(_ entry: WeighIn) {
+        extras.weighIns.removeAll { $0.id == entry.id || Calendar.current.isDate($0.date, inSameDayAs: entry.date) }
+        extras.weighIns.append(entry)
+        extras.weighIns.sort { $0.date < $1.date }
+        weighInsChanged()
+    }
+
+    func deleteWeighIn(_ id: UUID) {
+        extras.weighIns.removeAll { $0.id == id }
+        weighInsChanged()
+    }
+
+    /// This Sunday's weigh-in (or the last Sunday's, Monday to Saturday), if logged.
+    var thisWeeksWeighIn: WeighIn? {
+        let sunday = WeighIn.sunday(onOrBefore: .now)
+        return extras.weighIns.last { $0.date >= sunday }
+    }
+
+    private func weighInsChanged() {
+        healthKit.setManual(extras.weighIns)
+        persistAndSync()
+        WeighInReminder.reschedule(weighIns: extras.weighIns)
+        checkBodyAlerts()
+        ProteinNotifier.reschedule(store: self)   // target follows your latest weight
+        dayfold?.autoTickWeighIn(weightDates: healthKit.bodyWeight.map(\.date))
+    }
+
     func addTape(_ entry: TapeEntry) {
         extras.tape.append(entry)
         extras.tape.sort { $0.date < $1.date }
@@ -711,6 +743,7 @@ final class PhoneAppStore: ObservableObject {
         weeklyGoal = snapshot.weeklyGoal
         profile = snapshot.profile ?? UserProfile()
         extras = snapshot.extras ?? GymExtras()
+        healthKit.setManual(extras.weighIns)
         cardioSessions = snapshot.cardioSessions ?? []
         ensurePhaseRecord()
         save()

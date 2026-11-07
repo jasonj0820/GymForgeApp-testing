@@ -4,6 +4,7 @@ struct TodayView: View {
     @EnvironmentObject private var store: PhoneAppStore
     @State private var askMoreTraining = false
     @State private var showMoreTraining = false
+    @State private var showWeighIn = false
 
     var body: some View {
         let stats = store.consistency
@@ -26,6 +27,20 @@ struct TodayView: View {
                             .font(.footnote)
                             .card()
                     }
+                }
+
+                // MK20.2: Sunday weigh-in, until it's logged.
+                if Calendar.current.component(.weekday, from: .now) == 1, store.extras.weighIn(on: .now) == nil {
+                    Button { showWeighIn = true } label: {
+                        HStack {
+                            Label("Sunday weigh-in — log weight & body fat", systemImage: "scalemass.fill")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .card()
                 }
 
                 if let active = store.activeWorkout {
@@ -177,6 +192,7 @@ struct TodayView: View {
             MTRootView()
                 .environmentObject(MTVault.shared)
         }
+        .sheet(isPresented: $showWeighIn) { WeighInSheet().environmentObject(store) }
         .refreshable { await store.appBecameActive() }
         .onReceive(NotificationCenter.default.publisher(for: .openMoreTraining)) { _ in
             if !showMoreTraining { askMoreTraining = true }
