@@ -406,11 +406,14 @@ enum HealthExportImporter {
         let dataStart = entry.localOffset + 30 + UInt64(u16(local, 26)) + UInt64(u16(local, 28))
         try handle.seek(toOffset: dataStart)
 
-        var remaining = entry.compressed
-        let filter: OutputFilter? = entry.method == 8
-            ? try OutputFilter(.decompress, using: .zlib) { data in if let data { autoreleasepool { scanner.feed(data) } } }
-            : nil
         guard entry.method == 8 || entry.method == 0 else { throw HealthImportError.unsupportedZip("method \(entry.method)") }
+        var remaining = entry.compressed
+        var filter: OutputFilter?
+        if entry.method == 8 {   // deflate = Compression's .zlib (raw DEFLATE)
+            filter = try OutputFilter(.decompress, using: .zlib, writingTo: { data in
+                if let data { autoreleasepool { scanner.feed(data) } }
+            })
+        }
         while remaining > 0 {
             let chunk = try handle.read(upToCount: Int(min(remaining, 1 << 20))) ?? Data()
             if chunk.isEmpty { break }
