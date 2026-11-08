@@ -1,4 +1,8 @@
-# Splitday MK20.4 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK20.5 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK20.5 — Stamina timer on the Dynamic Island
+- More Training → **Stamina** runs now show on the **Dynamic Island and Lock Screen** like the other More Training timers: counting down to your goal, then counting up your total active time ("Goal reached"); during a cool-down it counts down the cool-down, with your active time and pauses underneath. Ends when you finish or cancel.
+- Still discreet: it only says "Timer", "Cool-down" or "Goal reached".
 
 ## MK20.4 — Import an Apple Health export
 - **Settings → Apple Health export → Import**. In the Health app: your picture → **Export All Health Data** → Save to Files, then pick **export.zip** (no need to unzip; an unzipped export.xml works too).

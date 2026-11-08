@@ -21,6 +21,8 @@ struct MTTimerAttributes: ActivityAttributes {
         /// Intervals: when the whole program ends.
         var endsAt: Date?
         var isInterval: Bool
+        /// MK20.5: a stamina run (goal countdown → count-up, cool-downs). Still shown only as "Timer".
+        var stamina: Bool? = nil
     }
     var startedAt: Date
 
@@ -91,6 +93,8 @@ struct MTTimerClock: View {
             Text(timerInterval: Date.now...ends, countsDown: true)
         } else if let from = state.countUpFrom {
             Text(timerInterval: from...from.addingTimeInterval(24 * 3600), countsDown: false)
+        } else if state.stamina == true {
+            Text("Go")   // cool-down finished while the app was asleep
         } else {
             Text("Done")
         }
@@ -123,11 +127,15 @@ struct MTTimerLockScreen: View {
 
     static func title(_ state: MTTimerAttributes.ContentState, stale: Bool) -> String {
         guard stale, state.pausedRemaining == nil else { return state.label }
+        if state.stamina == true { return state.label == "Cool-down" ? "Cool-down over" : "Goal reached" }
         return state.isInterval ? "Next step" : "Limit reached"
     }
 
     static func detail(_ state: MTTimerAttributes.ContentState, stale: Bool) -> String? {
         if state.pausedRemaining != nil { return "Paused" }
+        if stale, state.stamina == true {
+            return state.label == "Cool-down" ? "Resume when you're ready" : "Keep going or finish"
+        }
         if stale { return state.isInterval ? "Open the app to see where you're at" : "Stop when you're ready" }
         if let next = state.next { return next }
         return state.endsAt.map { "Ends \($0.formatted(date: .omitted, time: .shortened))" }

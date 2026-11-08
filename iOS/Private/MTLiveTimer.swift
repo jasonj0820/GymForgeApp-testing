@@ -43,6 +43,24 @@ enum MTLiveTimer {
             let rest = run.phases.dropFirst(run.index + 1).reduce(0) { $0 + $1.seconds }
             return (State(label: label, countdownTo: end, next: next, endsAt: end.addingTimeInterval(rest), isInterval: true), end, start)
         }
+        // MK20.5: stamina — counts down to the goal, then counts up your active time; cool-downs count down.
+        if let run = data.activeStamina {
+            let pauses = run.pauses == 0 ? nil : (run.pauses == 1 ? "1 pause" : "\(run.pauses) pauses")
+            if let until = run.cooldownUntil {
+                let active = "Active " + MTTimerAttributes.clock(run.active(at: now))
+                return (State(label: "Cool-down", countdownTo: until, next: [active, pauses].compactMap { $0 }.joined(separator: " · "),
+                              isInterval: false, stamina: true), until, run.start)
+            }
+            guard let since = run.runningSince else { return nil }
+            let activeStart = since.addingTimeInterval(-run.accumulated)   // counting up from here = total active time
+            let goalAt = activeStart.addingTimeInterval(run.goalSeconds)
+            if goalAt > now {
+                return (State(label: "Timer · goal in", countdownTo: goalAt, countUpFrom: activeStart, next: pauses,
+                              isInterval: false, stamina: true), goalAt, run.start)
+            }
+            return (State(label: "Goal reached", countUpFrom: activeStart, next: pauses ?? "Keep going or finish",
+                          isInterval: false, stamina: true), nil, run.start)
+        }
         if let active = data.activeSession {
             let limit = data.settings.limit(for: active.type).map { active.start.addingTimeInterval(Double($0 * 60)) }
             if let limit, limit > now {
