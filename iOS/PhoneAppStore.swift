@@ -679,6 +679,34 @@ final class PhoneAppStore: ObservableObject {
         }
     }
 
+    // MARK: Apple Health export import (MK20.4)
+
+    /// Reads an export.zip / export.xml off the main thread, then uses it everywhere and fills in any
+    /// of your details (height, birthday, sex) that the export has.
+    func importHealthExport(from url: URL, progress: @escaping @Sendable (Double) -> Void) async throws -> HealthImportData {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let result = try await Task.detached(priority: .userInitiated) {
+            try HealthExportImporter.run(url: url, progress: progress)
+        }.value
+        try result.save()
+        healthKit.setImported(result)
+        var updated = profile
+        if let height = result.heightCm { updated.heightCm = (height * 10).rounded() / 10 }
+        if let birth = result.birthDate { updated.birthDate = birth }
+        if let sex = result.sex { updated.sex = sex }
+        if updated != profile { setProfile(updated) }
+        checkBodyAlerts()
+        ProteinNotifier.reschedule(store: self)
+        dayfold?.autoTickWeighIn(weightDates: healthKit.bodyWeight.map(\.date))
+        return result
+    }
+
+    func removeHealthImport() {
+        HealthImportData.delete()
+        healthKit.setImported(nil)
+    }
+
     // MARK: Sunday weigh-in (MK20.2)
 
     /// Saves a typed-in weigh-in. One per day: a second one the same day replaces the first.

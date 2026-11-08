@@ -16,6 +16,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             YourDetailsSection()
+            HealthImportSection()
 
             Section {
                 Picker("Phase", selection: Binding(
@@ -458,5 +459,109 @@ struct YourDetailsSection: View {
         var profile = store.profile
         change(&profile)
         store.setProfile(profile)
+    }
+}
+
+// MARK: - Import Apple Health export (MK20.4)
+
+/// Health app → your picture → Export All Health Data → save to Files → pick it here (the .zip as is,
+/// or export.xml if you unzipped it). Weight, body fat, height, birthday, sex, sleep, resting HR and HRV.
+struct HealthImportSection: View {
+    @EnvironmentObject private var store: PhoneAppStore
+    @State private var picking = false
+    @State private var progress: Double?
+    @State private var message: String?
+    @State private var failed = false
+    @State private var confirmRemove = false
+
+    var body: some View {
+        let imported = store.healthKit.imported
+        Section {
+            if let progress {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Reading your export… \(Int(progress * 100))%")
+                    ProgressView(value: progress)
+                    Text("Big exports take a minute or two — keep the app open.").font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Button {
+                    picking = true
+                } label: {
+                    Label(imported == nil ? "Import Apple Health export" : "Import a newer export", systemImage: "square.and.arrow.down")
+                }
+            }
+            if let message {
+                Text(message).font(.footnote).foregroundStyle(failed ? .red : .secondary)
+            }
+            if let imported, progress == nil {
+                LabeledContent("Last import", value: imported.importedAt.formatted(date: .abbreviated, time: .omitted))
+                Text(imported.summary).font(.footnote).foregroundStyle(.secondary)
+                Button("Remove imported data", role: .destructive) { confirmRemove = true }
+            }
+        } header: {
+            Text("Apple Health export")
+        } footer: {
+            Text("In the Health app: tap your picture → Export All Health Data → Save to Files. Then pick export.zip here (no need to unzip). Brings in weight, body fat, height, birthday, sex, and the last \(HealthExportImporter.recoveryYears) years of sleep, resting heart rate and HRV. A newer import replaces the older one; your typed-in weigh-ins stay.")
+        }
+        // Its own document picker: a second .fileImporter on this screen would clash with the backup restore one.
+        .sheet(isPresented: $picking) {
+            HealthExportPicker(onPick: { url in
+                picking = false
+                startImport(url)
+            }, onCancel: { picking = false })
+            .ignoresSafeArea()
+        }
+        .confirmationDialog("Remove the imported Apple Health data?", isPresented: $confirmRemove, titleVisibility: .visible) {
+            Button("Remove", role: .destructive) {
+                store.removeHealthImport()
+                message = "Imported data removed. Your typed-in weigh-ins and details are kept."
+                failed = false
+            }
+        }
+    }
+
+    private func startImport(_ url: URL) {
+        failed = false
+        message = nil
+        progress = 0
+        Task {
+            do {
+                let data = try await store.importHealthExport(from: url) { value in
+                    Task { @MainActor in if progress != nil { progress = value } }
+                }
+                message = "Imported: " + data.summary
+            } catch {
+                failed = true
+                message = error.localizedDescription
+            }
+            progress = nil
+        }
+    }
+}
+
+/// Files picker for export.zip / export.xml, opened in place (no copy of a multi-GB file).
+struct HealthExportPicker: UIViewControllerRepresentable {
+    var onPick: (URL) -> Void
+    var onCancel: () -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.zip, .xml], asCopy: false)
+        picker.delegate = context.coordinator
+        picker.allowsMultipleSelection = false
+        return picker
+    }
+
+    func updateUIViewController(_ controller: UIDocumentPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick, onCancel: onCancel) }
+
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onPick: (URL) -> Void
+        let onCancel: () -> Void
+        init(onPick: @escaping (URL) -> Void, onCancel: @escaping () -> Void) { self.onPick = onPick; self.onCancel = onCancel }
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { onCancel() }
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            if let url = urls.first { onPick(url) }
+        }
     }
 }

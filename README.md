@@ -1,4 +1,11 @@
-# Splitday MK20.3 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK20.4 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK20.4 — Import an Apple Health export
+- **Settings → Apple Health export → Import**. In the Health app: your picture → **Export All Health Data** → Save to Files, then pick **export.zip** (no need to unzip; an unzipped export.xml works too).
+- Brings in **all your weight and body fat**, **height, birthday and sex** (fills in Your details), and the last **2 years of sleep, resting heart rate and HRV** (HRV as a daily average).
+- Read a chunk at a time straight out of the zip (zip64 OK), so multi-GB exports don't run out of memory; a progress bar shows while it reads.
+- Stored on the iPhone (not in backups or synced to the Watch) and merged everywhere: Body charts, coach, calorie targets, readiness, sleep report, monthly report. Live Apple Health wins on any day it also has; readings already in Health aren't counted twice. Typed-in weigh-ins are kept.
+- Importing again replaces the earlier import; **Remove imported data** takes it out.
 
 ## MK20.3 — Your details, past weights
 - **Settings → Your details**: height (cm), birthday and sex, typed in since Apple Health isn't connected. Shows your age, BMI and maintenance calories.
