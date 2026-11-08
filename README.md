@@ -1,4 +1,10 @@
-# Splitday MK20.2 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK20.3 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK20.3 — Your details, past weights
+- **Settings → Your details**: height (cm), birthday and sex, typed in since Apple Health isn't connected. Shows your age, BMI and maintenance calories.
+  - With no body fat reading, maintenance now uses **Mifflin–St Jeor** (height, weight, age, sex) instead of the rough weight × 22.
+  - Max heart rate falls back to **208 − 0.7 × age** (Tanaka) when you haven't set one, instead of a flat 190.
+- **Past weights**: **Add past weight** on the Body card or in **Settings → Your details → Weight & body fat**. Pick any past date; **Save & add another** keeps the sheet open and steps the date back a week, for entering old readings quickly. The full list is under **All** — tap to edit, swipe to delete.
 
 ## MK20.2 — Sunday weigh-in, matte-glass quote widget
 - **Sunday weigh-in**: type in your weight (kg) and body fat (%) — **Body → Sunday weigh-in → Log**, the card on **Today** on Sundays, or tap the reminder. One entry per day (saving again replaces it); tap an entry to edit, long-press to delete.

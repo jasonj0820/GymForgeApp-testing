@@ -14,6 +14,10 @@ struct CalorieCoach {
     /// Strength trend from PhaseCoach (% over 4 weeks), for the fat-gain advice.
     let strengthChange: Double?
     let miniCutThreshold: Double
+    /// MK20.3: height (cm), age and sex from your details, for the Mifflin–St Jeor estimate.
+    var heightCm: Double? = nil
+    var age: Int? = nil
+    var sex: String? = nil
     var now: Date = .now
 
     private func daysAgo(_ days: Double) -> Date { now.addingTimeInterval(-days * 86_400) }
@@ -37,6 +41,7 @@ struct CalorieCoach {
     enum Method: String {
         case adaptive = "from your intake and weight trend"
         case leanMass = "estimated from your weight and body fat"
+        case details = "estimated from your height, weight, age and sex"
         case weightOnly = "rough estimate from your weight"
     }
 
@@ -72,6 +77,11 @@ struct CalorieCoach {
             // Katch–McArdle: 370 + 21.6 × lean mass.
             let lean = weight * (1 - fat / 100)
             return Maintenance(kcal: (370 + 21.6 * lean) * activityFactor + cardioPerDay, method: .leanMass, loggedDays: logged)
+        }
+        if let heightCm, heightCm > 100, let age, age > 10, sex == "male" || sex == "female" {
+            // Mifflin–St Jeor: 10 × kg + 6.25 × cm − 5 × age + 5 (men) / − 161 (women).
+            let bmr = 10 * weight + 6.25 * heightCm - 5 * Double(age) + (sex == "male" ? 5 : -161)
+            return Maintenance(kcal: bmr * activityFactor + cardioPerDay, method: .details, loggedDays: logged)
         }
         return Maintenance(kcal: weight * 22 * activityFactor + cardioPerDay, method: .weightOnly, loggedDays: logged)
     }

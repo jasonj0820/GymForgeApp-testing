@@ -15,6 +15,8 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            YourDetailsSection()
+
             Section {
                 Picker("Phase", selection: Binding(
                     get: { store.nutritionPhase },
@@ -380,5 +382,81 @@ struct SettingsView: View {
         case .heartbreak: return "Breakup fuel — turns the hurt into reps. Also shown on your Lock Screen during workouts. e.g. “She left. The bar stayed. Pick it up.”"
         case .hardTruth: return "Blunt, no-excuses discipline talk — also shown on your Lock Screen during workouts. e.g. “Discipline is doing it when you don't feel like it.”"
         }
+    }
+}
+
+// MARK: - Your details (MK20.3)
+
+/// Height, birthday and sex, typed in because Apple Health isn't available. Used for BMI, the calorie
+/// estimate (Mifflin–St Jeor when there's no body fat reading) and max heart rate.
+struct YourDetailsSection: View {
+    @EnvironmentObject private var store: PhoneAppStore
+    @State private var heightText = ""
+    @FocusState private var heightFocused: Bool
+
+    var body: some View {
+        let profile = store.profile
+        let latestWeight = store.healthKit.bodyWeight.last?.value
+        Section {
+            HStack {
+                Text("Height")
+                Spacer()
+                TextField("cm", text: $heightText)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 80)
+                    .focused($heightFocused)
+                    .onSubmit(saveHeight)
+                Text("cm").foregroundStyle(.secondary)
+            }
+            if let birth = profile.birthDate {
+                DatePicker("Birthday", selection: Binding(get: { birth }, set: { date in edit { $0.birthDate = date } }),
+                           in: ...Date(), displayedComponents: .date)
+            } else {
+                Button("Set birthday") {
+                    edit { $0.birthDate = Calendar.current.date(byAdding: .year, value: -25, to: .now) }
+                }
+            }
+            Picker("Sex", selection: Binding(get: { profile.sex ?? "" }, set: { value in edit { $0.sex = value.isEmpty ? nil : value } })) {
+                Text("Not set").tag("")
+                Text("Male").tag("male")
+                Text("Female").tag("female")
+            }
+            NavigationLink {
+                WeighInHistoryView()
+            } label: {
+                LabeledContent("Weight & body fat", value: latestWeight.map { "\(GFFormat.kg($0)) kg" } ?? "Add")
+            }
+            if let age = profile.age() {
+                LabeledContent("Age", value: "\(age)")
+            }
+            if let weight = latestWeight, let bmi = profile.bmi(weightKg: weight) {
+                LabeledContent("BMI", value: String(format: "%.1f", bmi))
+            }
+            if let maintenance = store.calorieCoach.adaptiveMaintenance ?? store.calorieCoach.formulaMaintenance {
+                LabeledContent("Maintenance", value: "≈ \(Int(maintenance.kcal.rounded())) kcal")
+            }
+        } header: {
+            Text("Your details")
+        } footer: {
+            Text("Typed in here since Apple Health isn't connected. Height, age and sex set your calorie estimate (when there's no body fat reading) and max heart rate if you haven't set one. Weight and body fat — including past readings — go in Weight & body fat.")
+        }
+        .onAppear { heightText = profile.heightCm.map { GFFormat.kg($0) } ?? "" }
+        .onChange(of: heightFocused) { _, focused in if !focused { saveHeight() } }
+        .onDisappear(perform: saveHeight)
+    }
+
+    private func saveHeight() {
+        let value = Double(heightText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
+        let height = value.flatMap { (100...250).contains($0) ? $0 : nil }
+        if heightText.isEmpty || height != nil, height != store.profile.heightCm {
+            edit { $0.heightCm = height }
+        }
+    }
+
+    private func edit(_ change: (inout UserProfile) -> Void) {
+        var profile = store.profile
+        change(&profile)
+        store.setProfile(profile)
     }
 }

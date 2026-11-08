@@ -526,6 +526,11 @@ public struct UserProfile: Codable, Hashable {
     public var sleepSchedule: SleepSchedule?
     /// MK11.1: running and basketball goals (lifting stays the weekly goal).
     public var trainingGoals: TrainingGoals?
+    /// MK20.3: your details, typed in (Apple Health isn't available). nil = not set.
+    public var heightCm: Double?
+    public var birthDate: Date?
+    /// "male" or "female" — only used for the calorie formula.
+    public var sex: String?
 
     public init(goal: TrainingGoal = .buildMuscle, coachStyle: CoachStyle = .motivating) {
         self.goal = goal
@@ -554,6 +559,19 @@ public struct UserProfile: Codable, Hashable {
     public var reminders: Bool {
         get { remindersEnabled ?? false }
         set { remindersEnabled = newValue }
+    }
+
+    /// Whole years old, from your birthday.
+    public func age(at date: Date = .now) -> Int? {
+        guard let birthDate else { return nil }
+        return Calendar.current.dateComponents([.year], from: birthDate, to: date).year
+    }
+
+    /// Body-mass index for a weight (kg), if your height is set.
+    public func bmi(weightKg: Double) -> Double? {
+        guard let heightCm, heightCm > 100 else { return nil }
+        let m = heightCm / 100
+        return weightKg / (m * m)
     }
 
     public var cluckEnabled: Bool {

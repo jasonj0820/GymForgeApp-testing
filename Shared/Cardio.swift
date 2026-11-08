@@ -255,7 +255,10 @@ public enum HeartZones {
         let yearAgo = now.addingTimeInterval(-365 * 86_400)
         let seen = (logs.filter { $0.startedAt >= yearAgo }.compactMap(\.maxHeartRateBPM)
                     + sessions.filter { $0.startedAt >= yearAgo }.compactMap(\.maxHeartRate)).max() ?? 0
-        return seen >= 150 ? Swift.max(seen, 180) : 190
+        // MK20.3: with your birthday set, use the age formula (Tanaka: 208 − 0.7 × age) as the floor.
+        let fromAge = profile?.age(at: now).map { 208 - 0.7 * Double($0) }
+        if seen >= 150 { return Swift.max(seen, fromAge ?? 180) }
+        return fromAge ?? 190
     }
 }
 

@@ -653,7 +653,8 @@ final class PhoneAppStore: ObservableObject {
         return CalorieCoach(phase: nutritionPhase, isMiniCut: currentPhaseRecord?.isMiniCut == true,
                             weights: healthKit.bodyWeight, fats: healthKit.bodyFat, nutrition: extras.nutrition,
                             logs: workoutLogs, cardio: cardioSessions, proteinTarget: proteinTargetG,
-                            strengthChange: coach.strengthChange, miniCutThreshold: miniCutThreshold)
+                            strengthChange: coach.strengthChange, miniCutThreshold: miniCutThreshold,
+                            heightCm: profile.heightCm, age: profile.age(), sex: profile.sex)
     }
 
     /// Mini-cut time / bulk adding mostly fat: a notification (at most once every 2 weeks each).

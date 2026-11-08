@@ -141,6 +141,7 @@ struct SundayWeighInCard: View {
     @EnvironmentObject private var store: PhoneAppStore
     @State private var editing: WeighIn?
     @State private var adding = false
+    @State private var addingPast = false
     @State private var remind = WeighInReminder.enabled
 
     var body: some View {
@@ -193,9 +194,16 @@ struct SundayWeighInCard: View {
                 }
                 Text("Tap to edit, long-press to delete.").font(.caption2).foregroundStyle(.secondary)
             }
+            HStack {
+                Button { addingPast = true } label: { Label("Add past weight", systemImage: "clock.arrow.circlepath") }
+                Spacer()
+                NavigationLink { WeighInHistoryView() } label: { Text("All (\(store.extras.weighIns.count))") }
+            }
+            .font(.subheadline)
         }
         .card()
         .sheet(isPresented: $adding) { WeighInSheet().environmentObject(store) }
+        .sheet(isPresented: $addingPast) { WeighInSheet(past: true).environmentObject(store) }
         .sheet(item: $editing) { WeighInSheet(existing: $0).environmentObject(store) }
     }
 }
@@ -205,7 +213,10 @@ struct WeighInSheet: View {
     @EnvironmentObject private var store: PhoneAppStore
     @Environment(\.dismiss) private var dismiss
     var existing: WeighIn?
+    /// MK20.3: entering old readings — starts a week back and offers "Save & add another".
+    var past = false
     @State private var date = Date()
+    @State private var savedCount = 0
     @State private var weightText = ""
     @State private var fatText = ""
 
@@ -224,12 +235,23 @@ struct WeighInSheet: View {
             && (weightText.isEmpty || weight != nil) && (fatText.isEmpty || fat != nil)
     }
 
+    /// Saved at the time you pick (now, or 9am on a past day) so charts place it sensibly.
+    private func save() {
+        let cal = Calendar.current
+        let when = cal.isDateInToday(date) ? Date() : (cal.date(bySettingHour: 9, minute: 0, second: 0, of: date) ?? date)
+        store.saveWeighIn(WeighIn(id: existing?.id ?? UUID(), date: when, weightKg: weight, bodyFatPercent: fat))
+    }
+
     var body: some View {
         let lastWeight = store.healthKit.bodyWeight.last?.value
         let lastFat = store.healthKit.bodyFat.last?.value
         NavigationStack {
             Form {
                 DatePicker("Date", selection: $date, in: ...Date(), displayedComponents: .date)
+                if store.extras.weighIn(on: date).map({ $0.id != existing?.id }) == true {
+                    Text("You already have a weigh-in on this day — saving replaces it.")
+                        .font(.footnote).foregroundStyle(.orange)
+                }
                 Section {
                     HStack {
                         Text("Weight")
@@ -252,6 +274,22 @@ struct WeighInSheet: View {
                 } footer: {
                     Text("Grey numbers are your latest reading. Leave one blank if you only have the other. Same conditions each Sunday (morning, after the bathroom, before eating) keeps the trend honest.")
                 }
+                if existing == nil {
+                    Section {
+                        Button("Save & add another") {
+                            save()
+                            savedCount += 1
+                            weightText = ""
+                            fatText = ""
+                            date = Calendar.current.date(byAdding: .day, value: -7, to: date) ?? date
+                        }
+                        .disabled(!canSave)
+                    } footer: {
+                        Text(savedCount > 0
+                             ? "Saved \(savedCount). Next one is set a week earlier — change the date if needed."
+                             : "For old readings: saves this one and starts the next a week earlier.")
+                    }
+                }
                 if existing != nil {
                     Section {
                         Button("Delete weigh-in", role: .destructive) {
@@ -261,22 +299,23 @@ struct WeighInSheet: View {
                     }
                 }
             }
-            .navigationTitle("Sunday weigh-in")
+            .navigationTitle(existing != nil ? "Edit weigh-in" : (past ? "Past weigh-ins" : "Sunday weigh-in"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        // Saved at the time you pick (now, or 9am on a past day) so charts place it sensibly.
-                        let cal = Calendar.current
-                        let when = cal.isDateInToday(date) ? Date() : (cal.date(bySettingHour: 9, minute: 0, second: 0, of: date) ?? date)
-                        store.saveWeighIn(WeighIn(id: existing?.id ?? UUID(), date: when, weightKg: weight, bodyFatPercent: fat))
+                    Button(savedCount > 0 && !canSave ? "Done" : "Save") {
+                        if canSave { save() }
                         dismiss()
                     }
-                    .disabled(!canSave)
+                    .disabled(!canSave && savedCount == 0)
                 }
             }
             .onAppear {
+                if past, existing == nil {
+                    date = Calendar.current.date(byAdding: .day, value: -7, to: .now) ?? .now
+                    return
+                }
                 // Editing, or reopening today's: start from what's saved.
                 let current = existing ?? store.extras.weighIn(on: .now)
                 if let current {
@@ -286,5 +325,46 @@ struct WeighInSheet: View {
                 }
             }
         }
+    }
+}
+
+/// MK20.3: every weigh-in you've typed in, newest first — add old ones, edit, swipe to delete.
+struct WeighInHistoryView: View {
+    @EnvironmentObject private var store: PhoneAppStore
+    @State private var editing: WeighIn?
+    @State private var addingPast = false
+
+    var body: some View {
+        let entries = Array(store.extras.weighIns.reversed())
+        List {
+            Section {
+                Button { addingPast = true } label: { Label("Add past weight", systemImage: "plus.circle.fill") }
+            } footer: {
+                Text("Add old readings one after another — each new one starts a week earlier.")
+            }
+            Section {
+                if entries.isEmpty {
+                    Text("No weigh-ins yet.").foregroundStyle(.secondary)
+                }
+                ForEach(entries) { entry in
+                    Button { editing = entry } label: {
+                        HStack {
+                            Text(entry.date.formatted(.dateTime.day().month(.abbreviated).year()))
+                            Spacer()
+                            Text(WeighInSheet.summary(entry)).foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(.primary)
+                }
+                .onDelete { offsets in
+                    for index in offsets { store.deleteWeighIn(entries[index].id) }
+                }
+            } header: {
+                Text("\(entries.count) weigh-ins")
+            }
+        }
+        .navigationTitle("Weight & body fat")
+        .sheet(isPresented: $addingPast) { WeighInSheet(past: true).environmentObject(store) }
+        .sheet(item: $editing) { WeighInSheet(existing: $0).environmentObject(store) }
     }
 }
