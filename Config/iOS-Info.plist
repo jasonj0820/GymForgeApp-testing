@@ -30,7 +30,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Splitday uses the camera for progress photos, which are stored only inside the app.</string>
 	<key>NSFaceIDUsageDescription</key>

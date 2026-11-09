@@ -9,6 +9,8 @@
 # or on the same Wi-Fi with "Connect via network" ticked in Xcode → Window → Devices and Simulators.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# A new build number every build, so iOS re-reads the widget list (new widgets show up without a restart).
+BUILD_NUMBER="$(date +%Y%m%d%H%M)"
 
 DEVICE="${1:-${SPLITDAY_DEVICE:-}}"
 if [[ -z "$DEVICE" ]]; then
@@ -26,6 +28,7 @@ xcodebuild \
   -destination 'generic/platform=iOS' \
   -derivedDataPath "$DD" \
   -allowProvisioningUpdates \
+  CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   build -quiet
 
 APP="$DD/Build/Products/Release-iphoneos/GymForge.app"

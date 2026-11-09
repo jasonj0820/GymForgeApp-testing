@@ -7,6 +7,7 @@
 - Keeps up on its own while the app sleeps (each upcoming phase is pre-planned), then goes back to quotes when the program ends.
 - Buttons run inside the app. If iOS has closed the app, the widget says to open it.
 - Unlike the Live Activity, this widget names the step — only add it where you're happy for that to show.
+- It's under **Splitday** in the widget gallery. Every build now gets its own build number (date + time), so iOS picks up new widgets; before, the build number never changed and iOS kept showing its old widget list until the phone restarted.
 
 ## MK20.5 — Stamina timer on the Dynamic Island
 - More Training → **Stamina** runs now show on the **Dynamic Island and Lock Screen** like the other More Training timers: counting down to your goal, then counting up your total active time ("Goal reached"); during a cool-down it counts down the cool-down, with your active time and pauses underneath. Ends when you finish or cancel.

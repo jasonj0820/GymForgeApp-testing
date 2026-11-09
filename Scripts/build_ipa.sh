@@ -8,6 +8,8 @@
 # Output: build/ipa/Splitday-<version>.ipa
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# A new build number every build, so iOS re-reads the widget list (new widgets show up without a restart).
+BUILD_NUMBER="$(date +%Y%m%d%H%M)"
 
 VERSION_NAME="${VERSION_NAME:-MK20}"
 OUT="build/ipa"
@@ -30,6 +32,7 @@ xcodebuild \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE" \
+  CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   archive "${SIGN_FLAGS[@]}" | { if command -v xcpretty >/dev/null; then xcpretty; else cat; fi; } || true
 
 APP="$ARCHIVE/Products/Applications/GymForge.app"
