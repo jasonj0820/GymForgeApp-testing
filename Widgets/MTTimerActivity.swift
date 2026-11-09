@@ -24,6 +24,9 @@ struct MTTimerAttributes: ActivityAttributes {
         var isInterval: Bool
         /// MK20.5: a stamina run (goal countdown → count-up, cool-downs). Still shown only as "Timer".
         var stamina: Bool? = nil
+        /// MK20.6.1: the step's name, for the More Training widget only (never drawn on the Lock Screen
+        /// card). Lets the widget work from the Live Activity when the App Group isn't available.
+        var widgetTitle: String? = nil
     }
     var startedAt: Date
 
@@ -182,6 +185,52 @@ enum MTWidgetAction: String {
 enum MTWidgetStore {
     static let kind = "MoreTrainingTimer"
     private static let key = "mt.widget.snapshot"
+
+    /// What the widget should show: the App Group snapshot, or — if the App Group isn't shared (some
+    /// sideloading tools drop it) — one built from the running More Training Live Activity.
+    static func current(now: Date = .now) -> MTWidgetSnapshot? {
+        if let saved = load(), saved.endsAt.map({ $0 > now }) ?? true { return saved }
+        guard let activity = Activity<MTTimerAttributes>.activities.first(where: { [.active, .stale].contains($0.activityState) }) else {
+            return nil
+        }
+        return fromLiveActivity(activity.content.state, staleDate: activity.content.staleDate, now: now)
+    }
+
+    static func fromLiveActivity(_ state: MTTimerAttributes.ContentState, staleDate: Date?, now: Date) -> MTWidgetSnapshot {
+        typealias Control = MTWidgetSnapshot.Control
+        let title = state.widgetTitle ?? "Timer"
+        let paused = state.pausedRemaining != nil
+        var steps = [MTWidgetSnapshot.Step(date: now, title: title, state: state)]
+        if !paused, let stale = staleDate ?? state.countdownTo, stale > now {
+            // What to show once this phase is over, until the app updates it.
+            var later = state
+            later.countdownTo = nil
+            if state.isInterval {
+                later.label = "Next step"
+                later.next = "Open the app to see where you're at"
+            } else if state.stamina == true {
+                later.label = state.label == "Cool-down" ? "Cool-down over" : "Goal reached"
+            } else {
+                later.label = "Limit reached"
+            }
+            steps.append(.init(date: stale, title: title, state: later))
+        }
+        let controls: [Control]
+        if state.isInterval {
+            controls = [paused ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
+                               : Control(action: MTWidgetAction.pause.rawValue, label: "Pause", icon: "pause.fill"),
+                        Control(action: MTWidgetAction.skip.rawValue, label: state.label == "Rest" ? "Skip rest" : "Skip", icon: "forward.fill"),
+                        Control(action: MTWidgetAction.next.rawValue, label: "Next", icon: "forward.end.fill")]
+        } else if state.stamina == true {
+            controls = [state.label == "Cool-down" ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
+                                                   : Control(action: MTWidgetAction.coolDown.rawValue, label: "Cool down", icon: "pause.fill"),
+                        Control(action: MTWidgetAction.finish.rawValue, label: "Finish", icon: "checkmark")]
+        } else {
+            controls = [Control(action: MTWidgetAction.stop.rawValue, label: "Stop", icon: "stop.fill")]
+        }
+        let kind: MTWidgetSnapshot.Kind = state.isInterval ? .interval : (state.stamina == true ? .stamina : .timed)
+        return MTWidgetSnapshot(kind: kind, program: nil, steps: steps, endsAt: state.isInterval ? state.endsAt : nil, controls: controls)
+    }
 
     static func load() -> MTWidgetSnapshot? {
         guard let data = CluckStore.defaults.data(forKey: key) else { return nil }

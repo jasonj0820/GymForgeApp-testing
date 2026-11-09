@@ -1,5 +1,6 @@
 import ActivityKit
 import Foundation
+import WidgetKit
 
 /// MK17: starts, updates and ends the More Training timer Live Activity from the vault's state.
 /// Called after every save while unlocked, so it follows start / pause / resume / skip / stop.
@@ -16,6 +17,7 @@ enum MTLiveTimer {
             Task {
                 for activity in showing { await activity.end(nil, dismissalPolicy: .immediate) }
                 PhoneAppStore.shared.refreshCluck()   // MK19.1: Sergeant Cluck's card comes straight back
+                reloadWidget()
             }
             return
         }
@@ -24,14 +26,41 @@ enum MTLiveTimer {
         if let current = running.first {
             for other in running.dropFirst() { Task { await other.end(nil, dismissalPolicy: .immediate) } }
             guard current.content.state != plan.state || current.content.staleDate != plan.stale else { return }
-            Task { await current.update(content) }
+            Task {
+                await current.update(content)
+                reloadWidget()
+            }
         } else {
             _ = try? Activity.request(attributes: MTTimerAttributes(startedAt: plan.start), content: content, pushType: nil)
+            reloadWidget()
         }
+    }
+
+    /// MK20.6.1: the widget may read the Live Activity (when the App Group isn't shared), so refresh it
+    /// once the card has changed.
+    private static func reloadWidget() {
+        WidgetCenter.shared.reloadTimelines(ofKind: MTWidgetStore.kind)
     }
 
     /// What the card shows now, when it goes stale (phase end / time limit), and when the session began.
     nonisolated static func content(for data: MTData, now: Date) -> (state: State, stale: Date?, start: Date)? {
+        guard var result = baseContent(for: data, now: now) else { return nil }
+        result.state.widgetTitle = widgetTitle(for: data)   // MK20.6.1: only the widget reads it
+        return result
+    }
+
+    /// The step's name for the More Training widget ("HTE + NIR", "PAC", "Stamina").
+    nonisolated static func widgetTitle(for data: MTData) -> String? {
+        if let run = data.activeInterval, let phase = run.currentPhase, phase.stepIndex < run.steps.count {
+            let step = run.steps[phase.stepIndex]
+            return step.type.shortTitle + (step.nir == true ? " + NIR" : "")
+        }
+        if data.activeStamina != nil { return "Stamina" }
+        if let active = data.activeSession { return active.type.shortTitle + (active.nir == true ? " + NIR" : "") }
+        return nil
+    }
+
+    nonisolated private static func baseContent(for data: MTData, now: Date) -> (state: State, stale: Date?, start: Date)? {
         if let run = data.activeInterval, let phase = run.currentPhase {
             let rounds = phase.stepIndex < run.steps.count ? max(run.steps[phase.stepIndex].rounds, 1) : 1
             let label = phase.kind == .rest ? "Rest" : (rounds > 1 ? "Work · \(phase.round) of \(rounds)" : "Work")

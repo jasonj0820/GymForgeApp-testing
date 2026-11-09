@@ -217,7 +217,7 @@ struct MTTrainingProvider: TimelineProvider {
                 return MTTrainingEntry(date: date, quote: QuoteSettings.widgetQuote(at: date))
             }
         }
-        guard let snapshot = MTWidgetStore.load(), !snapshot.steps.isEmpty,
+        guard let snapshot = MTWidgetStore.current(now: now), !snapshot.steps.isEmpty,
               snapshot.endsAt.map({ $0 > now }) ?? true else {
             return quotes(from: now, count: 48)
         }

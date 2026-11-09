@@ -6,6 +6,7 @@
   - Stamina: **Cool down / Resume**, **Finish**. Open timers: **Stop**.
 - Keeps up on its own while the app sleeps (each upcoming phase is pre-planned), then goes back to quotes when the program ends.
 - Buttons run inside the app. If iOS has closed the app, the widget says to open it.
+- If the App Group isn't shared (some sideloading tools drop it — Sergeant Cluck's widget then says "Open GymForge once…"), the widget reads the running timer from the Live Activity instead. It then shows the current phase only, and says to open the app once a phase ends while the app is asleep.
 - Unlike the Live Activity, this widget names the step — only add it where you're happy for that to show.
 - It's under **Splitday** in the widget gallery. Every build now gets its own build number (date + time), so iOS picks up new widgets; before, the build number never changed and iOS kept showing its old widget list until the phone restarted.
 
