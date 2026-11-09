@@ -43,6 +43,7 @@ struct NextQuoteIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         QuoteSettings.offset += 1
         WidgetCenter.shared.reloadTimelines(ofKind: QuoteSettings.widgetKind)
+        WidgetCenter.shared.reloadTimelines(ofKind: MTWidgetStore.kind)   // MK20.6: its quote too
         return .result()
     }
 }
@@ -158,4 +159,147 @@ struct QuoteWidgetView: View {
     }
     private var panelPadding: CGFloat { family == .systemSmall ? 8 : 14 }
     private var cornerRadius: CGFloat { family == .systemSmall ? 14 : 18 }
+}
+
+// MARK: - More Training widget (MK20.6)
+
+/// For StandBy (and the Home Screen): the More Training timer with Pause / Skip / Next while one runs,
+/// otherwise the motivation quote.
+struct MTTrainingWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: MTWidgetStore.kind, provider: MTTrainingProvider()) { entry in
+            MTTrainingWidgetView(entry: entry)
+                .containerBackground(for: .widget) {
+                    if entry.timer != nil {
+                        LinearGradient(colors: [Color(red: 0.07, green: 0.06, blue: 0.14), .black],
+                                       startPoint: .top, endPoint: .bottom)
+                    } else {
+                        QuoteBackground(topic: entry.quote.topic)
+                    }
+                }
+        }
+        .configurationDisplayName("More Training")
+        .description("Your More Training timer with Pause, Skip and Next while it runs; a motivation quote the rest of the time. Made for StandBy.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+struct MTTrainingEntry: TimelineEntry {
+    let date: Date
+    let quote: Quote
+    /// Set while a timer runs.
+    var timer: Running?
+
+    struct Running {
+        var step: MTWidgetSnapshot.Step
+        var program: String?
+        var controls: [MTWidgetSnapshot.Control]
+        var needsApp: Bool
+    }
+}
+
+struct MTTrainingProvider: TimelineProvider {
+    func placeholder(in context: Context) -> MTTrainingEntry { MTTrainingEntry(date: .now, quote: QuoteLibrary.all[0]) }
+
+    func getSnapshot(in context: Context, completion: @escaping (MTTrainingEntry) -> Void) {
+        completion(entries(now: .now).first ?? MTTrainingEntry(date: .now, quote: QuoteSettings.widgetQuote()))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<MTTrainingEntry>) -> Void) {
+        completion(Timeline(entries: entries(now: .now), policy: .atEnd))
+    }
+
+    /// Timer running: one entry per upcoming phase, then quotes after it ends. Otherwise quotes every 5 min.
+    private func entries(now: Date) -> [MTTrainingEntry] {
+        func quotes(from start: Date, count: Int) -> [MTTrainingEntry] {
+            (0..<count).map { i in
+                let date = start.addingTimeInterval(Double(i * 5 * 60))
+                return MTTrainingEntry(date: date, quote: QuoteSettings.widgetQuote(at: date))
+            }
+        }
+        guard let snapshot = MTWidgetStore.load(), !snapshot.steps.isEmpty,
+              snapshot.endsAt.map({ $0 > now }) ?? true else {
+            return quotes(from: now, count: 48)
+        }
+        // The step showing now is the last one that has started.
+        let current = snapshot.steps.lastIndex { $0.date <= now } ?? 0
+        var result = snapshot.steps[current...].map { step in
+            MTTrainingEntry(date: max(step.date, now), quote: QuoteSettings.widgetQuote(at: step.date),
+                            timer: .init(step: step, program: snapshot.program, controls: snapshot.controls, needsApp: snapshot.needsApp))
+        }
+        if let ends = snapshot.endsAt { result += quotes(from: ends, count: 24) }
+        return result
+    }
+}
+
+struct MTTrainingWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: MTTrainingEntry
+
+    var body: some View {
+        if let timer = entry.timer {
+            timerView(timer)
+                .widgetURL(MTTimerLiveActivity.openURL)
+        } else {
+            QuoteWidgetView(entry: QuoteEntry(date: entry.date, quote: entry.quote))
+        }
+    }
+
+    private func timerView(_ timer: MTTrainingEntry.Running) -> some View {
+        let state = timer.step.state
+        let small = family == .systemSmall
+        return VStack(alignment: .leading, spacing: small ? 4 : 6) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(timer.step.title)
+                        .font(small ? .headline : .title3.bold())
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text(state.pausedRemaining != nil ? "Paused · \(state.label)" : state.label)
+                        .font(.caption)
+                        .foregroundStyle(.indigo)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if !small, let program = timer.program {
+                    Text(program).font(.caption2).foregroundStyle(.white.opacity(0.5)).lineLimit(1)
+                }
+            }
+            MTTimerClock(state: state, stale: false)
+                .font(.system(size: small ? 38 : 46, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(.white)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            if !small, let next = state.next {
+                Text(next).font(.caption).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            if timer.needsApp {
+                Text("Open the app to control the timer").font(.caption2).foregroundStyle(.orange)
+            } else {
+                HStack(spacing: small ? 6 : 8) {
+                    ForEach(timer.controls, id: \.self) { control in
+                        Button(intent: MTWidgetControlIntent(MTWidgetAction(rawValue: control.action) ?? .pause)) {
+                            Group {
+                                if small {
+                                    Image(systemName: control.icon)
+                                } else {
+                                    Label(control.label, systemImage: control.icon)
+                                }
+                            }
+                            .font(.caption.bold())
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, minHeight: small ? 30 : 34)
+                            .background(.white.opacity(0.14), in: Capsule())
+                            .foregroundStyle(.white)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(control.label)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
 }

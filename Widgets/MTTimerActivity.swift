@@ -1,4 +1,5 @@
 import ActivityKit
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -139,5 +140,90 @@ struct MTTimerLockScreen: View {
         if stale { return state.isInterval ? "Open the app to see where you're at" : "Stop when you're ready" }
         if let next = state.next { return next }
         return state.endsAt.map { "Ends \($0.formatted(date: .omitted, time: .shortened))" }
+    }
+}
+
+// MARK: - More Training widget (MK20.6): shared between the app and the widget extension
+
+/// What the More Training widget shows, written by the app to the App Group on every More Training save.
+/// Unlike the Live Activity it names the step (e.g. "HTE + NIR") — the widget is opt-in, you add it yourself.
+struct MTWidgetSnapshot: Codable, Equatable {
+    enum Kind: String, Codable { case interval, timed, stamina }
+
+    /// One stretch of the timeline: from `date`, show this.
+    struct Step: Codable, Equatable {
+        var date: Date
+        var title: String
+        var state: MTTimerAttributes.ContentState
+    }
+
+    struct Control: Codable, Equatable, Hashable {
+        var action: String      // MTWidgetAction raw value
+        var label: String
+        var icon: String
+    }
+
+    var kind: Kind
+    /// Program name ("NIR + PAC"), if any.
+    var program: String?
+    /// Now, then each upcoming phase (intervals) or the goal / cool-down end (stamina).
+    var steps: [Step]
+    /// After this the timer is over (show the quote again). nil = open-ended.
+    var endsAt: Date?
+    var controls: [Control]
+    /// A button was tapped but the app had been closed by iOS — open it to carry on.
+    var needsApp: Bool = false
+}
+
+enum MTWidgetAction: String {
+    case pause, skip, next, coolDown, resume, finish, stop
+}
+
+enum MTWidgetStore {
+    static let kind = "MoreTrainingTimer"
+    private static let key = "mt.widget.snapshot"
+
+    static func load() -> MTWidgetSnapshot? {
+        guard let data = CluckStore.defaults.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(MTWidgetSnapshot.self, from: data)
+    }
+
+    /// Saves (nil clears) and reloads the widget — only when something actually changed.
+    static func save(_ snapshot: MTWidgetSnapshot?) {
+        guard snapshot != load() else { return }
+        if let snapshot, let data = try? JSONEncoder().encode(snapshot) {
+            CluckStore.defaults.set(data, forKey: key)
+        } else {
+            CluckStore.defaults.removeObject(forKey: key)
+        }
+        WidgetCenter.shared.reloadTimelines(ofKind: kind)
+    }
+}
+
+/// The widget's Pause / Skip / Next buttons. A LiveActivityIntent, so iOS runs it inside the app (where
+/// More Training's timer lives), not in the widget extension.
+struct MTWidgetControlIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource = "Timer control"
+    static var isDiscoverable = false
+
+    @Parameter(title: "Action") var action: String
+
+    init() {}
+    init(_ action: MTWidgetAction) { self.action = action.rawValue }
+
+    func perform() async throws -> some IntentResult {
+        await MTWidgetControl.run(action)
+        return .result()
+    }
+}
+
+/// Set by the app at launch; does nothing in the widget extension.
+@MainActor
+enum MTWidgetControl {
+    static var handler: ((MTWidgetAction) -> Void)?
+
+    static func run(_ raw: String) {
+        guard let action = MTWidgetAction(rawValue: raw) else { return }
+        handler?(action)
     }
 }

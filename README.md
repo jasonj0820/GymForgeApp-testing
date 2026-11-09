@@ -1,4 +1,12 @@
-# Splitday MK20.5 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK20.6 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK20.6 — More Training widget (StandBy)
+- New **More Training** widget (small / medium; made for StandBy). No timer running → the motivation quote. Timer running → the step you're on (e.g. "HTE + NIR", "PAC"), Work / Rest and round, the live countdown, and buttons:
+  - Programs: **Pause / Resume**, **Skip** (this phase, e.g. the rest), **Next** (straight to the next step, dropping the rest of this one's rounds).
+  - Stamina: **Cool down / Resume**, **Finish**. Open timers: **Stop**.
+- Keeps up on its own while the app sleeps (each upcoming phase is pre-planned), then goes back to quotes when the program ends.
+- Buttons run inside the app. If iOS has closed the app, the widget says to open it.
+- Unlike the Live Activity, this widget names the step — only add it where you're happy for that to show.
 
 ## MK20.5 — Stamina timer on the Dynamic Island
 - More Training → **Stamina** runs now show on the **Dynamic Island and Lock Screen** like the other More Training timers: counting down to your goal, then counting up your total active time ("Goal reached"); during a cool-down it counts down the cool-down, with your active time and pauses underneath. Ends when you finish or cancel.

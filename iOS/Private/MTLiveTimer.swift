@@ -8,6 +8,7 @@ enum MTLiveTimer {
     typealias State = MTTimerAttributes.ContentState
 
     static func sync(_ data: MTData, now: Date = .now) {
+        MTWidgetStore.save(widgetSnapshot(for: data, now: now))   // MK20.6: the More Training widget
         let running = Activity<MTTimerAttributes>.activities
         guard let plan = content(for: data, now: now), ActivityAuthorizationInfo().areActivitiesEnabled else {
             let showing = running.filter { [.active, .stale].contains($0.activityState) }
@@ -69,6 +70,107 @@ enum MTLiveTimer {
             return (State(label: limit == nil ? "Timer" : "Limit reached", countUpFrom: active.start, isInterval: false), nil, active.start)
         }
         return nil
+    }
+
+    // MARK: More Training widget (MK20.6)
+
+    /// The widget's view of the timer: the step you're on, upcoming phases (so it keeps up while the app
+    /// sleeps), and which buttons make sense right now. nil when no timer is running.
+    nonisolated static func widgetSnapshot(for data: MTData, now: Date) -> MTWidgetSnapshot? {
+        typealias Step = MTWidgetSnapshot.Step
+        typealias Control = MTWidgetSnapshot.Control
+        if let run = data.activeInterval, let phase = run.currentPhase {
+            func title(_ stepIndex: Int) -> String {
+                guard stepIndex < run.steps.count else { return run.name }
+                let step = run.steps[stepIndex]
+                return step.type.shortTitle + (step.nir == true ? " + NIR" : "")
+            }
+            guard let current = content(for: data, now: now) else { return nil }
+            var steps = [Step(date: now, title: title(phase.stepIndex), state: current.state)]
+            var endsAt: Date?
+            if !run.isPaused, var start = run.phaseEnd() {
+                // Each later phase, as if the app had moved on to it (up to 40 ahead).
+                for index in (run.index + 1)..<min(run.phases.count, run.index + 41) {
+                    var future = data
+                    var next = run
+                    next.index = index
+                    next.phaseStartedAt = start
+                    future.activeInterval = next
+                    if let state = content(for: future, now: start)?.state {
+                        steps.append(Step(date: start, title: title(run.phases[index].stepIndex), state: state))
+                    }
+                    start = start.addingTimeInterval(run.phases[index].seconds)
+                }
+                endsAt = run.index + 41 >= run.phases.count ? start : nil
+            }
+            let paused = run.isPaused
+            return MTWidgetSnapshot(kind: .interval, program: run.name, steps: steps, endsAt: endsAt, controls: [
+                paused ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
+                       : Control(action: MTWidgetAction.pause.rawValue, label: "Pause", icon: "pause.fill"),
+                Control(action: MTWidgetAction.skip.rawValue, label: phase.kind == .rest ? "Skip rest" : "Skip", icon: "forward.fill"),
+                Control(action: MTWidgetAction.next.rawValue, label: "Next", icon: "forward.end.fill")
+            ])
+        }
+        if let run = data.activeStamina {
+            guard let current = content(for: data, now: now) else { return nil }
+            var steps = [Step(date: now, title: "Stamina", state: current.state)]
+            if let stale = current.stale, stale > now {
+                // Goal reached / cool-down over, shown on time even if the app is asleep.
+                var later = current.state
+                if run.isCoolingDown {
+                    later.label = "Cool-down over"
+                    later.countdownTo = nil
+                    later.next = "Resume when you're ready"
+                } else {
+                    later.label = "Goal reached"
+                    later.countdownTo = nil
+                }
+                steps.append(Step(date: stale, title: "Stamina", state: later))
+            }
+            return MTWidgetSnapshot(kind: .stamina, program: nil, steps: steps, endsAt: nil, controls: [
+                run.isCoolingDown ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
+                                  : Control(action: MTWidgetAction.coolDown.rawValue, label: "Cool down", icon: "pause.fill"),
+                Control(action: MTWidgetAction.finish.rawValue, label: "Finish", icon: "checkmark")
+            ])
+        }
+        if let active = data.activeSession, let current = content(for: data, now: now) {
+            var steps = [Step(date: now, title: active.type.shortTitle + (active.nir == true ? " + NIR" : ""), state: current.state)]
+            if let stale = current.stale, stale > now {
+                var later = current.state
+                later.label = "Limit reached"
+                later.countdownTo = nil
+                steps.append(Step(date: stale, title: steps[0].title, state: later))
+            }
+            return MTWidgetSnapshot(kind: .timed, program: nil, steps: steps, endsAt: nil, controls: [
+                Control(action: MTWidgetAction.stop.rawValue, label: "Stop", icon: "stop.fill")
+            ])
+        }
+        return nil
+    }
+
+    /// A widget button, run inside the app. If iOS had closed the app (More Training locked), the widget
+    /// says to open it instead.
+    static func handleWidget(_ action: MTWidgetAction) {
+        let vault = MTVault.shared
+        guard vault.isUnlocked else {
+            if var snapshot = MTWidgetStore.load() {
+                snapshot.needsApp = true
+                MTWidgetStore.save(snapshot)
+            }
+            return
+        }
+        vault.advanceInterval()
+        switch action {
+        case .pause: vault.pauseInterval()
+        case .resume:
+            if vault.data.activeInterval != nil { vault.resumeInterval() } else { vault.staminaResume() }
+        case .skip: vault.skipPhase()
+        case .next: vault.nextStep()
+        case .coolDown: vault.staminaCoolDown()
+        case .finish: vault.finishStamina()
+        case .stop: vault.stopTimed()
+        }
+        MTWidgetStore.save(widgetSnapshot(for: vault.data, now: .now))
     }
 
     /// Generic on purpose ("Then work, round 3", never the session type).

@@ -310,6 +310,18 @@ final class MTVault: ObservableObject {
         scheduleIntervalAlerts()
     }
 
+    /// MK20.6: straight on to the next step (exercise) — the rest of this step's rounds and rests are dropped.
+    func nextStep() {
+        guard var run = data.activeInterval, let phase = run.currentPhase else { return }
+        var i = run.index + 1
+        while i < run.phases.count, run.phases[i].stepIndex == phase.stepIndex {
+            run.phases[i].seconds = 0
+            i += 1
+        }
+        data.activeInterval = run
+        skipPhase()
+    }
+
     /// Back to the phase you skipped, with the time it had left; drops any session the skip saved.
     func undoSkip() {
         guard let undo = skipUndo, data.activeSession == nil else { return }

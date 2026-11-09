@@ -15,6 +15,11 @@ struct GymForgeApp: App {
     @State private var showWakeUp = false
     @State private var showWeighIn = false
 
+    init() {
+        // MK20.6: the More Training widget's buttons run here (LiveActivityIntent → app process).
+        MTWidgetControl.handler = { MTLiveTimer.handleWidget($0) }
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
