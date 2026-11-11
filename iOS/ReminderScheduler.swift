@@ -108,11 +108,15 @@ enum ReminderScheduler {
     }
 }
 
-/// MK20.2: "Sunday weigh-in" at 9:00am every Sunday you haven't logged one yet (the next 8 Sundays,
+/// MK20.2: "Sunday weigh-in" at 9:00am every Sunday you haven't logged one yet (the next 4 Sundays,
 /// replanned each time the app opens). Tapping it opens the weigh-in sheet.
+/// MK20.7: 4 Sundays, not 8 — iOS only keeps 64 pending notifications per app and a long More Training
+/// program can use 40 of them.
 @MainActor
 enum WeighInReminder {
     static let enabledKey = "weighin.remind"
+    private static let planned = 4
+    /// All 8 old slots are cleared so reminders planned by an earlier build don't linger.
     private static let ids = (0..<8).map { "gymforge.weighin.\($0)" }
     static let hour = 9, minute = 0
 
@@ -128,7 +132,7 @@ enum WeighInReminder {
         let calendar = Calendar.current
         var next = WeighIn.sunday(onOrBefore: now, calendar: calendar)
         var index = 0
-        while index < ids.count {
+        while index < planned {
             defer { next = calendar.date(byAdding: .day, value: 7, to: next) ?? next.addingTimeInterval(7 * 86_400) }
             guard let fire = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: next), fire > now,
                   !weighIns.contains(where: { calendar.isDate($0.date, inSameDayAs: next) }) else { continue }

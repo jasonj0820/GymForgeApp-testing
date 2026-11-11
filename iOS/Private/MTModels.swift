@@ -417,6 +417,9 @@ struct MTData: Codable {
     }
 
     var isBusy: Bool { activeSession != nil || activeInterval != nil }
+    /// MK20.7: any timer at all, stamina runs included — More Training stays open in the background for
+    /// these, so the Lock Screen card and the widget's buttons keep working.
+    var timerRunning: Bool { isBusy || activeStamina != nil }
 
     /// Last pressure/tension used for a type (pre-fills the next session).
     func lastPressure(for type: MTType) -> Double? {

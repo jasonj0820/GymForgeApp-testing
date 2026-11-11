@@ -88,7 +88,7 @@ final class MTVault: ObservableObject {
     /// Leaving the app: stays unlocked while a timer runs (so it's still open when you come back and the
     /// screen locking doesn't end it); otherwise locks as before. Returns false if it locked.
     func stayOpenForTimer(now: Date = .now) -> Bool {
-        guard isUnlocked, data.isBusy else { return false }
+        guard isUnlocked, data.timerRunning else { return false }
         save()
         backgroundedAt = now
         timerEndsAt = MTLiveTimer.content(for: data, now: now)?.state.endsAt
@@ -99,9 +99,11 @@ final class MTVault: ObservableObject {
     func returnedToApp(now: Date = .now) {
         guard isUnlocked, let away = backgroundedAt else { return }
         backgroundedAt = nil
+        if unsavedChanges { save() }   // changes made from the widget while the iPhone was locked
         advanceInterval(now: now)
+        tickStamina(now: now)
         let free = max(away, timerEndsAt ?? away)
-        if !data.isBusy, now.timeIntervalSince(free) > 10 * 60 { lock() }
+        if !data.timerRunning, now.timeIntervalSince(free) > 10 * 60 { lock() }
     }
 
     // MARK: All Day Stretcher (Phallosan Forte)
@@ -910,16 +912,24 @@ final class MTVault: ObservableObject {
         data = try JSONDecoder.gymForge.decode(MTData.self, from: try readEncrypted(Self.dataURL))
     }
 
+    /// MK20.7: a save that couldn't be written yet. The file and its key are only readable while the iPhone
+    /// is unlocked, so a widget button pressed on the Lock Screen / StandBy changes the timer in memory
+    /// first and is written the next time the app is opened.
+    private var unsavedChanges = false
+
     private func save() {
         guard isUnlocked else { return }
         do {
             let bytes = try JSONEncoder.gymForge.encode(data)
             try writeEncrypted(bytes, to: Self.dataURL)
-            rescheduleTrainingReminder()
-            MTLiveTimer.sync(data)
+            unsavedChanges = false
         } catch {
+            unsavedChanges = true
             print("More Training save failed: \(error)")
         }
+        // Even when the write has to wait, the card, the widget and the reminders follow the timer.
+        rescheduleTrainingReminder()
+        MTLiveTimer.sync(data)
     }
 
     private func writeEncrypted(_ bytes: Data, to url: URL) throws {

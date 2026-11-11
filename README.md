@@ -1,4 +1,13 @@
-# Splitday MK20.6 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK20.7 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK20.7 — widgets work on sideloaded installs, bedtime card yields to the timer
+- **Why the More Training widget only showed the quote**: Sideloadly / AltStore / SideStore re-sign the app with a *renamed* App Group, so the name written in the code never matched and no widget could see the app's data. The app and widgets now look up the group this install was really given (the built-in name, else the one in the signing profile). Settings saved under the old name are carried over. This also connects Sergeant Cluck's widget and the Motivation widget's topic settings.
+- **No App Group at all?** The Lock Screen timer card hands its state to the widget from inside the widget extension (current step only).
+- **More Training → Settings → Widget** shows whether shared storage is connected and when the widget last refreshed.
+- **Bedtime card vs timer**: while a More Training timer runs, the bedtime card is held back and comes back when the timer ends (wind-down and bedtime notifications still arrive). The timer card also ranks first.
+- **Stamina runs keep More Training open in the background**, like the other timers, so the widget's Cool down / Finish buttons work from StandBy.
+- **Widget buttons on a locked iPhone**: the timer changes straight away (card, widget, alerts); the encrypted file is written when you next open the app, because it can only be written while the iPhone is unlocked.
+- Sunday weigh-in reminders are planned 4 weeks ahead instead of 8 (iOS keeps at most 64 pending notifications per app).
 
 ## MK20.6 — More Training widget (StandBy)
 - New **More Training** widget (small / medium; made for StandBy). No timer running → the motivation quote. Timer running → the step you're on (e.g. "HTE + NIR", "PAC"), Work / Rest and round, the live countdown, and buttons:

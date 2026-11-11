@@ -38,10 +38,10 @@ struct MTRootView: View {
         }
         .onAppear {
             MTPrivacyCover.shared.start()
-            keepAwake(vault.data.isBusy)
+            keepAwake(vault.data.timerRunning)
         }
         // The screen doesn't auto-lock while a timer runs, open or minimised.
-        .onChange(of: vault.data.isBusy) { _, busy in keepAwake(busy) }
+        .onChange(of: vault.data.timerRunning) { _, busy in keepAwake(busy) }
         .onDisappear { keepAwake(false) }
         .onChange(of: vault.isUnlocked) { _, unlocked in
             if !unlocked { dismiss() }
