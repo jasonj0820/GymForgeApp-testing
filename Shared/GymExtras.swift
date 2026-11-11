@@ -369,7 +369,7 @@ public enum DailyRecap {
         } else {
             goals -= 1
             lines.append("Protein \(Int(proteinG)) g (no target yet)")
-            advice.append("Log your weight in Apple Health to get a protein target.")
+            advice.append("Log your weight on the Body tab to get a protein target.")
         }
 
         lines.append(creatine ? "Creatine ✓" : "Creatine ✗")

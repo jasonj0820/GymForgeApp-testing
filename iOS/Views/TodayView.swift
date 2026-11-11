@@ -490,11 +490,14 @@ struct HomeWeekCard: View {
             }
             GymWeekRow(logs: store.workoutLogs, restDays: store.extras.restDays, plans: store.extras.dayPlans)
 
-            // Streak, your running / basketball goals, and the way in to change them.
+            // Streak, the last 4 weeks, your running / basketball goals, and the way in to change them.
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     if stats.streakWeeks > 0 {
                         chip("\(stats.streakWeeks)-week streak", icon: "flame.fill", color: .orange)
+                    }
+                    if stats.last4WeeksTarget > 0 {
+                        chip("Last 4 weeks \(stats.last4WeeksCount)/\(stats.last4WeeksTarget)", icon: nil, color: .secondary)
                     }
                     ForEach(goals) { goal in
                         chip("\(goal.title) \(goal.text)", icon: goal.met ? "checkmark" : nil, color: goal.met ? .green : .secondary)
@@ -562,7 +565,8 @@ struct HomeHeadsUpCard: View {
         let phaseAlert = phase.muscleWarning ?? phase.deloadSuggestion ?? phase.miniCutPrompt
         let insight = store.coachInsights.first { $0.kind != .recovery || readiness == nil }
         let weighIn = Calendar.current.component(.weekday, from: .now) == 1 && store.extras.weighIn(on: .now) == nil
-        let planWeek = store.weekNeedsPlan && store.todayPlanKind == nil
+        // With the fixed-day split on, the split already says which days you train — no prompt to plan.
+        let planWeek = store.weekNeedsPlan && store.todayPlanKind == nil && !store.fixedSplitOn
         let reviewDue = store.weeklyReviewDue
         let hasPhase = phase.miniCutDone || phaseAlert != nil
         let urgent = weighIn || reviewDue || review != nil || planWeek || lowRecovery
