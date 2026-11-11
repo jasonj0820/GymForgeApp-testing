@@ -15,16 +15,28 @@ enum MTLiveTimer {
             let showing = running.filter { [.active, .stale].contains($0.activityState) }
             guard !showing.isEmpty else { return }
             Task {
+                if SharedGroup.id == nil {
+                    // MK20.7: no shared storage — the widget follows this card, so tell it the timer's over
+                    // before the card goes.
+                    let done = ActivityContent(state: State(label: "Done", isInterval: false, finished: true), staleDate: nil)
+                    for activity in showing { await activity.update(done) }
+                    try? await Task.sleep(nanoseconds: 700_000_000)
+                }
                 for activity in showing { await activity.end(nil, dismissalPolicy: .immediate) }
                 PhoneAppStore.shared.refreshCluck()   // MK19.1: Sergeant Cluck's card comes straight back
+                PhoneAppStore.shared.syncSleepActivity()   // MK20.7: and so does tonight's bedtime card
                 reloadWidget()
             }
             return
         }
-        let content = ActivityContent(state: plan.state, staleDate: plan.stale)
+        // The timer leads: above anything else on the Lock Screen and first in the Dynamic Island.
+        let content = ActivityContent(state: plan.state, staleDate: plan.stale, relevanceScore: 100)
         CluckActivityManager.endAll()   // only one card on the Lock Screen: the timer replaces Sergeant Cluck
-        if let current = running.first {
-            for other in running.dropFirst() { Task { await other.end(nil, dismissalPolicy: .immediate) } }
+        PhoneAppStore.shared.endSleepActivity()   // MK20.7: …and the bedtime card, until the timer's done
+        // A card that's been told "finished" is on its way out — never reuse it for a new timer.
+        let live = running.filter { $0.content.state.finished != true }
+        if let current = live.first {
+            for other in live.dropFirst() { Task { await other.end(nil, dismissalPolicy: .immediate) } }
             guard current.content.state != plan.state || current.content.staleDate != plan.stale else { return }
             Task {
                 await current.update(content)
@@ -115,7 +127,8 @@ enum MTLiveTimer {
                 return step.type.shortTitle + (step.nir == true ? " + NIR" : "")
             }
             guard let current = content(for: data, now: now) else { return nil }
-            var steps = [Step(date: now, title: title(phase.stepIndex), state: current.state)]
+            // Dated from the phase start (not "now"), so an unchanged timer doesn't count as a change.
+            var steps = [Step(date: min(run.phaseStartedAt, now), title: title(phase.stepIndex), state: current.state)]
             var endsAt: Date?
             if !run.isPaused, var start = run.phaseEnd() {
                 // Each later phase, as if the app had moved on to it (up to 40 ahead).
@@ -142,7 +155,7 @@ enum MTLiveTimer {
         }
         if let run = data.activeStamina {
             guard let current = content(for: data, now: now) else { return nil }
-            var steps = [Step(date: now, title: "Stamina", state: current.state)]
+            var steps = [Step(date: min(run.start, now), title: "Stamina", state: current.state)]
             if let stale = current.stale, stale > now {
                 // Goal reached / cool-down over, shown on time even if the app is asleep.
                 var later = current.state
@@ -163,7 +176,7 @@ enum MTLiveTimer {
             ])
         }
         if let active = data.activeSession, let current = content(for: data, now: now) {
-            var steps = [Step(date: now, title: active.type.shortTitle + (active.nir == true ? " + NIR" : ""), state: current.state)]
+            var steps = [Step(date: min(active.start, now), title: active.type.shortTitle + (active.nir == true ? " + NIR" : ""), state: current.state)]
             if let stale = current.stale, stale > now {
                 var later = current.state
                 later.label = "Limit reached"

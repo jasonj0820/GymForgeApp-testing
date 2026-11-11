@@ -249,6 +249,13 @@ extension PhoneAppStore {
         }
     }
 
+    /// MK20.7: takes the bedtime card down (a More Training timer has started).
+    func endSleepActivity() {
+        for activity in Activity<SleepActivityAttributes>.activities {
+            Task { await activity.end(nil, dismissalPolicy: .immediate) }
+        }
+    }
+
     /// MK11.1: the Live Activity only exists in the wind-down window (10 min before bed → an hour after), so the
     /// rest of the day the Lock Screen is about the gym. iOS only lets an app start one while it's open — the
     /// wind-down notification brings you in at the right time.
@@ -263,7 +270,10 @@ extension PhoneAppStore {
         // already there at wind-down) until you tap "I'm going to bed" or an hour past bedtime.
         let bed = schedule.nextBedtime(after: now.addingTimeInterval(-BedtimeNag.windowAfter))
         let evening = calendar.startOfDay(for: bed.addingTimeInterval(-12 * 3600))
-        guard bed.timeIntervalSince(now) <= BedtimeNag.cardBefore, !isDismissed(bed) else {
+        // MK20.7: a running More Training timer keeps the Lock Screen / Dynamic Island to itself; the bedtime
+        // card comes back when it ends (the wind-down and bedtime notifications still arrive).
+        let trainingTimer = Activity<MTTimerAttributes>.activities.contains { [.active, .stale].contains($0.activityState) }
+        guard bed.timeIntervalSince(now) <= BedtimeNag.cardBefore, !isDismissed(bed), !trainingTimer else {
             for activity in running { Task { await activity.end(nil, dismissalPolicy: .immediate) } }
             return
         }

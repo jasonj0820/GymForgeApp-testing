@@ -98,6 +98,20 @@ struct MTSettingsView: View {
             }
 
             Section {
+                LabeledContent("Shared storage", value: SharedGroup.status)
+                if SharedGroup.id != nil {
+                    LabeledContent("Widget last refreshed",
+                                   value: MTWidgetStore.widgetLastSeen.map { $0.formatted(.relative(presentation: .named)) } ?? "Never")
+                }
+            } header: {
+                Text("Widget")
+            } footer: {
+                Text(SharedGroup.id != nil
+                     ? "The More Training widget reads the running timer from storage shared with the app. \"Never\" means the widget hasn't been added, or hasn't refreshed since this update."
+                     : "This install has no storage shared between the app and its widgets (the signing tool removed it). The More Training widget follows the Lock Screen timer card instead, so Live Activities must be on, and it only knows the current step.")
+            }
+
+            Section {
                 SecureField("Export passcode", text: $exportPasscode)
                 SecureField("Confirm passcode", text: $exportConfirm)
                 Button("Export encrypted file") {

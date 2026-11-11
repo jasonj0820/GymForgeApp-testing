@@ -505,8 +505,9 @@ enum CluckStore {
     static let key = "cluck.snapshot"
     static let widgetKind = "SergeantCluck"
 
-    /// Falls back to the app's own defaults if the App Group isn't available (widget then shows a hint).
-    static var defaults: UserDefaults { UserDefaults(suiteName: appGroup) ?? .standard }
+    /// The shared App Group's defaults. MK20.7: uses whichever group this install really has (see
+    /// `SharedGroup`); if there's none, falls back to the app's own defaults (widgets then can't see app data).
+    static var defaults: UserDefaults { UserDefaults(suiteName: SharedGroup.id ?? appGroup) ?? .standard }
 
     static func load() -> CluckSnapshot? {
         guard let data = defaults.data(forKey: key) else { return nil }
@@ -528,5 +529,65 @@ enum CluckStore {
         snapshot.snoozedDay = now
         save(snapshot)
         return true
+    }
+}
+
+// MARK: - Shared App Group (MK20.7)
+
+/// The App Group the app and its widgets share. Sideloading tools (Sideloadly, AltStore, SideStore) re-sign
+/// the app with a renamed group (e.g. "group.com.jason.gymforge.TEAMID"), so the name in the code doesn't
+/// match and the widgets can't see the app's data. This finds the group this install was really given:
+/// the built-in name if it works, otherwise the one listed in the signing profile inside the bundle.
+enum SharedGroup {
+    static let preferred = "group.com.jason.gymforge"
+
+    /// nil = this install has no usable App Group at all.
+    static let id: String? = {
+        // Profile order is kept (stable sort): groups named after this app first.
+        let listed = profileGroups()
+        let ordered = listed.filter { $0.contains("com.jason.gymforge") } + listed.filter { !$0.contains("com.jason.gymforge") }
+        return ([preferred] + ordered).first {
+            FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0) != nil
+        }
+    }()
+
+    /// "Shared storage OK", or why the widgets can't see the app.
+    static var status: String {
+        guard let id else { return "No shared storage in this install" }
+        return id == preferred ? "Connected" : "Connected (renamed by the installer)"
+    }
+
+    /// App Groups in the signing profile (embedded.mobileprovision) of this bundle, and — from inside the
+    /// widget extension — of the app that contains it.
+    static func profileGroups() -> [String] {
+        let bundle = Bundle.main.bundleURL
+        var files = [bundle.appendingPathComponent("embedded.mobileprovision")]
+        if bundle.pathExtension == "appex" {
+            // The app's own profile first, so the widgets land on the same group the app picked.
+            files.insert(bundle.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("embedded.mobileprovision"), at: 0)
+        }
+        var groups: [String] = []
+        for file in files {
+            // The profile is a signed blob with a plain XML property list inside it.
+            guard let data = try? Data(contentsOf: file),
+                  let start = data.range(of: Data("<?xml".utf8)),
+                  let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex),
+                  let plist = try? PropertyListSerialization.propertyList(from: data.subdata(in: start.lowerBound..<end.upperBound), format: nil) as? [String: Any],
+                  let entitlements = plist["Entitlements"] as? [String: Any],
+                  let listed = entitlements["com.apple.security.application-groups"] as? [String] else { continue }
+            for group in listed where !groups.contains(group) { groups.append(group) }
+        }
+        return groups
+    }
+
+    /// App only, once: settings saved under the built-in name while it wasn't really shared (quote topics,
+    /// Sergeant Cluck's snooze…) are copied into the real group so nothing resets.
+    static func migrateIfNeeded() {
+        guard let id, id != preferred, let shared = UserDefaults(suiteName: id),
+              !shared.bool(forKey: "sharedGroup.migrated") else { return }
+        for (key, value) in UserDefaults.standard.persistentDomain(forName: preferred) ?? [:] where shared.object(forKey: key) == nil {
+            shared.set(value, forKey: key)
+        }
+        shared.set(true, forKey: "sharedGroup.migrated")
     }
 }

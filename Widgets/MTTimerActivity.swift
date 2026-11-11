@@ -27,6 +27,8 @@ struct MTTimerAttributes: ActivityAttributes {
         /// MK20.6.1: the step's name, for the More Training widget only (never drawn on the Lock Screen
         /// card). Lets the widget work from the Live Activity when the App Group isn't available.
         var widgetTitle: String? = nil
+        /// MK20.7: the timer has ended (sent just before the card is taken down, so the widget lets go too).
+        var finished: Bool? = nil
     }
     var startedAt: Date
 
@@ -43,12 +45,16 @@ struct MTTimerLiveActivity: Widget {
 
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: MTTimerAttributes.self) { context in
+            // MK20.7: runs inside the widget extension each time the card updates — passes the timer on
+            // to the More Training widget when there's no shared storage.
+            let _ = MTWidgetRelay.note(context.state)
             MTTimerLockScreen(state: context.state, stale: context.isStale)
                 .activityBackgroundTint(Color.black.opacity(0.75))
                 .widgetURL(Self.openURL)
         } dynamicIsland: { context in
             let state = context.state
             let stale = context.isStale
+            MTWidgetRelay.note(state)
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Label(MTTimerLockScreen.title(state, stale: stale), systemImage: "timer")
@@ -190,7 +196,12 @@ enum MTWidgetStore {
     /// sideloading tools drop it) — one built from the running More Training Live Activity.
     static func current(now: Date = .now) -> MTWidgetSnapshot? {
         if let saved = load(), saved.endsAt.map({ $0 > now }) ?? true { return saved }
-        guard let activity = Activity<MTTimerAttributes>.activities.first(where: { [.active, .stale].contains($0.activityState) }) else {
+        guard SharedGroup.id == nil else { return nil }   // shared storage works: the app's word is final
+        if let relayed = MTWidgetRelay.load(now: now) {
+            return fromLiveActivity(relayed, staleDate: relayed.countdownTo, now: now)
+        }
+        guard let activity = Activity<MTTimerAttributes>.activities.first(where: { [.active, .stale].contains($0.activityState) }),
+              activity.content.state.finished != true else {
             return nil
         }
         return fromLiveActivity(activity.content.state, staleDate: activity.content.staleDate, now: now)
@@ -237,6 +248,14 @@ enum MTWidgetStore {
         return try? JSONDecoder().decode(MTWidgetSnapshot.self, from: data)
     }
 
+    private static let heartbeatKey = "mt.widget.heartbeat"
+
+    /// When the widget last built its timeline (written by the widget, read by More Training → Settings).
+    static var widgetLastSeen: Date? { CluckStore.defaults.object(forKey: heartbeatKey) as? Date }
+    static func widgetCheckedIn() {
+        if SharedGroup.id != nil { CluckStore.defaults.set(Date(), forKey: heartbeatKey) }
+    }
+
     /// Saves (nil clears) and reloads the widget — only when something actually changed.
     static func save(_ snapshot: MTWidgetSnapshot?) {
         guard snapshot != load() else { return }
@@ -274,5 +293,44 @@ enum MTWidgetControl {
     static func run(_ raw: String) {
         guard let action = MTWidgetAction(rawValue: raw) else { return }
         handler?(action)
+    }
+}
+
+/// MK20.7: the timer handed from the Live Activity to the More Training widget, inside the widget
+/// extension. The Lock Screen card and the widget are drawn by the same extension, so this needs no
+/// App Group — it's the fallback for installs where the shared storage isn't available.
+enum MTWidgetRelay {
+    private static let stateKey = "mt.relay.state"
+    private static let savedKey = "mt.relay.savedAt"
+    private static var isExtension: Bool { Bundle.main.bundleURL.pathExtension == "appex" }
+
+    /// Called while drawing the Live Activity. Saves the state and refreshes the widget when it changed.
+    static func note(_ state: MTTimerAttributes.ContentState) {
+        guard isExtension, SharedGroup.id == nil else { return }
+        let defaults = UserDefaults.standard
+        if state.finished == true {
+            guard defaults.data(forKey: stateKey) != nil else { return }
+            defaults.removeObject(forKey: stateKey)
+        } else {
+            guard let data = try? JSONEncoder().encode(state), data != defaults.data(forKey: stateKey) else { return }
+            defaults.set(data, forKey: stateKey)
+            defaults.set(Date(), forKey: savedKey)
+        }
+        WidgetCenter.shared.reloadTimelines(ofKind: MTWidgetStore.kind)
+    }
+
+    /// The relayed timer, unless it's finished or too old to trust (the app never got to say it ended).
+    static func load(now: Date) -> MTTimerAttributes.ContentState? {
+        let defaults = UserDefaults.standard
+        guard isExtension, let data = defaults.data(forKey: stateKey),
+              let state = try? JSONDecoder().decode(MTTimerAttributes.ContentState.self, from: data),
+              let saved = defaults.object(forKey: savedKey) as? Date else { return nil }
+        let expires: Date
+        if state.isInterval, state.pausedRemaining == nil, let end = state.endsAt ?? state.countdownTo {
+            expires = end                                // a running program is over when it's over
+        } else {
+            expires = saved.addingTimeInterval(6 * 3600)   // paused / open timers: give up after 6 hours
+        }
+        return expires > now ? state : nil
     }
 }

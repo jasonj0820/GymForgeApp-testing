@@ -206,6 +206,7 @@ struct MTTrainingProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<MTTrainingEntry>) -> Void) {
+        MTWidgetStore.widgetCheckedIn()
         completion(Timeline(entries: entries(now: .now), policy: .atEnd))
     }
 

@@ -18,6 +18,7 @@ struct GymForgeApp: App {
     init() {
         // MK20.6: the More Training widget's buttons run here (LiveActivityIntent → app process).
         MTWidgetControl.handler = { MTLiveTimer.handleWidget($0) }
+        SharedGroup.migrateIfNeeded()   // MK20.7: sideloaded installs get a renamed App Group
     }
 
     var body: some Scene {
