@@ -1,4 +1,17 @@
-# Splitday MK21 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK21.1 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK21.1 — Progress, rebuilt
+The old Progress tab opened on one exercise's chart behind three pickers (mode, exercise, metric). It now opens on the answer to "am I getting stronger?".
+- **Range** (1M / 3M / 6M / 1Y / All, starts on 3M) drives the whole page.
+- **Summary**: "7 of 12 lifts are going up", with Going up / Holding / Slipping counts, sessions, records and the biggest gain in the range.
+- **Every lift, grouped by direction**: Going up (biggest gain first), Slipping, Holding, Too few sessions, Cardio. Each row shows the latest best set and when, a small trend line and the % change. Search finds any exercise.
+- **Tap a lift** for its own page: Best ever / Latest / Change, one chart (Strength, Top weight or Volume; orange diamonds mark records), the coach's next step, and the last 8 sessions.
+- **Records** in the range, newest first.
+- **Sets per muscle group** (unchanged), then links to **Strength standards**, **Year in training** and **Workout history**.
+
+**How "going up" is decided.** Strength is the estimated one-rep max from each session's best set (assisted lifts: least help used, lower is better; bodyweight lifts with no added load: most reps in a set). A lift needs 3 sessions in the range. With 4 or more, the first two are averaged against the last two; ±2.5% or more is up / slipping, anything inside is holding. Deload sessions and sessions tagged sick, short on time and so on are left out of the comparison, and still appear on the chart.
+
+**Dropped:** the chart's weight-increase and rep-range-change lines, and the "reps at top weight" / "best set" / "total reps" chart options for weighted lifts.
 
 ## MK21 — a shorter home screen
 Today went from ~20 stacked cards (with Start at the very bottom) to five blocks, about a screen and a half.
