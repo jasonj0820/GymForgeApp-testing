@@ -12,6 +12,9 @@ Nothing removed; everything needed to log a set now fits on one screen.
 - **Today's context** tags are one sideways-scrolling row.
 - The long grey explanations are together under **How this screen works** at the bottom.
 
+### MK20.8.1 — flatter quote widget
+- The quote widget's panel is now one flat, even matte tint: no gradient, no bright rim, no shadow, and a bit more see-through — on the Lock Screen and the Home Screen. Two numbers set it in `MatteGlassPanel`: `lockScreenTint` (0.10) and `strength` (0.55); lower = clearer.
+
 ## MK20.7 — widgets work on sideloaded installs, bedtime card yields to the timer
 - **Why the More Training widget only showed the quote**: Sideloadly / AltStore / SideStore re-sign the app with a *renamed* App Group, so the name written in the code never matched and no widget could see the app's data. The app and widgets now look up the group this install was really given (the built-in name, else the one in the signing profile). Settings saved under the old name are carried over. This also connects Sergeant Cluck's widget and the Motivation widget's topic settings.
 - **No App Group at all?** The Lock Screen timer card hands its state to the widget from inside the widget extension (current step only).

@@ -68,29 +68,21 @@ struct QuoteBackground: View {
     }
 }
 
-/// MK20.2: a frosted, matte "glass" panel behind the quote — a light smoked tint, a soft top sheen
-/// and a hairline edge, so the text reads easily without the panel looking glossy or see-through.
+/// MK20.2: a matte "glass" panel behind the quote — a light, even smoked tint so the text reads easily.
 struct MatteGlassPanel: View {
     var cornerRadius: CGFloat
-    /// MK20.2.1: 30% more see-through than the first version (1.0 = original).
-    static let strength = 0.7
+    /// How solid the panel is (1.0 = the first version). MK20.8.1: 0.7 → 0.55, a bit more see-through.
+    static let strength = 0.55
+    /// The Lock Screen panel: one flat, even tint (the Lock Screen draws it as frosted glass). Lower = clearer.
+    static let lockScreenTint = 0.10
 
+    /// MK20.8.1: flat and even — no top sheen, no bright rim, no drop shadow. Just a matte tint.
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         let k = Self.strength
         shape
-            .fill(.black.opacity(0.26 * k))                       // smoked matte body
-            .overlay(shape.fill(.white.opacity(0.06 * k)))          // frost lift, keeps it from looking like a hole
-            .overlay(                                           // soft light from the top, fading out — matte, no hard shine
-                shape.fill(LinearGradient(colors: [.white.opacity(0.10 * k), .white.opacity(0.0)],
-                                          startPoint: .top, endPoint: .center))
-            )
-            .overlay(                                           // hairline glass edge, brighter on top
-                shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.28 * k), .white.opacity(0.06 * k), .white.opacity(0.12 * k)],
-                                                  startPoint: .topLeading, endPoint: .bottomTrailing),
-                                   lineWidth: 0.75)
-            )
-            .shadow(color: .black.opacity(0.25 * k), radius: 8, y: 3)
+            .fill(.black.opacity(0.26 * k))                 // smoked matte body
+            .overlay(shape.fill(.white.opacity(0.06 * k)))    // slight frost, the same all over
     }
 }
 
@@ -101,7 +93,7 @@ struct QuoteWidgetView: View {
 
     var body: some View {
         if family == .accessoryRectangular {
-            // Lock Screen: the system's frosted backdrop, a bit more see-through, behind the quote.
+            // Lock Screen: a flat matte-glass panel behind the quote — one even tint, no rim, no gradient.
             Text(entry.quote.text)
                 .font(.system(.caption, design: .serif))
                 .minimumScaleFactor(0.7)
@@ -109,13 +101,8 @@ struct QuoteWidgetView: View {
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background {
-                    let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    ZStack {
-                        AccessoryWidgetBackground()
-                        shape.strokeBorder(.white.opacity(0.25), lineWidth: 0.5)   // hairline glass edge
-                    }
-                    .clipShape(shape)
-                    .opacity(MatteGlassPanel.strength)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(.white.opacity(MatteGlassPanel.lockScreenTint))
                 }
         } else {
             ZStack(alignment: .bottomTrailing) {
