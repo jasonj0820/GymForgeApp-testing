@@ -115,36 +115,29 @@ struct ExplainSergeantView: View {
 /// Tap-to-toggle chips for the four session-context tags.
 struct SessionTagChips: View {
     let selected: Set<SessionTag>
-    /// MK20.8: one sideways-scrolling row (the live workout screen) instead of a two-column grid.
-    var singleRow = false
+    /// MK20.9: the live workout screen — two even columns, each tag on one line (2–3 short rows).
+    var compact = false
     let toggle: (SessionTag) -> Void
 
     var body: some View {
-        if singleRow {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) { chips(fill: false) }
+        let columns = compact
+            ? [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
+            : [GridItem(.adaptive(minimum: 150), alignment: .leading)]
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+            ForEach(SessionTag.allCases) { tag in
+                Button {
+                    toggle(tag)
+                } label: {
+                    Label(tag.title, systemImage: selected.contains(tag) ? "checkmark.circle.fill" : tag.icon)
+                        .font(compact ? .footnote : .subheadline)
+                        .lineLimit(compact ? 1 : nil)
+                        .minimumScaleFactor(compact ? 0.8 : 1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+                .tint(selected.contains(tag) ? .orange : .gray)
+                .accessibilityAddTraits(selected.contains(tag) ? .isSelected : [])
             }
-        } else {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .leading)], alignment: .leading, spacing: 8) {
-                chips(fill: true)
-            }
-        }
-    }
-
-    private func chips(fill: Bool) -> some View {
-        ForEach(SessionTag.allCases) { tag in
-            Button {
-                toggle(tag)
-            } label: {
-                Label(tag.title, systemImage: selected.contains(tag) ? "checkmark.circle.fill" : tag.icon)
-                    .font(.subheadline)
-                    .lineLimit(fill ? nil : 1)
-                    .fixedSize(horizontal: !fill, vertical: false)
-                    .frame(maxWidth: fill ? .infinity : nil, alignment: .leading)
-            }
-            .buttonStyle(.bordered)
-            .tint(selected.contains(tag) ? .orange : .gray)
-            .accessibilityAddTraits(selected.contains(tag) ? .isSelected : [])
         }
     }
 }

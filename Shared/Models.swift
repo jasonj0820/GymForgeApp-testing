@@ -386,7 +386,9 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
     public var duration: TimeInterval { endedAt.timeIntervalSince(startedAt) }
     public var tagSet: Set<SessionTag> { Set(sessionTags ?? []) }
     /// MK11.1: not used as "last time" for next session's targets (like a deload).
-    public var skipsProgression: Bool { isDeload == true || tagSet.contains(.intentionallyEasier) || tagSet.contains(.unusualFatigue) }
+    public var skipsProgression: Bool {
+        isDeload == true || tagSet.contains(.intentionallyEasier) || tagSet.contains(.unusualFatigue) || tagSet.contains(.sick)
+    }
     /// MK11.1: kept out of plateau / strength-loss trends.
     public var isAtypical: Bool { isDeload == true || !tagSet.isEmpty }
     public var totalVolumeKg: Double { exercises.reduce(0) { $0 + $1.volumeKg } }
@@ -407,6 +409,8 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
 /// MK11.1: session context, so a short, kit-limited, easy or tired day isn't read as lost strength.
 public enum SessionTag: String, Codable, CaseIterable, Identifiable, Hashable {
     case limitedTime, equipmentUnavailable, intentionallyEasier, unusualFatigue
+    /// MK20.9: under the weather — read like a run-down day (no progression pressure, lower numbers excused).
+    case sick
     public var id: String { rawValue }
 
     public var title: String {
@@ -415,6 +419,7 @@ public enum SessionTag: String, Codable, CaseIterable, Identifiable, Hashable {
         case .equipmentUnavailable: return "Equipment unavailable"
         case .intentionallyEasier: return "Easier on purpose"
         case .unusualFatigue: return "Unusually tired"
+        case .sick: return "Feeling sick"
         }
     }
 
@@ -424,6 +429,7 @@ public enum SessionTag: String, Codable, CaseIterable, Identifiable, Hashable {
         case .equipmentUnavailable: return "wrench.and.screwdriver"
         case .intentionallyEasier: return "tortoise"
         case .unusualFatigue: return "battery.25"
+        case .sick: return "facemask"
         }
     }
 
@@ -434,12 +440,13 @@ public enum SessionTag: String, Codable, CaseIterable, Identifiable, Hashable {
         case .equipmentUnavailable: return "the kit wasn't free"
         case .intentionallyEasier: return "easy on purpose"
         case .unusualFatigue: return "you were run down"
+        case .sick: return "you were sick"
         }
     }
 
     /// The tag that best explains a lower number (most specific first).
     public static func explaining(_ tags: Set<SessionTag>) -> SessionTag? {
-        [.unusualFatigue, .intentionallyEasier, .equipmentUnavailable, .limitedTime].first { tags.contains($0) }
+        [.sick, .unusualFatigue, .intentionallyEasier, .equipmentUnavailable, .limitedTime].first { tags.contains($0) }
     }
 }
 

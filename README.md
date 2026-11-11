@@ -1,4 +1,11 @@
-# Splitday MK20.8 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK20.9 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK20.9 — workout screen tidy-up, "Feeling sick", coach plan text fixed
+- **Top of the workout screen**: timer and sets done, then **Sergeant Cluck saying your quote**, then the speeches player. The block name is gone from that row.
+- Removed from the workout screen: the Sergeant Cluck session card, the "Last time…" row and "How this screen works".
+- **Swap · Skip · Note** and **Variation · Pain** are two rows of equal-width buttons.
+- **Today's context** is a two-column grid, one line per tag, with a new **Feeling sick** tag. It works like "Unusually tired": lower numbers are excused and the day doesn't drive progression.
+- **Coach fix** (the plan's reason line, still shown on the session preview): it quoted sets that never happened and said "last set to failure" when it wasn't. With 2 sets of 12 at 106 kg last time and 5 sets planned it said "Last time: 12/12/12/12/12 at 106 kg, last set to failure"; it now says "Last time: 12/12 at 106 kg — top of the range on 2 sets at that weight. Today's plan is 5 sets: hit 12 on every one and it goes up." The targets themselves were right. 4 new checks cover it.
 
 ## MK20.8 — live workout screen reorganised (logging first)
 Nothing removed; everything needed to log a set now fits on one screen.

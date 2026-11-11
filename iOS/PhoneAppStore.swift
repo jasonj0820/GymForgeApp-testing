@@ -449,7 +449,7 @@ final class PhoneAppStore: ObservableObject {
         snapshot.inWorkout = activeWorkout != nil
         snapshot.breakUntil = activeBreak?.finish
         snapshot.pain = painRecent
-        snapshot.toughDay = workoutLogs.contains { Calendar.current.isDateInToday($0.startedAt) && $0.tagSet.contains(.unusualFatigue) }
+        snapshot.toughDay = workoutLogs.contains { Calendar.current.isDateInToday($0.startedAt) && ($0.tagSet.contains(.unusualFatigue) || $0.tagSet.contains(.sick)) }
         snapshot.skipWeekday = pattern.skipWeekday
         snapshot.patternLine = pattern.line
         snapshot.bedtimes = profile.sleepSchedule?.bedtime

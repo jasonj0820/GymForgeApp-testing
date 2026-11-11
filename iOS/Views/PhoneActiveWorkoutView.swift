@@ -23,9 +23,6 @@ struct PhoneActiveWorkoutView: View {
     @State private var addingSwapTo: UUID?
     @State private var swapNameDraft = ""
     @State private var addingExercise = false
-    /// MK20.8: "Last time & why" and the how-to text start folded away.
-    @State private var showDetails = false
-    @State private var showHelp = false
     @FocusState private var focusedField: Field?
 
     private enum Field { case weight, reps, minutes, km }
@@ -221,8 +218,11 @@ struct PhoneActiveWorkoutView: View {
     @ViewBuilder
     private func workoutList(_ state: ActiveWorkoutState) -> some View {
         List {
+            // MK20.9: timer, Sergeant Cluck saying your quote, and the speeches — all at the top.
             Section {
                 statusRow(state)
+                motivationCard(state)
+                SpeechMiniPlayer()
                 if state.deload {
                     Label("Light session — one less set, ~10% lighter. Won't affect progression.", systemImage: "leaf.fill")
                         .font(.footnote)
@@ -240,14 +240,6 @@ struct PhoneActiveWorkoutView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-            }
-
-            Section {
-                CluckCoachCard(state: state, compact: true)
-                motivationCard(state)
-                SpeechMiniPlayer()
-            } header: {
-                Text("Coach")
             }
 
             Section {
@@ -282,7 +274,7 @@ struct PhoneActiveWorkoutView: View {
             }
 
             Section {
-                SessionTagChips(selected: Set(state.sessionTags ?? []), singleRow: true) { store.toggleSessionTag($0) }
+                SessionTagChips(selected: Set(state.sessionTags ?? []), compact: true) { store.toggleSessionTag($0) }
             } header: {
                 Text("Today's context")
             }
@@ -296,43 +288,16 @@ struct PhoneActiveWorkoutView: View {
                 Button("Discard workout", role: .destructive) { confirmDiscard = true }
             }
 
-            Section {
-                DisclosureGroup("How this screen works", isExpanded: $showHelp) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        helpLine("number", "Grey numbers are today's plan for this set — type what you actually did. If a set goes clearly better or worse, the rest are re-aimed; if one falls short of the range, a lighter weight is suggested (your call).")
-                        helpLine("pencil", "Tap a logged set to fix it; swipe it left to delete. Use the − / + beside Today's plan to add or drop a set.")
-                        helpLine("list.bullet", "Tap an exercise to do it next (done ones get an extra set). Tap ✎ to fix logged sets or change how many sets are planned.")
-                        helpLine("tag", "Short on time, kit taken, easy on purpose or run down? Tag it under Today's context and the coach won't read lower numbers as lost strength.")
-                        helpLine("figure.run", "Cardio: type minutes (and km if you like), or use the timer on your Watch.")
-                        helpLine("applewatch", "Heart rate and calories are recorded by the Watch and saved to Apple Health when the workout finishes.")
-                    }
-                    .padding(.vertical, 4)
-                }
-                .font(.subheadline)
-            }
         }
         .listSectionSpacing(.compact)
         .safeAreaInset(edge: .bottom, spacing: 0) { actionBar(state) }
     }
 
-    private func helpLine(_ icon: String, _ text: String) -> some View {
-        Label(text, systemImage: icon)
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// Elapsed time, block and sets done on one line.
+    /// Elapsed time and sets done on one line.
     private func statusRow(_ state: ActiveWorkoutState) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             HStack(spacing: 8) {
                 Label(GFFormat.duration(context.date.timeIntervalSince(state.startedAt)), systemImage: "timer")
-                if !state.deload, let phase = state.phaseName {
-                    Text("· \(phase) block")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
                 Spacer()
                 Text("\(state.totalCompletedSets) / \(state.totalPlannedSets) sets")
                     .foregroundStyle(.secondary)
@@ -381,20 +346,24 @@ struct PhoneActiveWorkoutView: View {
         .background(.bar)
     }
 
-    /// Coach quote, in its own section above the current exercise. Changes after every set.
+    /// MK20.9: Sergeant Cluck saying your quote (from the coach style you picked). Changes after every set.
     private func motivationCard(_ state: ActiveWorkoutState) -> some View {
         let style = store.profile.coachStyle
         let line = style.workoutLine(workout: state.workoutID, step: state.totalCompletedSets)
-        return VStack(alignment: .leading, spacing: 6) {
-            Label(style.title.uppercased(), systemImage: "quote.opening")
-                .font(.caption2.bold())
-                .foregroundStyle(.tint)
-            Text(line)
-                .font(.subheadline.weight(.semibold))
-                .italic()
-                .fixedSize(horizontal: false, vertical: true)
-                .id(line)
-                .transition(.opacity)
+        return HStack(alignment: .top, spacing: 10) {
+            CluckView(mood: .lockedIn, animated: true)
+                .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("SERGEANT CLUCK · \(style.title.uppercased())")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.tint)
+                Text(line)
+                    .font(.subheadline.weight(.semibold))
+                    .italic()
+                    .fixedSize(horizontal: false, vertical: true)
+                    .id(line)
+                    .transition(.opacity)
+            }
         }
         .animation(.easeInOut(duration: 0.4), value: line)
     }
@@ -472,9 +441,7 @@ struct PhoneActiveWorkoutView: View {
         let index = state.exerciseIndex
         let done = state.sets(for: item)
         let previous = store.previousLog(for: exercise, before: state.startedAt)
-        let recommendation = ProgressionEngine.recommendation(for: exercise, previous: previous)
         let plan = store.setPlan(for: item)
-        let lastTime: String? = previous.map { log in "Last time: " + log.sets.map { log.summary($0) }.joined(separator: ", ") }
 
         Section {
             exerciseHeader(state, item, done: done)
@@ -536,24 +503,6 @@ struct PhoneActiveWorkoutView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-
-            // Last time and the coach's reasoning: one line, tap to open.
-            DisclosureGroup(isExpanded: $showDetails) {
-                VStack(alignment: .leading, spacing: 6) {
-                    if let lastTime {
-                        Text(lastTime).font(.footnote)
-                    }
-                    Text(exercise.isCardio || plan.reason.isEmpty ? recommendation.message : plan.reason)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } label: {
-                Text(lastTime ?? "First time — coach notes")
-                    .font(.footnote)
-                    .lineLimit(1)
-                    .foregroundStyle(.primary)
-            }
         } header: {
             Text("Now")
         }
@@ -607,7 +556,8 @@ struct PhoneActiveWorkoutView: View {
                 }
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
+            // MK20.9: two rows of equal-width buttons, so nothing is squeezed or scrolls.
+            VStack(spacing: 8) {
                 HStack(spacing: 8) {
                     Menu {
                         ForEach(options) { option in
@@ -621,12 +571,12 @@ struct PhoneActiveWorkoutView: View {
                             Label("Add swap option…", systemImage: "plus")
                         }
                     } label: {
-                        Label("Swap", systemImage: "arrow.triangle.2.circlepath")
+                        Label("Swap", systemImage: "arrow.triangle.2.circlepath").frame(maxWidth: .infinity)
                     }
                     Button {
                         store.skipExercise(at: index)
                     } label: {
-                        Label("Skip", systemImage: "forward.fill")
+                        Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity)
                     }
                     Button {
                         noteDraft = exercise.notes ?? ""
@@ -634,21 +584,24 @@ struct PhoneActiveWorkoutView: View {
                         editingNote = true
                     } label: {
                         Label((exercise.notes ?? "").isEmpty ? "Note" : "Edit note", systemImage: "note.text.badge.plus")
+                            .frame(maxWidth: .infinity)
                     }
+                }
+                HStack(spacing: 8) {
                     if !exercise.isCardio {
                         VariationRow(state: state, item: item, compact: true)
                     }
                     Button {
                         flaggingPain = exercise
                     } label: {
-                        Label("Pain", systemImage: "bandage")
+                        Label("Pain", systemImage: "bandage").frame(maxWidth: .infinity)
                     }
                     .tint(.red)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .font(.footnote)
             }
+            .buttonStyle(.bordered)
+            .font(.subheadline)
+            .lineLimit(1)
 
             if let note = exercise.notes, !note.isEmpty {
                 Label(note, systemImage: "note.text")

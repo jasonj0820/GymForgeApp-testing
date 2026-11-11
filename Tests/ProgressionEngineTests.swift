@@ -745,6 +745,31 @@ struct GymForgeChecks {
         check(readyNote?.message.contains("3+ reps left") == true && readyNote?.message.contains("top of the range") == false,
               "an easy-feeling increase isn't described as hitting the top of the range")
 
+        // MK20.9: the plan's "Last time" line only quotes sets that happened, and only says "to failure" when one was
+        var legPress = ExerciseDefinition(name: "Leg Press", category: .legs, repMin: 8, repMax: 12, defaultSets: 5, restSeconds: 120, weightIncrementKg: 2.5)
+        var rampDay = log(legPress, [(90, 12), (106, 12), (106, 12)])
+        for index in rampDay.sets.indices { rampDay.sets[index].rir = 2 }
+        let fivePlan = ProgressionEngine.setPlan(for: legPress, previous: rampDay, recent: [rampDay])
+        check(fivePlan.targets.count == 5 && fivePlan.targets.allSatisfy { $0.weightKg == 106 && $0.reps == 12 },
+              "2 top sets of 12 at 106, 5 sets today → 106 kg × 12 on all 5")
+        check(fivePlan.reason.contains("Last time: 12/12 at") && !fivePlan.reason.contains("12/12/12")
+              && !fivePlan.reason.contains("failure") && fivePlan.reason.contains("5 sets"),
+              "…and the reason quotes the 2 real sets, no invented sets, no 'to failure'")
+        legPress.defaultSets = 3
+        var failDay = log(legPress, [(106, 12), (106, 12), (106, 12)])
+        failDay.sets[2].rir = 0
+        let ownPlan = ProgressionEngine.setPlan(for: legPress, previous: failDay, recent: [failDay])
+        check(ownPlan.reason.contains("Last time: 12/12/12 at") && ownPlan.reason.contains("last set to failure"),
+              "3×12 with the last set to failure → repeat it, and say so")
+        legPress.defaultSets = 4
+        let short3 = log(legPress, [(100, 10), (100, 9), (100, 8)])
+        let fourPlan = ProgressionEngine.setPlan(for: legPress, previous: short3, recent: [short3])
+        check(fourPlan.targets.count == 4 && fourPlan.reason.contains("Last time: 10/9/8 at") && !fourPlan.reason.contains("more rep"),
+              "an added 4th set isn't counted as part of last time")
+        var sickLog = WorkoutLog(routineID: routine.id, routineName: "Test", startedAt: now10, endedAt: now10.addingTimeInterval(3600), exercises: [])
+        sickLog.sessionTags = [.sick]
+        check(sickLog.skipsProgression && SessionTag.explaining(sickLog.tagSet) == .sick, "a 'feeling sick' day is excused and doesn't drive progression")
+
         print("PASS: all GymForge checks")
     }
 }

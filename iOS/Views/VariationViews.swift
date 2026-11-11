@@ -33,6 +33,7 @@ struct VariationRow: View {
         } label: {
             if compact {
                 Label(today ?? "Variation", systemImage: today == nil ? "hand.raised.fingers.spread" : "checkmark")
+                    .frame(maxWidth: .infinity)
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     Label(today.map { "Today: \($0)" } ?? "Variation (grip, stance…)", systemImage: "hand.raised.fingers.spread")

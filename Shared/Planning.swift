@@ -237,12 +237,16 @@ public extension ProgressionEngine {
             let weight = exercise.isAssisted ? (previous.leastAssistanceKg ?? previous.bestWeightKg) : previous.bestWeightKg
             var reps = previous.sets.filter { abs($0.weightKg - weight) < 0.001 && $0.reps > 0 }.map(\.reps)
             if reps.isEmpty { reps = [exercise.repMin] }
+            // MK20.9: what you really did at this weight. "Last time" is quoted from this, never from the
+            // made-up sets added below when today has more sets than you did at that weight.
+            let last = Array(reps.prefix(count))
+            let padded = reps.count < count
             while reps.count < count { reps.append(Swift.max(exercise.repMin, (reps.last ?? exercise.repMin) - Int(drop.rounded()))) }
             reps = Array(reps.prefix(count))
-            let last = reps
             var added = 0
             // MK10.1: last time was lopsided (e.g. 9·9·6) — even the sets out with one more rep in total.
-            if reps.count >= 2, let first = reps.first, let lastReps = reps.last, first - lastReps >= 3,
+            // (Only judged on sets you actually did.)
+            if !padded, reps.count >= 2, let first = reps.first, let lastReps = reps.last, first - lastReps >= 3,
                reps.allSatisfy({ $0 < exercise.repMax }) {
                 let total = reps.reduce(0, +) + 1
                 let even = SetComparison.evenTargets(total: total, sets: reps.count)
@@ -262,10 +266,19 @@ public extension ProgressionEngine {
             }
             let targets = reps.map { SetTarget(weightKg: weight, reps: $0) }
             let text: String
-            if added == 0 {
-                text = "Last time: \(joined(last)) at \(exercise.formatLoad(weight)), last set to failure. Repeat it with a rep in the tank on every set — then it goes up."
+            let load = exercise.formatLoad(weight)
+            if added == 0, advice.title.hasPrefix("Own ") {
+                // Top of the range on every set, but the last one was rated "Fail".
+                text = "Last time: \(joined(last)) at \(load), last set to failure. Repeat it with a rep in the tank on every set — then it goes up."
+            } else if added == 0 {
+                // MK20.9: top of the range, but on fewer sets at this weight than today's plan (a lighter first
+                // set, or sets were added). It used to claim "last set to failure" here — it wasn't.
+                text = "Last time: \(joined(last)) at \(load) — top of the range on \(last.count) set\(last.count == 1 ? "" : "s") at that weight. "
+                    + "Today's plan is \(count) sets: hit \(exercise.repMax) on every one and it goes up."
+            } else if padded {
+                text = "Last time: \(joined(last)) at \(load). Same weight on all \(count) sets today, aim \(joined(reps)).\(dropNote)"
             } else {
-                text = "Last time: \(joined(last)) at \(exercise.formatLoad(weight)). Same weight on every set, aim \(joined(reps)) — \(added) more rep\(added == 1 ? "" : "s") than last time.\(dropNote)"
+                text = "Last time: \(joined(last)) at \(load). Same weight on every set, aim \(joined(reps)) — \(added) more rep\(added == 1 ? "" : "s") than last time.\(dropNote)"
             }
             return SetPlan(targets: targets, reason: text)
         }
