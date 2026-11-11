@@ -1,4 +1,16 @@
-# Splitday MK20.7 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK20.8 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK20.8 — live workout screen reorganised (logging first)
+Nothing removed; everything needed to log a set now fits on one screen.
+- **Pinned bottom bar**: **Complete set & rest** is always on screen (and sits above the keyboard). The rest timer with **+30s / Skip** appears there while resting; once all sets are done it becomes **Finish & save workout**.
+- **Status in one line**: time · block · sets done.
+- **Now** comes first: exercise name and "Set 1 of 5 · 8–12 reps", then one row of small buttons — **Swap · Skip · Note · Variation · Pain** (scrolls sideways).
+- **Today's plan** has the sets − / + beside it (was its own "Sets today" row).
+- **Weight and Reps side by side** in two big boxes; tap anywhere in a box to type.
+- **Last time & the coach's reasoning** is one line; tap to unfold.
+- **Coach** (Sergeant Cluck, quote, speeches) moved below the exercise. Cluck shows his line; tap him for the reminders and "Explain, Sergeant".
+- **Today's context** tags are one sideways-scrolling row.
+- The long grey explanations are together under **How this screen works** at the bottom.
 
 ## MK20.7 — widgets work on sideloaded installs, bedtime card yields to the timer
 - **Why the More Training widget only showed the quote**: Sideloadly / AltStore / SideStore re-sign the app with a *renamed* App Group, so the name written in the code never matched and no widget could see the app's data. The app and widgets now look up the group this install was really given (the built-in name, else the one in the signing profile). Settings saved under the old name are carried over. This also connects Sergeant Cluck's widget and the Motivation widget's topic settings.

@@ -6,6 +6,9 @@ import SwiftUI
 struct CluckCoachCard: View {
     @EnvironmentObject private var store: PhoneAppStore
     let state: ActiveWorkoutState
+    /// MK20.8: just his line; tap to unfold the reminders and "Explain, Sergeant".
+    var compact = false
+    @State private var expanded = false
     @State private var explaining = false
 
     private var painFlag: PainFlag? {
@@ -33,7 +36,7 @@ struct CluckCoachCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 10) {
                 CluckView(mood: painFlag != nil ? .protective : .lockedIn, animated: true)
-                    .frame(width: 48, height: 48)
+                    .frame(width: compact ? 36 : 48, height: compact ? 36 : 48)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("SERGEANT CLUCK").font(.caption2.bold()).foregroundStyle(.tint)
                     Text(current.headline)
@@ -42,13 +45,25 @@ struct CluckCoachCard: View {
                         .id(current.headline)
                         .transition(.opacity)
                 }
+                if compact, !current.reminders.isEmpty || !current.reasons.isEmpty {
+                    Spacer(minLength: 0)
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
             }
-            ForEach(current.reminders, id: \.self) { reminder in
-                Label(reminder, systemImage: "checkmark.seal")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if compact { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } }
             }
-            if !current.reasons.isEmpty {
+            if !compact || expanded {
+                ForEach(current.reminders, id: \.self) { reminder in
+                    Label(reminder, systemImage: "checkmark.seal")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if !current.reasons.isEmpty, !compact || expanded {
                 Button {
                     explaining = true
                 } label: {
@@ -100,22 +115,36 @@ struct ExplainSergeantView: View {
 /// Tap-to-toggle chips for the four session-context tags.
 struct SessionTagChips: View {
     let selected: Set<SessionTag>
+    /// MK20.8: one sideways-scrolling row (the live workout screen) instead of a two-column grid.
+    var singleRow = false
     let toggle: (SessionTag) -> Void
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .leading)], alignment: .leading, spacing: 8) {
-            ForEach(SessionTag.allCases) { tag in
-                Button {
-                    toggle(tag)
-                } label: {
-                    Label(tag.title, systemImage: selected.contains(tag) ? "checkmark.circle.fill" : tag.icon)
-                        .font(.subheadline)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.bordered)
-                .tint(selected.contains(tag) ? .orange : .gray)
-                .accessibilityAddTraits(selected.contains(tag) ? .isSelected : [])
+        if singleRow {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) { chips(fill: false) }
             }
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .leading)], alignment: .leading, spacing: 8) {
+                chips(fill: true)
+            }
+        }
+    }
+
+    private func chips(fill: Bool) -> some View {
+        ForEach(SessionTag.allCases) { tag in
+            Button {
+                toggle(tag)
+            } label: {
+                Label(tag.title, systemImage: selected.contains(tag) ? "checkmark.circle.fill" : tag.icon)
+                    .font(.subheadline)
+                    .lineLimit(fill ? nil : 1)
+                    .fixedSize(horizontal: !fill, vertical: false)
+                    .frame(maxWidth: fill ? .infinity : nil, alignment: .leading)
+            }
+            .buttonStyle(.bordered)
+            .tint(selected.contains(tag) ? .orange : .gray)
+            .accessibilityAddTraits(selected.contains(tag) ? .isSelected : [])
         }
     }
 }

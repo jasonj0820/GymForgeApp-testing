@@ -5,6 +5,8 @@ struct VariationRow: View {
     @EnvironmentObject private var store: PhoneAppStore
     let state: ActiveWorkoutState
     let item: RoutineExercise
+    /// MK20.8: a small chip for the workout screen's action row (the last variation is in the menu).
+    var compact = false
     @State private var typing = false
     @State private var draft = ""
 
@@ -29,11 +31,15 @@ struct VariationRow: View {
                 Button("Usual way (clear)", role: .destructive) { store.setVariation(nil, for: item) }
             }
         } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Label(today.map { "Today: \($0)" } ?? "Variation (grip, stance…)", systemImage: "hand.raised.fingers.spread")
-                    .font(.footnote.bold())
-                if let last {
-                    Text("Last time: \(last)").font(.caption).foregroundStyle(.secondary)
+            if compact {
+                Label(today ?? "Variation", systemImage: today == nil ? "hand.raised.fingers.spread" : "checkmark")
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label(today.map { "Today: \($0)" } ?? "Variation (grip, stance…)", systemImage: "hand.raised.fingers.spread")
+                        .font(.footnote.bold())
+                    if let last {
+                        Text("Last time: \(last)").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
         }
