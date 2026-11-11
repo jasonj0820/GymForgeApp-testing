@@ -38,7 +38,7 @@ struct StrengthStandardsView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ContentUnavailableView("Need your body weight", systemImage: "scalemass",
-                                       description: Text("Log your weight in Apple Health so standards can be scaled to you."))
+                                       description: Text("Log your weight on the Body tab so standards can be scaled to you."))
             }
         }
     }

@@ -27,6 +27,9 @@ public struct GymExtras: Codable, Equatable {
     public var breaks: [GymBreak]
     /// MK20.2: weight and body fat you typed in (the Sunday weigh-in), merged with Apple Health.
     public var weighIns: [WeighIn]
+    /// MK21: nights logged with "Going to sleep" / "I'm awake" that Apple Health couldn't take (no Health
+    /// access on this install), kept here so sleep and the recovery score still work.
+    public var manualSleep: [DateInterval]
 
     public init(restDays: [Date] = [], painFlags: [PainFlag] = [], nutrition: [NutritionDay] = [],
                 tape: [TapeEntry] = [], nutritionPhase: NutritionPhase? = nil, phases: [PhaseRecord] = [],
@@ -45,11 +48,12 @@ public struct GymExtras: Codable, Equatable {
         self.plannedRestDays = []
         self.breaks = []
         self.weighIns = []
+        self.manualSleep = []
     }
 
     enum CodingKeys: String, CodingKey {
         case restDays, painFlags, nutrition, tape, nutritionPhase, phases, miniCutThreshold
-        case dayPlans, suggestions, priorityMuscles, declinedProposals, plannedRestDays, breaks, weighIns
+        case dayPlans, suggestions, priorityMuscles, declinedProposals, plannedRestDays, breaks, weighIns, manualSleep
     }
 
     public init(from decoder: Decoder) throws {
@@ -68,6 +72,7 @@ public struct GymExtras: Codable, Equatable {
         plannedRestDays = try c.decodeIfPresent([Date].self, forKey: .plannedRestDays) ?? []
         breaks = try c.decodeIfPresent([GymBreak].self, forKey: .breaks) ?? []
         weighIns = try c.decodeIfPresent([WeighIn].self, forKey: .weighIns) ?? []
+        manualSleep = try c.decodeIfPresent([DateInterval].self, forKey: .manualSleep) ?? []
     }
 
     /// MK20.2: the weigh-in logged on the same day as `date`, if any.

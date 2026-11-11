@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// MK11: Today → Sleep: last night vs your schedule, consistency, and "Going to sleep / I'm awake".
+/// MK11: last night vs your schedule, consistency, and "Going to sleep / I'm awake".
+/// MK21: on Body → Sleep & recovery; on Today only around bedtime or while you're asleep.
 struct SleepCard: View {
     @EnvironmentObject private var store: PhoneAppStore
     @State private var sleepingSince: Date? = SleepHealth.manualStart
@@ -48,7 +49,8 @@ struct SleepCard: View {
             if let since = sleepingSince {
                 Button {
                     Task {
-                        await store.healthKit.finishManualSleep()
+                        // MK21: if Apple Health can't take the night, the app keeps it.
+                        if let night = await store.healthKit.finishManualSleep() { store.keepManualSleep(night) }
                         sleepingSince = nil
                     }
                 } label: {
@@ -68,6 +70,60 @@ struct SleepCard: View {
             }
         }
         .card()
+    }
+}
+
+/// MK21: Body → Sleep & recovery. The sleep card that used to sit on Today (it still appears there around
+/// bedtime and while "Going to sleep" is running), with today's recovery score and your recent nights.
+struct RecoveryView: View {
+    @EnvironmentObject private var store: PhoneAppStore
+
+    var body: some View {
+        let report = store.sleepReport
+        let recent = Array(report.nights.suffix(7).reversed())
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let readiness = store.readiness {
+                    ReadinessCard(readiness: readiness)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("No recovery score yet", systemImage: "bed.double").font(.headline)
+                        Text("It's worked out from last night's sleep. Tap Going to sleep at night and I'm awake in the morning, and the score shows here and on the Coach tab.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .card()
+                }
+                SleepCard()
+                if !recent.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("Recent nights").font(.headline)
+                            Spacer()
+                            if let average = report.averageHours7 {
+                                Text(String(format: "7-night average %.1f h", average))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        ForEach(recent, id: \.night.date) { entry in
+                            HStack {
+                                Text(entry.night.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+                                Spacer()
+                                Text(String(format: "%.1f h", entry.night.hoursAsleep))
+                                    .monospacedDigit()
+                                    .foregroundStyle(entry.night.hoursAsleep < 6 ? Color.orange : Color.primary)
+                            }
+                            .font(.subheadline)
+                        }
+                    }
+                    .card()
+                }
+            }
+            .padding()
+        }
+        .navigationTitle("Sleep & recovery")
+        .refreshable { await store.appBecameActive() }
     }
 }
 

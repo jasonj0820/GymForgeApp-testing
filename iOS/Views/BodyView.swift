@@ -14,6 +14,22 @@ struct BodyView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
+                // MK21: the cards that moved off Today live here.
+                VStack(spacing: 0) {
+                    NavigationLink { NutritionView() } label: {
+                        sectionLink("fork.knife", "Nutrition & phase", "Protein, creatine, calories, bulk / cut")
+                    }
+                    Divider()
+                    NavigationLink { RecoveryView() } label: {
+                        sectionLink("bed.double.fill", "Sleep & recovery", "Last night, your schedule, recovery score")
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+
                 Picker("Range", selection: $range) {
                     ForEach(ChartRange.allCases) { Text($0.rawValue).tag($0) }
                 }
@@ -32,7 +48,10 @@ struct BodyView: View {
                     .foregroundStyle(.secondary)
 
                 if let error = store.healthKit.authorizationError {
-                    Text(error).font(.footnote).foregroundStyle(.red)
+                    // MK21: not an alarm — the app works from typed-in and imported data without Health.
+                    Text("Apple Health isn't connected on this install (\(error)). Your typed-in weigh-ins and imported Health export are used instead.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding()
@@ -42,6 +61,23 @@ struct BodyView: View {
         .task {
             if store.healthKit.bodyWeight.isEmpty { await store.healthKit.refreshBodyMetrics() }
         }
+    }
+
+    private func sectionLink(_ icon: String, _ title: String, _ detail: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.body.weight(.semibold))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder

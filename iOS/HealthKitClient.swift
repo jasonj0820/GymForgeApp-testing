@@ -24,6 +24,8 @@ final class HealthKitClient: ObservableObject {
     /// MK20.4: from an Apple Health export file, and live recovery data (merged into the published arrays).
     private(set) var imported: HealthImportData? = HealthImportData.load()
     private var healthSleep: [SleepNight] = []
+    /// MK21: nights kept in the app because Apple Health couldn't save them.
+    private var localSleep: [SleepNight] = []
     private var healthResting: [BodyMetricPoint] = []
     private var healthHRV: [BodyMetricPoint] = []
     /// Retained so the mirrored session from the Watch isn't deallocated immediately.
@@ -203,12 +205,20 @@ final class HealthKitClient: ObservableObject {
         mergeRecovery()
     }
 
-    /// Live Apple Health wins on any day it has; the export fills in the rest.
+    /// MK21: nights you logged by hand that live in the app (see `finishManualSleep`).
+    func setLocalSleep(_ intervals: [DateInterval]) {
+        localSleep = ReadinessEngine.nights(from: intervals)
+        mergeRecovery()
+    }
+
+    /// Live Apple Health wins on any day it has; then nights kept in the app; the export fills in the rest.
     private func mergeRecovery() {
         let cal = Calendar.current
-        let liveSleepDays = Set(healthSleep.map { cal.startOfDay(for: $0.date) })
-        sleep = ((imported?.sleep ?? []).filter { !liveSleepDays.contains(cal.startOfDay(for: $0.date)) } + healthSleep)
-            .sorted { $0.date < $1.date }
+        var taken = Set(healthSleep.map { cal.startOfDay(for: $0.date) })
+        let kept = localSleep.filter { !taken.contains(cal.startOfDay(for: $0.date)) }
+        taken.formUnion(kept.map { cal.startOfDay(for: $0.date) })
+        let old = (imported?.sleep ?? []).filter { !taken.contains(cal.startOfDay(for: $0.date)) }
+        sleep = (old + kept + healthSleep).sorted { $0.date < $1.date }
         func merge(_ live: [BodyMetricPoint], _ old: [BodyMetricPoint]) -> [BodyMetricPoint] {
             let days = Set(live.map { cal.startOfDay(for: $0.date) })
             return (old.filter { !days.contains(cal.startOfDay(for: $0.date)) } + live).sorted { $0.date < $1.date }
@@ -224,8 +234,21 @@ final class HealthKitClient: ObservableObject {
     /// MK11: "Going to sleep" / "I'm awake" on the iPhone.
     func startManualSleep() { SleepHealth.manualStart = .now }
 
-    func finishManualSleep() async {
-        if await SleepHealth.finishManual(store: healthStore) { await refreshRecovery() }
+    /// "I'm awake": saves the night (30 min – 16 h) to Apple Health. MK21: when Health can't take it — no
+    /// Health access on this install, or sleep writing switched off — the night is returned so the app keeps
+    /// it itself; before, it was dropped without a word.
+    func finishManualSleep(now: Date = .now) async -> DateInterval? {
+        guard let start = SleepHealth.manualStart else { return nil }
+        SleepHealth.manualStart = nil
+        let length = now.timeIntervalSince(start)
+        guard length >= 30 * 60, length <= 16 * 3600 else { return nil }
+        do {
+            try await SleepHealth.saveManual(start: start, end: now, store: healthStore)
+            await refreshRecovery()
+            return nil
+        } catch {
+            return DateInterval(start: start, end: now)
+        }
     }
 
     private func queryQuantity(

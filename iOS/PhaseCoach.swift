@@ -82,7 +82,7 @@ struct PhaseCoach {
     var rate: RateStatus {
         guard let pct = weeklyWeightPercent else {
             return RateStatus(level: .needData, weeklyPercent: nil, title: "Need more weigh-ins",
-                              message: "Weigh in at least 6 times over 2+ weeks (Apple Health) to track your rate.")
+                              message: "Weigh in at least 6 times over 2+ weeks (Body tab, or Apple Health) to track your rate.")
         }
         let text = String(format: "%+.2f%% body weight per week", pct)
         switch phase {

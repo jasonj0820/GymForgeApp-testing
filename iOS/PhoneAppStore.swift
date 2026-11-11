@@ -80,6 +80,7 @@ final class PhoneAppStore: ObservableObject {
     init() {
         load()
         healthKit.setManual(extras.weighIns)
+        healthKit.setLocalSleep(extras.manualSleep)
         ensurePhaseRecord()
         migrateAssistedPullUps()
         backupReady = hadLocalData
@@ -707,6 +708,17 @@ final class PhoneAppStore: ObservableObject {
         healthKit.setImported(nil)
     }
 
+    // MARK: Sleep kept in the app (MK21)
+
+    /// A night logged with "Going to sleep" / "I'm awake" that Apple Health couldn't save. Kept with your
+    /// other data (and in backups) so last night, the sleep score and the recovery score still work.
+    func keepManualSleep(_ night: DateInterval) {
+        extras.manualSleep.append(night)
+        extras.manualSleep = Array(extras.manualSleep.sorted { $0.start < $1.start }.suffix(400))
+        healthKit.setLocalSleep(extras.manualSleep)
+        persistAndSync()
+    }
+
     // MARK: Sunday weigh-in (MK20.2)
 
     /// Saves a typed-in weigh-in. One per day: a second one the same day replaces the first.
@@ -773,6 +785,7 @@ final class PhoneAppStore: ObservableObject {
         profile = snapshot.profile ?? UserProfile()
         extras = snapshot.extras ?? GymExtras()
         healthKit.setManual(extras.weighIns)
+        healthKit.setLocalSleep(extras.manualSleep)
         cardioSessions = snapshot.cardioSessions ?? []
         ensurePhaseRecord()
         save()

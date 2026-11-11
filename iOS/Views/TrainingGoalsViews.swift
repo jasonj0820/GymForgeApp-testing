@@ -1,42 +1,7 @@
 import SwiftUI
 
-/// MK11.1: Today → this week's lifting, running and basketball goals, each on its own bar.
-struct TrainingGoalsCard: View {
-    @EnvironmentObject private var store: PhoneAppStore
-
-    var body: some View {
-        let rows = TrainingGoalTracker.progress(goals: store.profile.trainingGoals, liftGoal: store.thisWeekGoal,
-                                                logs: store.workoutLogs, cardio: store.cardioSessions)
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("Goals this week", systemImage: "target").font(.headline)
-                Spacer()
-                NavigationLink { TrainingGoalsView() } label: { Text("Edit").font(.subheadline) }
-            }
-            ForEach(rows) { row in
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack {
-                        Text(row.title).font(.subheadline)
-                        Spacer()
-                        Text(row.text).font(.subheadline.monospacedDigit())
-                            .foregroundStyle(row.met ? .green : .secondary)
-                    }
-                    if row.target != nil {
-                        ProgressView(value: row.fraction)
-                            .tint(row.kind == .lifting ? Color.accentColor : (row.kind == .basketball ? Color.orange : Color.green))
-                    }
-                }
-            }
-            if store.profile.trainingGoals?.runsPerWeek == nil && store.profile.trainingGoals?.runKmPerWeek == nil {
-                Text("Set a running goal to track it separately — runs and basketball never count toward lifting.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .card()
-    }
-}
-
+/// MK11.1: lifting, running and basketball goals. MK21: opened from the Goals chip on Today's week card,
+/// which shows this week's progress for each.
 struct TrainingGoalsView: View {
     @EnvironmentObject private var store: PhoneAppStore
     @State private var goals = TrainingGoals()

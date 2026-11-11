@@ -37,30 +37,7 @@ struct TrainingBlockSection: View {
     }
 }
 
-/// Today: "Your block review is ready" during the deload and the week after.
-struct BlockReviewCard: View {
-    @EnvironmentObject private var store: PhoneAppStore
-
-    var body: some View {
-        if let review = store.blockReview {
-            NavigationLink {
-                BlockReviewView(review: review)
-            } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Block review", systemImage: "flag.checkered")
-                        .font(.headline)
-                    Text(review.headline)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .card()
-            }
-            .buttonStyle(.plain)
-        }
-    }
-}
-
+/// Opened from Today → For you while the block review is ready (the deload week and the week after).
 struct BlockReviewView: View {
     @EnvironmentObject private var store: PhoneAppStore
     let review: BlockReview

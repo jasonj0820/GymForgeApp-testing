@@ -55,7 +55,7 @@ struct CalorieCard: View {
                     fatGain(check)
                 }
             } else {
-                Text("Log your weight (and body fat, if your scale has it) in Apple Health to get a daily calorie target.")
+                Text("Log your weight on the Body tab (and body fat, if your scale shows it) to get a daily calorie target.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

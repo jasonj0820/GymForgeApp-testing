@@ -65,7 +65,7 @@ struct NutritionCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Log your weight in Apple Health (or the Body tab) to get a daily protein target.")
+                    Text("Log your weight on the Body tab to get a daily protein target.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -103,5 +103,24 @@ struct NutritionCard: View {
         } message: {
             Text("Enter today's total.")
         }
+    }
+}
+
+/// MK21: the full protein / creatine and calorie cards that used to sit on Today, with your bulk / cut
+/// phase. Opens from "Details" on Today's nutrition card and from the Body tab.
+struct NutritionView: View {
+    @EnvironmentObject private var store: PhoneAppStore
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                NutritionCard()
+                CalorieCard()
+                PhaseCard()
+            }
+            .padding()
+        }
+        .navigationTitle("Nutrition & phase")
+        .refreshable { await store.appBecameActive() }
     }
 }

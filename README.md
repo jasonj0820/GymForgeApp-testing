@@ -1,4 +1,23 @@
-# Splitday MK20.9 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK21 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+
+## MK21 — a shorter home screen
+Today went from ~20 stacked cards (with Start at the very bottom) to five blocks, about a screen and a half.
+- **Today's session, first.** One card answers "what am I doing today?" and carries the Start button: the split / planned routine with its exercise count, estimated time and block week; or Resume while a workout runs; Done today (with View summary); Rest day; the Friday basketball question; a basketball / run day with its own Start; sick and travel days. Deload status and its End button are on it too. The button reads "Start on iPhone + Watch" only when the Watch app is connected.
+- **This week**: sessions against your goal, the day row, a row of chips (streak, running / basketball goals, **Goals** to change them), Sergeant Cluck, and Rest day / Plan week.
+- **For you**: one-line rows that only appear when they apply — Sunday weigh-in, weekly review, block review, plan your week, low recovery, bulk / cut warnings, and the coach's top note.
+- **Nutrition**: protein bar with +20 g / +40 g and the creatine tick. **Details** opens the full cards.
+- **More workouts**: your other routines as compact rows (tap for the plan, Start to go), then Run / Basketball.
+- Sleep appears on Today only around bedtime or while "Going to sleep" is running.
+
+**Where the rest went** (nothing was deleted):
+- Full protein / creatine card, Calories, and the bulk / cut Phase card → **Body → Nutrition & phase** (also "Details" on Today).
+- Sleep card and the recovery score → **Body → Sleep & recovery** (with your last 7 nights). Recovery is also still on Coach.
+- Goals this week → the chips on the week card; block week → a line on the top card.
+- Dropped from Today: the adherence bar and last-4-weeks line (they're in the weekly review), and the Watch status line (still in Settings → Apple Watch).
+
+**Also fixed while going through the app**
+- **Sleep logged by hand is no longer thrown away.** "I'm awake" only saved to Apple Health; when Health can't take it (sideloaded installs without Health access) the night was dropped silently. It's now kept in the app (and its backups), so last night, the sleep score and the recovery score work without Health.
+- Hints that said "log your weight in Apple Health" now point to the Body tab; the red Health error on Body is a plain note.
 
 ## MK20.9 — workout screen tidy-up, "Feeling sick", coach plan text fixed
 - **Top of the workout screen**: timer and sets done, then **Sergeant Cluck saying your quote**, then the speeches player. The block name is gone from that row.
