@@ -41,7 +41,7 @@ enum RoutineOrder {
     }
 
     /// A weigh-in step opens the weigh-in sheet until this week's weight is logged; saving it ticks the step.
-    static func needsWeighIn(_ row: TaskOccurrence, store: PhoneAppStore) -> Bool {
+    @MainActor static func needsWeighIn(_ row: TaskOccurrence, store: PhoneAppStore) -> Bool {
         !row.done && row.task.title.localizedCaseInsensitiveContains("weigh") && store.thisWeeksWeighIn == nil
     }
 }
