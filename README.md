@@ -1,4 +1,18 @@
-# Splitday MK21.1 — GymForge + Dayfold in one app (iPhone + Apple Watch)
+# Splitday MK22 — gym and daily routine in one app (iPhone + Apple Watch)
+
+## MK22 — one app instead of two halves
+Until now Splitday was two apps behind a switch: the gym side, and "Dayfold" with its own tab bar, its own dark theme, its own Settings and a button to jump back. The switch is gone.
+- **Routine card on Today**, under the session card: "3 of 8", a progress bar and the next three steps, which you tick right there. Wake-up steps come first in the morning and before-bed steps in the evening. Tap the header for the full list.
+- **Routine screen**: everything due today in one list, in the order the day runs — Wake-up, Today, Before bed — instead of four pages by frequency. Weekly, monthly and yearly steps appear on the days they're due and say so on the row. Steps waiting for their next retry are folded away at the bottom. **Edit** adds, reorders and removes steps; the bell sets reminders.
+- **Same look as the rest of the app**: follows light / dark mode and uses the same cards. The forced dark theme and green tint are gone, including on the wake-up and before-bed checklists.
+- **One Settings**: Settings → Routine has Steps, Reminders and Watch sync, and Quotes and widget.
+- **Weigh-in steps open the weigh-in.** A step with "weigh" in its name opens the Sunday weigh-in sheet until this week's weight is logged, then ticks itself.
+- **Reminders** for the routine now open it over whatever tab you're on.
+- **App icon long-press**: Before bed, Routine, Wake-up (the "GymForge" / "Dayfold" switchers are gone).
+- **Watch**: the list is called Routine.
+- The evening recap says "Routine 5 / 8 steps".
+
+Nothing was deleted: steps, check-offs and reminder times carry over.
 
 ## MK21.1 — Progress, rebuilt
 The old Progress tab opened on one exercise's chart behind three pickers (mode, exercise, metric). It now opens on the answer to "am I getting stronger?".

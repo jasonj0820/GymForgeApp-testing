@@ -150,7 +150,7 @@ struct SleepScheduleView: View {
                     }
                 }
             } footer: {
-                Text("Each night is the evening it starts: \"Friday night\" = bed Friday, up Saturday. 10 minutes before bed you get a wind-down notification (iPhone and Watch). Tap it and your Dayfold before-bed checklist opens, with the wind-down card on the Lock Screen until you go to bed. The rest of the day it stays about the gym.")
+                Text("Each night is the evening it starts: \"Friday night\" = bed Friday, up Saturday. 10 minutes before bed you get a wind-down notification (iPhone and Watch). Tap it and your before-bed checklist opens, with the wind-down card on the Lock Screen until you go to bed. The rest of the day it stays about the gym.")
             }
             Section {
                 TextField("Shortcut name, e.g. GymForge Sleep", text: $focusShortcut)

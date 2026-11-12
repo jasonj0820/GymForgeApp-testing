@@ -29,7 +29,7 @@ struct WindDownView: View {
                             TaskRow(row: row, color: DayfoldPalette.lavender) { dayfold.setDone(row, done: !row.done) }
                         }
                         if rows.isEmpty {
-                            Text("Nothing on your before-bed list. Turn on \"Before bed\" for any step in Dayfold → Routines.")
+                            Text("Nothing on your before-bed list. Turn on \"Before bed\" for any step in Routine → Edit.")
                                 .font(.footnote).foregroundStyle(.secondary)
                         }
                         Button {
@@ -43,11 +43,9 @@ struct WindDownView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }.padding(24).frame(maxWidth: 620).frame(maxWidth: .infinity)
                 }
-                .background(DayfoldPalette.background)
             }
             .navigationTitle("Before bed").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .preferredColorScheme(.dark)
     }
 }

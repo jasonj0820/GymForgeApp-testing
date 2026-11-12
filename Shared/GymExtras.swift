@@ -379,8 +379,8 @@ public enum DailyRecap {
 
         if stepsTotal > 0 {
             goals += 1
-            lines.append("Dayfold \(stepsDone) / \(stepsTotal) steps")
-            if stepsDone >= stepsTotal { hits += 1 } else { advice.append("\(stepsTotal - stepsDone) Dayfold step\(stepsTotal - stepsDone == 1 ? "" : "s") left. They're back on tomorrow's list.") }
+            lines.append("Routine \(stepsDone) / \(stepsTotal) steps")
+            if stepsDone >= stepsTotal { hits += 1 } else { advice.append("\(stepsTotal - stepsDone) routine step\(stepsTotal - stepsDone == 1 ? "" : "s") left. They're back on tomorrow's list.") }
         }
 
         if let gymTomorrow { advice.append("\(gymTomorrow) tomorrow. Bag packed, lights out on time.") }

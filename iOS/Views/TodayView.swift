@@ -109,6 +109,7 @@ struct TodayView: View {
                 BreakBanner()
 
                 HomeHeroCard(today: today)
+                HomeRoutineCard(showWeighIn: $showWeighIn)
                 HomeWeekCard()
                 HomeHeadsUpCard(showWeighIn: $showWeighIn)
                 // Sleep shows here only when it's time to act: around bedtime, or while "Going to sleep" is running.

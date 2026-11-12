@@ -72,6 +72,17 @@ struct SettingsView: View {
                 Text("Deload: one less set per exercise and ~10% lighter for 7 days. Deload and light sessions don't count against your progression.")
             }
 
+            // MK22: the routine's settings live here now (they used to be a tab of the separate Dayfold half).
+            Section {
+                NavigationLink { DayfoldManageView() } label: { Label("Steps", systemImage: "checklist") }
+                NavigationLink { DayfoldSettingsView() } label: { Label("Reminders and Watch sync", systemImage: "bell") }
+                NavigationLink { MotivationSettingsView() } label: { Label("Quotes and widget", systemImage: "quote.opening") }
+            } header: {
+                Text("Routine")
+            } footer: {
+                Text("Your daily, weekly, monthly and yearly steps, with the wake-up and before-bed checklists. They show on Today under the session card.")
+            }
+
             Section {
                 Toggle("Sergeant Cluck", isOn: profileBinding(\.cluckEnabled))
                 if store.profile.cluckEnabled {

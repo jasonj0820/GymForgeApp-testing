@@ -9,8 +9,8 @@ struct DayfoldWatchHome: View {
                     if store.snapshot.configuration.tasks.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Image(systemName: "iphone.and.arrow.forward").font(.title)
-                            Text("Welcome to Dayfold").font(.headline)
-                            Text("Open GymForge → Dayfold on your iPhone to sync your routines.").font(.footnote)
+                            Text("No routine yet").font(.headline)
+                            Text("Open Splitday on your iPhone to sync your routine.").font(.footnote)
                             Button("Try sync") { store.refresh() }
                         }
                     } else {
@@ -28,7 +28,7 @@ struct DayfoldWatchHome: View {
                     }
                 }
         }
-        .navigationTitle("Dayfold")
+        .navigationTitle("Routine")
         .onAppear { store.refresh() }
         .alert("Save issue", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
             Button("OK") { store.errorMessage = nil }

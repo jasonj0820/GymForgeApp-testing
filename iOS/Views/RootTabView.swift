@@ -2,6 +2,8 @@ import SwiftUI
 
 struct RootTabView: View {
     @EnvironmentObject private var store: PhoneAppStore
+    @EnvironmentObject private var dayfold: DayfoldStore
+    @State private var showRoutine = false
 
     var body: some View {
         tabs
@@ -51,6 +53,30 @@ struct RootTabView: View {
                 PhoneAppDelegate.pendingReview = false
                 store.showWeeklyReview = true
             }
+            // MK22: a routine reminder (or the Routine quick action) opens the routine over whatever tab you're on.
+            .sheet(isPresented: $showRoutine) {
+                NavigationStack {
+                    RoutineScreen()
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Done") { showRoutine = false }
+                            }
+                        }
+                }
+                .environmentObject(store)
+                .environmentObject(dayfold)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .dayfoldOpenRoutine)) { _ in
+                showRoutine = true
+            }
+            .alert("Something needs attention", isPresented: Binding(
+                get: { dayfold.errorMessage != nil },
+                set: { if !$0 { dayfold.errorMessage = nil } }
+            )) {
+                Button("OK") { dayfold.errorMessage = nil }
+            } message: {
+                Text(dayfold.errorMessage ?? "")
+            }
             .onAppear {
                 if PhoneAppDelegate.pendingReview {
                     PhoneAppDelegate.pendingReview = false
@@ -61,17 +87,7 @@ struct RootTabView: View {
 
     private var tabs: some View {
         TabView {
-            NavigationStack {
-                TodayView()
-                    .toolbar {
-                        // MK12: switch to the Dayfold half (also: long-press the app icon).
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button { AppLink.open(URL(string: "gymforge://dayfold")!) } label: {
-                                Label("Dayfold", systemImage: "checklist")
-                            }
-                        }
-                    }
-            }
+            NavigationStack { TodayView() }
                 .tabItem { Label("Today", systemImage: "bolt.heart") }
             NavigationStack { RoutinesView() }
                 .tabItem { Label("Workouts", systemImage: "list.bullet.rectangle") }

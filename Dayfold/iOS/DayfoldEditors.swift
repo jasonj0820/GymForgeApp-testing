@@ -1,48 +1,48 @@
 import SwiftUI
 import UIKit
 
+/// MK22: pushed from Routine → Edit and from Settings (it used to be a tab of the separate Dayfold half).
 struct DayfoldManageView: View {
     @EnvironmentObject var store: DayfoldStore
     @State private var editingTask: RoutineTask?
     var body: some View {
-        NavigationStack {
-            List {
+        List {
+            Section {
+                Text("Drag to reorder, tap to edit, or add a new step. Switch on Wake-up or Before bed to put a step on those checklists.")
+                    .foregroundStyle(.secondary).font(.subheadline)
+            }
+            ForEach(RoutineKind.allCases) { kind in
                 Section {
-                    Text("Build routines that fit your life. Drag to reorder, tap to edit, or add a new step.")
-                        .foregroundStyle(.secondary).font(.subheadline)
-                }
-                ForEach(RoutineKind.allCases) { kind in
-                    Section {
-                        let tasks = store.snapshot.configuration.tasks.filter { $0.routine == kind }.sorted { $0.order < $1.order }
-                        ForEach(tasks) { task in
-                            Button { editingTask = task } label: {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text(task.title).foregroundStyle(.primary)
-                                        Text(task.enabled ? task.scheduleLabel + (task.wake ? " · Wake-up" : "") + (task.bedtime ? " · Before bed" : "") : "Paused")
-                                            .font(.caption).foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
-                                }.padding(.vertical, 3)
-                            }
+                    let tasks = store.snapshot.configuration.tasks.filter { $0.routine == kind }.sorted { $0.order < $1.order }
+                    ForEach(tasks) { task in
+                        Button { editingTask = task } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(task.title).foregroundStyle(.primary)
+                                    Text(task.enabled ? task.scheduleLabel + (task.wake ? " · Wake-up" : "") + (task.bedtime ? " · Before bed" : "") : "Paused")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                            }.padding(.vertical, 3)
                         }
-                        .onMove { store.reorder(kind, from: $0, to: $1) }
-                        .onDelete { offsets in
-                            for offset in offsets { store.deleteTask(tasks[offset].id) }
-                        }
-                        Button {
-                            editingTask = RoutineTask(title: "", routine: kind,
-                                weekdays: kind == .weekly ? [Calendar.current.component(.weekday, from: Date())] : Set(1...7),
-                                order: (tasks.map(\.order).max() ?? -1) + 1)
-                        } label: { Label("Add a step", systemImage: "plus") }
-                    } header: { Label(kind.title, systemImage: kind.symbol) }
-                }
-            }.scrollContentBackground(.hidden).background(DayfoldPalette.background)
-                .navigationTitle("Your routines")
-                .toolbar { EditButton() }
-                .sheet(item: $editingTask) { task in TaskEditor(task: task) }
+                    }
+                    .onMove { store.reorder(kind, from: $0, to: $1) }
+                    .onDelete { offsets in
+                        for offset in offsets { store.deleteTask(tasks[offset].id) }
+                    }
+                    Button {
+                        editingTask = RoutineTask(title: "", routine: kind,
+                            weekdays: kind == .weekly ? [Calendar.current.component(.weekday, from: Date())] : Set(1...7),
+                            order: (tasks.map(\.order).max() ?? -1) + 1)
+                    } label: { Label("Add a step", systemImage: "plus") }
+                } header: { Label(kind.title, systemImage: kind.symbol) }
+            }
         }
+        .navigationTitle("Routine steps")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { EditButton() }
+        .sheet(item: $editingTask) { task in TaskEditor(task: task).environmentObject(store) }
     }
 }
 
@@ -118,45 +118,46 @@ struct TaskEditor: View {
     }
 }
 
+/// MK22: routine reminders and Watch sync, pushed from Routine → bell and from Settings.
 struct DayfoldSettingsView: View {
     @EnvironmentObject var store: DayfoldStore
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Reminders") {
-                    ForEach(RoutineKind.allCases) { kind in
-                        NavigationLink { ReminderEditor(settings: store.settings(kind)) } label: {
+        List {
+            Section {
+                ForEach(RoutineKind.allCases) { kind in
+                    NavigationLink { ReminderEditor(settings: store.settings(kind)) } label: {
+                        HStack {
                             Label(kind.title, systemImage: kind.symbol)
+                            Spacer()
+                            Text(summary(store.settings(kind))).foregroundStyle(.secondary)
                         }
                     }
-                    NotificationStatus(notifications: store.notifications)
                 }
-                Section("Apple Watch") {
-                    Label(store.syncStatus, systemImage: "applewatch")
-                    Button("Sync now") { store.refresh() }
-                    Text("Dayfold is in the GymForge Watch app. Check-offs work offline and sync over GymForge's connection. Edit routines on your iPhone.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-                Section("Motivation") {
-                    NavigationLink { MotivationSettingsView() } label: { Label("Quotes & widget", systemImage: "quote.opening") }
-                }
-                Section("Before bed") {
-                    Text("Steps marked \"Before bed\" make up the wind-down checklist on GymForge's bedtime card, plus \"Pack gym bag\" when a session is planned tomorrow. Set bedtime and your Sleep Focus shortcut in GymForge → Today → Sleep.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-                Section("Your routine rules") {
-                    Label("Home shows everything due today", systemImage: "house")
-                    Label("Weigh-ins tick themselves when Apple Health gets a new weight", systemImage: "scalemass")
-                    Label("One reminder per frequency, only when something's due", systemImage: "bell")
-                    Label("Late completion keeps the original schedule", systemImage: "calendar")
-                    Label("Day 31 falls on the last day of shorter months", systemImage: "calendar.badge.clock")
-                }
-                Section {
-                    Text("Dayfold · part of Splitday\nStored on your devices. No account, ads or analytics.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-            }.navigationTitle("Settings").scrollContentBackground(.hidden).background(DayfoldPalette.background)
+                NotificationStatus(notifications: store.notifications)
+            } header: { Text("Reminders") } footer: {
+                Text("One reminder per frequency, only on days something is due, with follow-ups at +1 h and +3 h while steps are still open.")
+            }
+            Section {
+                Label(store.syncStatus, systemImage: "applewatch")
+                Button("Sync now") { store.refresh() }
+            } header: { Text("Apple Watch") } footer: {
+                Text("Your routine is in the Watch app under Routine. Check-offs work offline and sync when the phone is in reach. Edit steps on your iPhone.")
+            }
+            Section("How it works") {
+                Label("Weigh-in steps open the weigh-in and tick themselves once a weight is logged", systemImage: "scalemass")
+                Label("\"Pack gym bag\" joins tonight's list when a session is planned tomorrow", systemImage: "bag")
+                Label("Finishing late keeps the original schedule", systemImage: "calendar")
+                Label("Day 31 falls on the last day of shorter months", systemImage: "calendar.badge.clock")
+            }
         }
+        .navigationTitle("Routine reminders")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func summary(_ settings: RoutineSettings) -> String {
+        guard settings.remindersEnabled else { return "Off" }
+        let date = Calendar.current.date(bySettingHour: settings.hour, minute: settings.minute, second: 0, of: Date()) ?? Date()
+        return date.formatted(date: .omitted, time: .shortened)
     }
 }
 
@@ -173,7 +174,7 @@ struct NotificationStatus: View {
                 if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
             }.font(.footnote)
             if let problem = notifications.problem { Text(problem).font(.caption).foregroundStyle(.orange) }
-            Text("Up to 10 upcoming reminders are prepared (iOS shares a limit of 64 with GymForge's own) and renewed whenever you open the app. Focus and notification settings control delivery to your watch.")
+            Text("Up to 10 upcoming reminders are prepared (iOS allows 64 per app, shared with the gym reminders) and renewed whenever you open the app. Focus and notification settings control delivery to your watch.")
                 .font(.caption).foregroundStyle(.secondary)
         }.padding(.vertical, 4)
     }

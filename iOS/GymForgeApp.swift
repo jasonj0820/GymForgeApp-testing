@@ -9,8 +9,6 @@ struct GymForgeApp: App {
     @Environment(\.scenePhase) private var scenePhase
     /// The first launch runs its own sequence below; only later returns to the app re-check.
     @State private var launched = false
-    /// Splitday (MK12+): one app, two halves. "gym" = GymForge, "dayfold" = Dayfold routines.
-    @AppStorage("app.mode") private var mode = "gym"
     @State private var showWindDown = false
     @State private var showWakeUp = false
     @State private var showWeighIn = false
@@ -23,16 +21,8 @@ struct GymForgeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if mode == "dayfold" {
-                    DayfoldRootView().tint(DayfoldPalette.accent).preferredColorScheme(.dark)
-                        .transition(.push(from: .trailing))
-                } else {
-                    RootTabView()
-                        .transition(.push(from: .leading))
-                }
-            }
-            .animation(.smooth(duration: 0.45), value: mode)   // MK19: slide between the two halves
+            // MK22: one app. The routine (formerly the separate Dayfold half) lives on Today.
+            RootTabView()
             .environmentObject(store)
             .environmentObject(dayfold)
             .sheet(isPresented: $showWindDown) {
@@ -74,7 +64,7 @@ struct GymForgeApp: App {
         dayfold.notifications.refreshPermission()
     }
 
-    /// gymforge://bedtime · winddown · gym · weighin · dayfold[/daily|weekly|monthly|yearly]
+    /// gymforge://bedtime · wakeup · winddown · weighin · mt · dayfold (the routine) · gym (just opens the app)
     private func open(_ url: URL) {
         AppLink.pending = nil
         guard url.scheme == "gymforge" else { return }
@@ -86,24 +76,12 @@ struct GymForgeApp: App {
         case "winddown":
             store.startWindDown()
             showWindDown = true
-        case "gym":
-            mode = "gym"
         case "weighin":   // MK20.2: the Sunday 9am reminder.
-            mode = "gym"
             showWeighIn = true
         case "mt":   // MK17: the More Training timer card. Still unlocked mid-timer; otherwise asks first.
-            let wasDayfold = mode == "dayfold"
-            mode = "gym"
-            // Give GymForge's Today screen a moment to appear if we were in Dayfold.
-            DispatchQueue.main.asyncAfter(deadline: .now() + (wasDayfold ? 0.6 : 0)) {
-                NotificationCenter.default.post(name: .openMoreTraining, object: nil)
-            }
-        case "dayfold":
-            mode = "dayfold"
-            let routine = url.lastPathComponent
-            if RoutineKind(rawValue: routine) != nil {
-                NotificationCenter.default.post(name: .dayfoldOpenRoutine, object: routine)
-            }
+            NotificationCenter.default.post(name: .openMoreTraining, object: nil)
+        case "dayfold":   // A routine reminder was tapped, or the "Routine" quick action.
+            NotificationCenter.default.post(name: .dayfoldOpenRoutine, object: url.lastPathComponent)
         default:
             break
         }

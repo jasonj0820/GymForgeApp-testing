@@ -27,11 +27,11 @@ struct WakeUpView: View {
                                     .font(.title2).foregroundStyle(creatine ? DayfoldPalette.accent : .secondary)
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text("Creatine 5 g").font(.body.weight(.medium)).strikethrough(creatine)
-                                    Text("Same tick as GymForge's nutrition card").font(.caption).foregroundStyle(.secondary)
+                                    Text("Same tick as the nutrition card on Today").font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 0)
-                            }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
-                                .background(DayfoldPalette.card, in: RoundedRectangle(cornerRadius: 18))
+                            }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
                         }.buttonStyle(.plain)
                         ForEach(rows) { row in
                             TaskRow(row: row, color: DayfoldPalette.accent) { dayfold.setDone(row, done: !row.done) }
@@ -42,18 +42,16 @@ struct WakeUpView: View {
                                 Text(recap.text).font(.subheadline).foregroundStyle(.secondary)
                             }
                             .padding(18).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(DayfoldPalette.card, in: RoundedRectangle(cornerRadius: 18))
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
                             .padding(.top, 8)
                         }
-                        Text("Add or remove steps with the \"Wake-up\" switch in Dayfold → Routines.")
+                        Text("Add or remove steps with the \"Wake-up\" switch in Routine → Edit.")
                             .font(.caption).foregroundStyle(.secondary)
                     }.padding(24).frame(maxWidth: 620).frame(maxWidth: .infinity)
                 }
-                .background(DayfoldPalette.background)
             }
             .navigationTitle("Wake-up").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .preferredColorScheme(.dark)
     }
 }

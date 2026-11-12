@@ -35,7 +35,7 @@ struct WatchHomeView: View {
                     NavigationLink {
                         DayfoldWatchHome()
                     } label: {
-                        Label("Dayfold", systemImage: "checklist")
+                        Label("Routine", systemImage: "checklist")
                     }
                     NavigationLink {
                         WatchSleepView()

@@ -71,17 +71,17 @@
 			<key>UIApplicationShortcutItemIconSymbolName</key>
 			<string>checklist</string>
 			<key>UIApplicationShortcutItemTitle</key>
-			<string>Dayfold</string>
+			<string>Routine</string>
 			<key>UIApplicationShortcutItemType</key>
 			<string>gymforge://dayfold</string>
 		</dict>
 		<dict>
 			<key>UIApplicationShortcutItemIconSymbolName</key>
-			<string>dumbbell.fill</string>
+			<string>sun.horizon.fill</string>
 			<key>UIApplicationShortcutItemTitle</key>
-			<string>GymForge</string>
+			<string>Wake-up</string>
 			<key>UIApplicationShortcutItemType</key>
-			<string>gymforge://gym</string>
+			<string>gymforge://wakeup</string>
 		</dict>
 	</array>
 	<key>UIBackgroundModes</key>
