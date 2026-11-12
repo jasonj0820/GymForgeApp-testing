@@ -241,27 +241,39 @@ struct MTTrainingWidgetView: View {
         let paused = state.pausedRemaining != nil
         let cue = state.widgetCue
         return VStack(alignment: .leading, spacing: small ? 3 : 6) {
-            if small {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
+            if small, let cue {
+                // The time and the step's name share the top row, so the instruction gets the room.
+                HStack(alignment: .center, spacing: 4) {
+                    clock(state, size: 28)
+                        .frame(width: 84, alignment: .leading)
+                    Spacer(minLength: 0)
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text(timer.step.title)
+                            .font(.caption.bold())
+                            .foregroundStyle(.white)
+                        Text(paused ? "Paused" : state.label)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Self.accent)
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                }
+                cueText(cue, size: 11)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else if small {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(timer.step.title)
-                        .font(.subheadline.bold())
+                        .font(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    Spacer(minLength: 0)
-                    Text(paused ? "Paused" : state.label)
-                        .font(.caption2.weight(.semibold))
+                    Text(paused ? "Paused · \(state.label)" : state.label)
+                        .font(.caption)
                         .foregroundStyle(Self.accent)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
                 }
-                clock(state, size: cue == nil ? 38 : 28)
-                if let cue {
-                    cueText(cue, size: 11)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                } else {
-                    Spacer(minLength: 0)
-                }
+                clock(state, size: 38)
+                Spacer(minLength: 0)
             } else {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 1) {

@@ -73,15 +73,7 @@ enum MTLiveTimer {
             if phase.kind == .work {
                 if let cue = step.cue { return cue }
                 var lines: [String] = []
-                if step.type == .highTensionExtender {
-                    let afterNIR = phase.stepIndex > 0 && run.steps[phase.stepIndex - 1].type == .highTensionExtender
-                        && run.steps[phase.stepIndex - 1].nir == true
-                    if step.nir == true {
-                        lines.append("Extender on, NIR on")
-                    } else if afterNIR {
-                        lines.append("NIR off, keep extending")
-                    }
-                }
+                if let hint = nirHint(run, stepIndex: phase.stepIndex) { lines.append(hint) }
                 if let setting = settingText(pressure: step.pressureInHg, tension: step.tensionKg, unit: unit) { lines.append(setting) }
                 return lines.isEmpty ? nil : lines.joined(separator: "\n")
             }
@@ -111,6 +103,14 @@ enum MTLiveTimer {
             return lines.isEmpty ? nil : lines.joined(separator: "\n")
         }
         return nil
+    }
+
+    /// The NIR part of the extending says to switch NIR on; the part straight after it says to switch it off.
+    nonisolated static func nirHint(_ run: MTActiveInterval, stepIndex: Int) -> String? {
+        guard stepIndex < run.steps.count, run.steps[stepIndex].type == .highTensionExtender else { return nil }
+        if run.steps[stepIndex].nir == true { return "Extender on, NIR on" }
+        let afterNIR = stepIndex > 0 && run.steps[stepIndex - 1].type == .highTensionExtender && run.steps[stepIndex - 1].nir == true
+        return afterNIR ? "NIR off, keep extending" : nil
     }
 
     /// "Vacuum 5.0 inHg (17 kPa)" / "Tension 1.8 kg".

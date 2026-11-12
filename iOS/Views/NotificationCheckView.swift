@@ -30,7 +30,7 @@ struct NotificationCheckView: View {
             } header: {
                 Text("Status")
             } footer: {
-                Text("If a Focus (Sleep, Work, Do Not Disturb) is on, GymForge needs to be an allowed app in that Focus. When your iPhone is locked and you're wearing your Watch, notifications go to the Watch.")
+                Text("If a Focus (Sleep, Work, Do Not Disturb) is on, Splitday needs to be an allowed app in that Focus. When your iPhone is locked and you're wearing your Watch, notifications go to the Watch.")
             }
 
             Section {

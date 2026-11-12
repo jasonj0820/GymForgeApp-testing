@@ -38,7 +38,7 @@ struct MTPhotosView: View {
             if visiblePhotos.isEmpty {
                 ContentUnavailableView(currentFolderName.map { "Nothing in \($0) yet" } ?? "No photos", systemImage: "camera",
                                        description: Text(currentFolderName == nil
-                                                         ? "Photos you take here stay encrypted inside GymForge — they never go to your Photos library."
+                                                         ? "Photos you take here stay encrypted inside Splitday — they never go to your Photos library."
                                                          : "Photos you take or import while this folder is open go straight into it."))
                     .padding(.top, 40)
             } else {
@@ -940,7 +940,7 @@ struct MTImportPhotosView: View {
     private func deleteOriginals(_ ids: [String]) async {
         let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
         guard status == .authorized || status == .limited else {
-            resultText = "GymForge doesn't have permission to manage your Photos library."
+            resultText = "Splitday doesn't have permission to manage your Photos library."
             return
         }
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil)

@@ -140,6 +140,39 @@ enum LiftTrends {
     }
 }
 
+/// MK22.1: every exercise's history from one pass over the log. The Progress tab needs all of them at
+/// once (and again on every keystroke in the search box); asking the store per exercise re-read the whole
+/// log each time, which got slow with a long history.
+struct LiftHistoryIndex {
+    private typealias Entry = (point: ExerciseHistoryPoint, order: Int)
+    private var byID: [UUID: [Entry]] = [:]
+    private var byKey: [String: [Entry]] = [:]
+
+    init(_ logs: [WorkoutLog]) {
+        for workout in logs {
+            var seenIDs = Set<UUID>()
+            var seenKeys = Set<String>()
+            for (order, log) in workout.exercises.enumerated() {
+                let entry: Entry = (ExerciseHistoryPoint(workoutID: workout.id, date: workout.startedAt, log: log), order)
+                if seenIDs.insert(log.exerciseID).inserted { byID[log.exerciseID, default: []].append(entry) }
+                let key = ExerciseLog.key(for: log.exerciseName)
+                if seenKeys.insert(key).inserted { byKey[key, default: []].append(entry) }
+            }
+        }
+    }
+
+    /// Same answer as `store.history(for:)`: per workout, the first log that matches the exercise by ID
+    /// or by name, oldest first.
+    func history(for exercise: ExerciseDefinition) -> [ExerciseHistoryPoint] {
+        var first: [UUID: Entry] = [:]
+        for entry in (byID[exercise.id] ?? []) + (byKey[exercise.historyKey] ?? []) {
+            if let existing = first[entry.point.workoutID], existing.order <= entry.order { continue }
+            first[entry.point.workoutID] = entry
+        }
+        return first.values.map { $0.point }.sorted { $0.date < $1.date }
+    }
+}
+
 /// The little trend line on each row.
 private struct Sparkline: View {
     let values: [Double]
@@ -187,8 +220,9 @@ struct ExerciseProgressView: View {
 
     var body: some View {
         let atypical = Set(store.workoutLogs.filter(\.isAtypical).map(\.id))
+        let index = LiftHistoryIndex(store.workoutLogs)
         let trends = store.progressExercises
-            .map { LiftTrends.make($0, history: store.history(for: $0), range: range, atypical: atypical) }
+            .map { LiftTrends.make($0, history: index.history(for: $0), range: range, atypical: atypical) }
             .filter { $0.latest != nil }
         let query = search.trimmingCharacters(in: .whitespaces)
         let shown = query.isEmpty ? trends : trends.filter { $0.exercise.name.localizedCaseInsensitiveContains(query) }

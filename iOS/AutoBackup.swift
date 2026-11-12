@@ -189,7 +189,7 @@ struct AutoBackupView: View {
                 Toggle("Automatic weekly backup", isOn: $enabled)
                     .onChange(of: enabled) { _, value in AutoBackup.isEnabled = value }
             } footer: {
-                Text("Every 7 days, when you open GymForge, everything (gym, More Training and photos) is saved to the folder you pick — encrypted with your backup passcode. The newest 4 are kept. Restore with \"Import everything…\".")
+                Text("Every 7 days, when you open Splitday, everything (gym, More Training and photos) is saved to the folder you pick — encrypted with your backup passcode. The newest 4 are kept. Restore with \"Import everything…\".")
             }
             if enabled {
                 Section("Where") {

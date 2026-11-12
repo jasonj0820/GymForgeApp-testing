@@ -9,7 +9,7 @@ enum BackupError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unavailable: return "iCloud Drive isn't available. Sign in to iCloud and turn on iCloud Drive for GymForge in Settings."
+        case .unavailable: return "iCloud Drive isn't available. Sign in to iCloud and turn on iCloud Drive for Splitday in Settings."
         case .notFound: return "No iCloud backup found yet."
         case .unreadable: return "The backup couldn't be read."
         }

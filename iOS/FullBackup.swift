@@ -46,7 +46,7 @@ enum FullBackup {
             center.removePendingNotificationRequests(withIdentifiers: [reminderID])
             guard newValue else { return }
             let content = UNMutableNotificationContent()
-            content.title = "Back up GymForge"
+            content.title = "Back up Splitday"
             content.body = "Export everything before you re-sign the app."
             var when = DateComponents()
             when.weekday = 1 // Sunday

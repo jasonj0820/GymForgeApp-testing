@@ -190,8 +190,8 @@ struct ExerciseEditorView: View {
             if !exercise.isCardio {
                 Section {
                     Text(exercise.isAssisted
-                         ? "When every working set reaches \(exercise.repMax) reps, GymForge will recommend \(GFFormat.kg(exercise.weightIncrementKg)) kg LESS assistance and rebuilding from \(exercise.repMin) reps."
-                         : "When every working set reaches \(exercise.repMax) reps, GymForge will recommend adding \(GFFormat.kg(exercise.weightIncrementKg)) kg and rebuilding from \(exercise.repMin) reps.")
+                         ? "When every working set reaches \(exercise.repMax) reps, Splitday will recommend \(GFFormat.kg(exercise.weightIncrementKg)) kg LESS assistance and rebuilding from \(exercise.repMin) reps."
+                         : "When every working set reaches \(exercise.repMax) reps, Splitday will recommend adding \(GFFormat.kg(exercise.weightIncrementKg)) kg and rebuilding from \(exercise.repMin) reps.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

@@ -156,7 +156,8 @@ struct MTSessionScreen: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
-        if isWork, let cue = step.cue {
+        // The step's own instruction (guided PAC); for the extender, whether NIR is on or off now (MK22.1).
+        if isWork, let cue = step.cue ?? MTLiveTimer.nirHint(run, stepIndex: phase.stepIndex) {
             Text(cue)
                 .font(landscape ? Font.subheadline.weight(.semibold) : Font.headline)
                 .multilineTextAlignment(.center)

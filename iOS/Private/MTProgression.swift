@@ -45,19 +45,40 @@ enum MTPlan {
 
     /// Timer steps for the day: extender (with NIR first on NIR days), 2 min to switch, then 4 × 5 min.
     static func steps(_ day: Day, pressure: Double?, tension: Double?) -> [MTPresetStep] {
+        remainingSteps(day, done: (0, 0, 0), pressure: pressure, tension: tension)
+    }
+
+    /// MK22.1: the day's timer without what you've already done today, so a routine you stopped part-way
+    /// carries on instead of starting over: extender minutes already in are taken off (the NIR part on its
+    /// own), and a static pump's finished rounds are dropped. Guided PAC always runs from its first step —
+    /// its sets build on each other. Empty when the day is complete.
+    static func remainingSteps(_ day: Day, done: (extender: Double, nir: Double, pump: Double),
+                               pressure: Double?, tension: Double?) -> [MTPresetStep] {
+        func left(_ goal: Double, _ done: Double) -> Double? {
+            let minutes = (goal - done).rounded()
+            return minutes >= 1 ? min(minutes, goal) : nil   // under a minute to go counts as done
+        }
         var steps: [MTPresetStep] = []
         if day.nir {
-            steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: nirMinutes, restMinutes: 0, tensionKg: tension, nir: true))
-            steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: afterNIRMinutes, restMinutes: 2, tensionKg: tension))
-        } else {
-            steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: plainMinutes, restMinutes: 2, tensionKg: tension))
+            if let minutes = left(nirMinutes, done.nir) {
+                steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: minutes, restMinutes: 0, tensionKg: tension, nir: true))
+            }
+            if let minutes = left(afterNIRMinutes, max(0, done.extender - min(done.nir, nirMinutes))) {
+                steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: minutes, restMinutes: 0, tensionKg: tension))
+            }
+        } else if let minutes = left(plainMinutes, done.extender) {
+            steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: minutes, restMinutes: 0, tensionKg: tension))
         }
+        var pump: [MTPresetStep] = []
         if day.pumpType == .pac {
-            steps += pacSteps
-        } else {
-            steps.append(MTPresetStep(type: .pump, rounds: pumpRounds, workMinutes: pumpRoundMinutes, restMinutes: 1, pressureInHg: pressure))
+            if done.pump < day.pumpMinutes - 0.5 { pump = pacSteps }
+        } else if done.pump < day.pumpMinutes - 0.5 {
+            let rounds = Int(((day.pumpMinutes - done.pump) / pumpRoundMinutes).rounded(.up))
+            pump = [MTPresetStep(type: .pump, rounds: min(max(rounds, 1), pumpRounds), workMinutes: pumpRoundMinutes, restMinutes: 1, pressureInHg: pressure)]
         }
-        return steps
+        // 2 minutes to switch from the extender to the pump.
+        if !steps.isEmpty, !pump.isEmpty { steps[steps.count - 1].restMinutes = 2 }
+        return steps + pump
     }
 
     /// "−8 inHg (−27 kPa)": every PAC setting in both units.

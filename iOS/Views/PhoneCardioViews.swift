@@ -71,7 +71,7 @@ struct PhoneActivityLiveView: View {
                 }
             }
             if recorder.locationDenied && recorder.usesGPS {
-                Label("Location is off for GymForge, so there's no distance. Turn it on in Settings → Privacy → Location Services.",
+                Label("Location is off for Splitday, so there's no distance. Turn it on in Settings → Privacy → Location Services.",
                       systemImage: "location.slash")
                     .font(.footnote)
                     .foregroundStyle(.red)

@@ -43,9 +43,9 @@ final class PhoneWatchBridge: NSObject, ObservableObject, WCSessionDelegate {
             } else if !session.isPaired {
                 text = "No Apple Watch paired."
             } else if !session.isWatchAppInstalled {
-                text = "iPhone can't see GymForge on your Watch. Install it from the Watch app on iPhone (My Watch → GymForge), then reopen both apps."
+                text = "iPhone can't see Splitday on your Watch. Install it from the Watch app on iPhone (My Watch → Splitday), then reopen both apps."
             } else {
-                text = session.isReachable ? "Connected — GymForge is open on your Watch." : "Paired — open GymForge on the Watch for live sync."
+                text = session.isReachable ? "Connected — Splitday is open on your Watch." : "Paired — open Splitday on the Watch for live sync."
             }
         } else {
             text = "Apple Watch isn't supported on this device."
@@ -103,7 +103,7 @@ final class PhoneWatchBridge: NSObject, ObservableObject, WCSessionDelegate {
             return
         }
         guard session.isReachable else {
-            pingResult = "Watch not reachable — open GymForge on the Watch and keep it awake, then test again."
+            pingResult = "Watch not reachable — open Splitday on the Watch and keep it awake, then test again."
             return
         }
         pingResult = "Testing…"

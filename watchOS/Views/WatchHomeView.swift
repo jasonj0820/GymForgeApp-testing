@@ -7,7 +7,7 @@ struct WatchHomeView: View {
         NavigationStack {
             List {
                 if store.routines.isEmpty {
-                    Text("Open GymForge on iPhone to sync your routines.")
+                    Text("Open Splitday on iPhone to sync your routines.")
                         .foregroundStyle(.secondary)
                     Button("Sync now", systemImage: "arrow.triangle.2.circlepath") { store.requestSync() }
                 } else {
@@ -58,7 +58,7 @@ struct WatchHomeView: View {
                 }
                 .font(.caption2)
             }
-            .navigationTitle("GymForge")
+            .navigationTitle("Splitday")
         }
     }
 }

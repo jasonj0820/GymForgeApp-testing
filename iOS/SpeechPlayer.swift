@@ -334,7 +334,7 @@ final class SpeechPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = [
             MPMediaItemPropertyTitle: track.title,
-            MPMediaItemPropertyArtist: "GymForge",
+            MPMediaItemPropertyArtist: "Splitday",
             MPMediaItemPropertyPlaybackDuration: player?.duration ?? track.duration,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: player?.currentTime ?? 0,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
@@ -398,7 +398,7 @@ struct SpeechLibraryView: View {
         List {
             Section {
                 if player.tracks.isEmpty {
-                    Text("Import mp3 / m4a files from the Files app. They're copied into GymForge and play offline.")
+                    Text("Import mp3 / m4a files from the Files app. They're copied into Splitday and play offline.")
                         .foregroundStyle(.secondary)
                 }
                 ForEach(player.tracks) { track in

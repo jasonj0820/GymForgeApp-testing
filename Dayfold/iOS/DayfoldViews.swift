@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// MK22: routine colours follow the system. The fixed dark palette went with the separate Dayfold half.
 enum DayfoldPalette {
@@ -241,7 +242,10 @@ struct TaskRow: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()   // MK22.1: a tick you can feel
+            action()
+        } label: {
             HStack(spacing: compact ? 10 : 14) {
                 Image(systemName: row.done ? "checkmark.circle.fill" : "circle")
                     .font(compact ? Font.title3 : Font.title2)

@@ -1,4 +1,20 @@
-# Splitday MK22 — gym and daily routine in one app (iPhone + Apple Watch)
+# Splitday MK22.1 — gym and daily routine in one app (iPhone + Apple Watch)
+
+## MK22.1 — More Training: what to do on the widget, sideways timers, pause from the island
+- **The widget says what to do.** While a timer runs, the More Training widget shows the step's instruction under a smaller clock: the guided PAC cue ("Clamp set 1 · Vacuum −8 inHg (−27 kPa) · clamp +8 inHg…"), or the step's setting ("Extender on, NIR on · Tension 1.8 kg", "Vacuum 5.0 inHg (17 kPa)"). During a rest it says what to get ready for ("Switch to PAC · Fill up…", "Next: round 3 of 4"). The headline comes first; if it doesn't all fit on the small widget, the tip at the end is what's cut. Stamina shows "Feel close? Pause to cool down." The Lock Screen card and the Dynamic Island still only say Timer / Work / Rest.
+- **The timer turns sideways.** Turn the iPhone on its side on the session timer and the ring fills the left half with the step, its instruction and the buttons on the right. The Stamina screen does the same while a session runs: the time large on the left, Cool down / Resume / Finish on the right. The rest of the app stays upright, and turns back as soon as you leave the timer.
+- **Pause stamina from the Dynamic Island.** Press and hold the island: **Cool down** while you're going, **Resume** during the cool-down. The same button is on the Lock Screen card. Interval timers get **Pause / Resume** and **Skip** in both places. Finishing or stopping a session stays in the app and on the widget, so a stray tap can't end one.
+- **The buttons keep working after iOS closes the app.** If Splitday has been closed in the background (or you locked More Training with a timer running), a button on the widget, the card or the island now reads the saved timer, changes it and saves it again — without unlocking More Training and without showing anything. Only when the iPhone itself is locked and the app is gone does it still say "Open the app to control the timer", now on the card as well as the widget.
+- **Continue instead of starting over.** If part of today's routine is already done, the row says **Continue** and the timer covers only what's left: extender minutes already in are taken off (the NIR part on its own), finished static-pump rounds are dropped. Guided PAC always starts from its first step.
+- **Timer screen**: the extender steps now say "Extender on, NIR on" and "NIR off, keep extending"; during a rest the screen shows what's next so you can set up for it.
+- A minimised timer (and a stamina session in progress) sits at the top of More Training instead of half-way down the list.
+- Stamina's "Cancel without saving" asks before throwing the session away.
+
+**Elsewhere**
+- The app calls itself **Splitday** everywhere now (Watch title, connection help, Health and Focus help, backup reminder, the Sergeant Cluck widget). File names of backups are unchanged, so old backups still restore.
+- **Progress opens and searches faster** with a long history: every lift's trend comes from one pass over the log instead of one pass per exercise.
+- Ticking a routine step gives a light tap.
+- The app icon's long-press menu in `project.yml` matches the app (Routine, Wake-up).
 
 ## MK22 — one app instead of two halves
 Until now Splitday was two apps behind a switch: the gym side, and "Dayfold" with its own tab bar, its own dark theme, its own Settings and a button to jump back. The switch is gone.

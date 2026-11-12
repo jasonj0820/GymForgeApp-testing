@@ -50,7 +50,7 @@ struct CluckWatchWidgetView: View {
     private var mood: CluckMood { entry.state?.mood ?? .chill }
 
     private var shortText: String {
-        guard let s = entry.state else { return "Open GymForge" }
+        guard let s = entry.state else { return "Open Splitday" }
         return s.remaining == 0 ? "Done" : "\(s.remaining) left · \(s.daysLeft)d"
     }
 
@@ -79,7 +79,7 @@ struct CluckWatchWidgetView: View {
                 CluckView(mood: mood).frame(width: 40, height: 40)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(shortText).font(.headline).widgetAccentable()
-                    Text(entry.state.map { CluckEngine.line($0, at: entry.date) } ?? "Open GymForge on your iPhone.")
+                    Text(entry.state.map { CluckEngine.line($0, at: entry.date) } ?? "Open Splitday on your iPhone.")
                         .font(.caption2)
                         .lineLimit(2)
                 }

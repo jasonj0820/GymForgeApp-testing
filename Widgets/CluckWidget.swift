@@ -42,7 +42,7 @@ struct CluckProvider: TimelineProvider {
     private func entry(at date: Date, snapshot: CluckSnapshot?) -> CluckEntry {
         guard let snapshot, snapshot.enabled else {
             return CluckEntry(date: date, state: nil,
-                              line: snapshot == nil ? "Open GymForge once so I can see your week." : "Sergeant Cluck is off duty (Settings).")
+                              line: snapshot == nil ? "Open Splitday once so I can see your week." : "Sergeant Cluck is off duty (Settings).")
         }
         let state = CluckEngine.evaluate(snapshot, at: date)
         return CluckEntry(date: date, state: state, line: CluckEngine.line(state, at: date))

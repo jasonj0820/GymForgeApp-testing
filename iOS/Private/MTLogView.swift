@@ -16,6 +16,13 @@ struct MTLogView: View {
 
     var body: some View {
         List {
+            // MK22.1: a timer you've minimised stays at the top, not half-way down the list.
+            if vault.data.isBusy {
+                runningCard
+            }
+            if vault.data.activeStamina != nil {
+                staminaSection
+            }
             Section {
                 MTCluckCard()
                 MTWeekRow(selectedDay: $selectedDay)
@@ -57,10 +64,8 @@ struct MTLogView: View {
 
             stretcherSection
             totalsSection
-            staminaSection
-
-            if vault.data.isBusy {
-                runningCard
+            if vault.data.activeStamina == nil {
+                staminaSection
             }
 
             presetSection
@@ -153,7 +158,8 @@ struct MTLogView: View {
         } footer: {
             Text("NIR + PAC: 15 min extending with NIR, then 35 min without, then guided PAC (25 min). "
                  + "No NIR: 40 min extending, then static pump 4 × 5 min. "
-                 + "Take turns day to day — \"Today\" is the one you didn't do last time.")
+                 + "Take turns day to day — \"Today\" is the one you didn't do last time. "
+                 + "Stopped part-way? Continue times only what's left (PAC always from its first step).")
         }
     }
 
@@ -184,9 +190,10 @@ struct MTLogView: View {
             }
             Spacer()
             if !complete {
-                Button("Start") {
-                    let steps = MTPlan.steps(day, pressure: vault.data.lastPressure(for: day.pumpType),
-                                             tension: vault.data.lastTension(for: .highTensionExtender))
+                // MK22.1: part of it done today → the timer carries on with what's left.
+                Button(done.extender >= 1 || done.pump >= 0.5 ? "Continue" : "Start") {
+                    let steps = MTPlan.remainingSteps(day, done: done, pressure: vault.data.lastPressure(for: day.pumpType),
+                                                      tension: vault.data.lastTension(for: .highTensionExtender))
                     Task { await vault.startInterval(name: day.title, steps: steps) }
                 }
                 .buttonStyle(.borderedProminent)

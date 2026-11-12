@@ -91,6 +91,28 @@ struct MTChecks {
         check(MTPlan.isComplete(MTPlan.done(doneToday, day: nirDay, now: now), day: nirDay), "50 min (15 NIR) + 25 min PAC completes NIR + PAC")
         check(!MTPlan.isComplete(MTPlan.done(Array(doneToday.dropFirst()), day: nirDay, now: now), day: nirDay), "skipping the NIR part isn't complete")
 
+        // MK22.1: "Continue" — the timer leaves out what's already done today
+        func shape(_ steps: [MTPresetStep]) -> [String] {
+            steps.map { "\($0.type.shortTitle)\($0.nir == true ? "+NIR" : "") \($0.rounds)x\(Int($0.workMinutes)) r\(Int($0.restMinutes))" }
+        }
+        func rest(_ day: MTPlan.Day, _ extender: Double, _ nir: Double, _ pump: Double) -> [String] {
+            shape(MTPlan.remainingSteps(day, done: (extender, nir, pump), pressure: 8, tension: 3))
+        }
+        let pacShape = ["PAC 1x2 r0", "PAC 1x5 r0", "PAC 1x3 r0", "PAC 1x5 r0", "PAC 1x10 r0"]
+        check(rest(nirDay, 0, 0, 0) == ["HTE+NIR 1x15 r0", "HTE 1x35 r2"] + pacShape && rest(nirDay, 0, 0, 0) == shape(steps),
+              "nothing done → the whole NIR + PAC timer")
+        check(rest(nirDay, 15, 15, 0) == ["HTE 1x35 r2"] + pacShape, "NIR part done → carries on with 35 min without NIR")
+        check(rest(nirDay, 35, 15, 0) == ["HTE 1x15 r2"] + pacShape, "stopped 20 min into the second part → 15 min left, then PAC")
+        check(rest(nirDay, 50, 15, 0) == pacShape, "extending done → straight to PAC")
+        check(rest(nirDay, 50, 15, 7) == pacShape, "PAC stopped part-way → PAC from its first step again")
+        check(rest(nirDay, 40, 0, 0) == ["HTE+NIR 1x15 r2"] + pacShape, "40 min without NIR already → only the NIR part is left before PAC")
+        check(rest(nirDay, 50, 15, 25).isEmpty, "everything done → nothing left to time")
+        let pumpDay = MTPlan.pumpOnly
+        check(rest(pumpDay, 0, 0, 0) == ["HTE 1x40 r2", "Pump 4x5 r1"], "nothing done → HTE 40, then pump 4 × 5")
+        check(rest(pumpDay, 40, 0, 10) == ["Pump 2x5 r1"], "2 pump rounds done → 2 left")
+        check(rest(pumpDay, 25, 0, 20) == ["HTE 1x15 r0"], "pump done, extender short → the last 15 min, no switch rest")
+        check(rest(pumpDay, 39.6, 0, 19.8).isEmpty, "under a minute short counts as done")
+
         func pacWeek(_ days: [Double]) -> Bool {
             var d = MTData(); d.sessions = days.map { session(.pac, $0, minutes: 29) }
             return MTSafety.advice(d, now: now).contains { $0.title == "Too much PAC this week" }

@@ -125,7 +125,7 @@ struct SettingsView: View {
             } header: {
                 Text("Heart-rate zones")
             } footer: {
-                Text("Used for run and basketball zones. If you don't set it, it's the highest heart rate GymForge has seen in the last year (at least 180), or 190.")
+                Text("Used for run and basketball zones. If you don't set it, it's the highest heart rate Splitday has seen in the last year (at least 180), or 190.")
             }
 
             Section {
@@ -172,7 +172,7 @@ struct SettingsView: View {
             } header: {
                 Text("Rest timer")
             } footer: {
-                Text("Train announcement: a three-note chime, then a voice reads out what's next (\"The next exercise is Lat Pulldown. 8 reps.\") over your music, while GymForge is open. With the iPhone locked you get the chime only. On the Watch, rest ends early (with the Rest finished buzz) once your heart rate falls below this — but never before half the planned rest.")
+                Text("Train announcement: a three-note chime, then a voice reads out what's next (\"The next exercise is Lat Pulldown. 8 reps.\") over your music, while Splitday is open. With the iPhone locked you get the chime only. On the Watch, rest ends early (with the Rest finished buzz) once your heart rate falls below this — but never before half the planned rest.")
             }
             }
 
@@ -274,10 +274,10 @@ struct SettingsView: View {
                     if let error = store.healthKit.authorizationError {
                         Text("Health said: \(error)").font(.footnote).foregroundStyle(.red)
                     } else if store.healthKit.hasRequestedAuthorization {
-                        Text("Asked ✓ iOS only shows the Health pop-up the first time. To change what Splitday can see: Settings → Health → Data Access & Devices → GymForge (or Splitday).")
+                        Text("Asked ✓ iOS only shows the Health pop-up the first time. To change what Splitday can see: Settings → Health → Data Access & Devices → Splitday.")
                             .font(.footnote).foregroundStyle(.green)
                     }
-                    Text("If weight, body fat or sleep doesn't appear: Settings → Health → Data Access & Devices → GymForge, and turn on Weight, Body Fat Percentage, Sleep, Resting Heart Rate and Heart Rate Variability.")
+                    Text("If weight, body fat or sleep doesn't appear: Settings → Health → Data Access & Devices → Splitday, and turn on Weight, Body Fat Percentage, Sleep, Resting Heart Rate and Heart Rate Variability.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -302,7 +302,7 @@ struct SettingsView: View {
             } header: {
                 Text("Apple Watch")
             } footer: {
-                Text("For the test, open GymForge on the Watch first. If it says the iPhone can't see GymForge on your Watch, delete the Watch app, reinstall from Xcode, and open both apps once.")
+                Text("For the test, open Splitday on the Watch first. If it says the iPhone can't see Splitday on your Watch, delete the Watch app, reinstall from Xcode, and open both apps once.")
             }
 
             Section("Data") {

@@ -127,7 +127,7 @@ struct MTSettingsView: View {
             } header: {
                 Text("Backup")
             } footer: {
-                Text("This section is never included in GymForge's normal backups, iCloud or the Watch. An export includes everything (photos too), encrypted with the passcode you choose — at least 6 characters. If you forget it, the file can't be opened.")
+                Text("This section is never included in Splitday's normal backups, iCloud or the Watch. An export includes everything (photos too), encrypted with the passcode you choose — at least 6 characters. If you forget it, the file can't be opened.")
             }
 
             Section {
