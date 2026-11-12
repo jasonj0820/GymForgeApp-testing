@@ -153,6 +153,11 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         return true
     }
 
+    /// MK22.1: portrait everywhere, except the screens that ask for more (the More Training timers).
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        OrientationLock.mask
+    }
+
     /// Home Screen long-press actions arrive through the scene delegate.
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
@@ -268,6 +273,46 @@ enum QuoteNotifier {
                 let parts = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
                 center.add(UNNotificationRequest(identifier: "gymforge.quote.\(day).\(index)", content: content,
                                                  trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)))
+            }
+        }
+    }
+}
+
+/// MK22.1: the app is portrait. A screen that also works on its side (the More Training timers) asks for
+/// landscape while it's showing; when the last one goes, the app turns upright again.
+enum OrientationLock {
+    static var mask: UIInterfaceOrientationMask = .portrait
+    private static var askers: Set<String> = []
+
+    @MainActor
+    static func allowLandscape(_ allowed: Bool, for screen: String) {
+        if allowed { askers.insert(screen) } else { askers.remove(screen) }
+        apply()
+    }
+
+    /// Leaving More Training: nothing may stay sideways.
+    @MainActor
+    static func reset() {
+        askers = []
+        apply()
+    }
+
+    @MainActor
+    private static func apply() {
+        let wanted: UIInterfaceOrientationMask = askers.isEmpty ? .portrait : .allButUpsideDown
+        guard wanted != mask else { return }
+        mask = wanted
+        for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+            for window in scene.windows {
+                // Whatever is on top decides the orientation, so tell the whole presentation chain.
+                var controller = window.rootViewController
+                while let current = controller {
+                    current.setNeedsUpdateOfSupportedInterfaceOrientations()
+                    controller = current.presentedViewController
+                }
+            }
+            if wanted == .portrait {
+                scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) { _ in }
             }
         }
     }

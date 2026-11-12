@@ -3,23 +3,34 @@ import Charts
 import Combine
 
 /// Stamina training: goal timer with 1-minute cool-down pauses.
+///
+/// MK22.1: this screen also turns sideways. With a session running, landscape shows just the timer (large,
+/// on the left) and its buttons (on the right).
 struct MTStaminaView: View {
     @EnvironmentObject private var vault: MTVault
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var finishing = false
     @State private var finishNote = ""
     @State private var withPorn: Bool?
+    @State private var confirmCancel = false
 
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        List {
-            if let run = vault.data.activeStamina {
-                runningSection(run)
+        Group {
+            if verticalSizeClass == .compact, let run = vault.data.activeStamina {
+                sideways(run)
             } else {
-                startSection
+                List {
+                    if let run = vault.data.activeStamina {
+                        runningSection(run)
+                    } else {
+                        startSection
+                    }
+                    statsSection
+                    historySection
+                }
             }
-            statsSection
-            historySection
         }
         .navigationTitle("Stamina")
         .onReceive(ticker) { _ in vault.tickStamina() }
@@ -31,6 +42,13 @@ struct MTStaminaView: View {
             }
             Button("Keep going", role: .cancel) {}
         }
+        // MK22.1: one stray tap used to throw the session away.
+        .confirmationDialog("Cancel without saving?", isPresented: $confirmCancel, titleVisibility: .visible) {
+            Button("Discard session", role: .destructive) { vault.cancelStamina() }
+            Button("Keep going", role: .cancel) {}
+        }
+        .onAppear { OrientationLock.allowLandscape(true, for: "mt.stamina") }
+        .onDisappear { OrientationLock.allowLandscape(false, for: "mt.stamina") }
     }
 
     // MARK: Start
@@ -85,78 +103,107 @@ struct MTStaminaView: View {
     private func runningSection(_ run: MTActiveStamina) -> some View {
         Section {
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                let active = run.active(at: context.date)
-                let reached = active >= run.goalSeconds
-                VStack(spacing: 10) {
-                    if let until = run.cooldownUntil {
-                        let left = until.timeIntervalSince(context.date)
-                        Text(left > 0 ? "COOL DOWN" : "READY")
-                            .font(.caption.bold())
-                            .foregroundStyle(left > 0 ? Color.cyan : Color.green)
-                        Text(MTStats.clock(max(0, left)))
-                            .font(.system(size: 56, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(left > 0 ? Color.cyan : Color.green)
-                        Text("Goal timer paused at \(MTStats.clock(active))")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text(reached ? "GOAL REACHED" : "TIME")
-                            .font(.caption.bold())
-                            .foregroundStyle(reached ? Color.green : Color.blue)
-                        Text(MTStats.clock(active))
-                            .font(.system(size: 56, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(reached ? Color.green : Color.primary)
-                        Text("Goal \(MTStats.clock(run.goalSeconds)) · \(run.withPorn == true ? "with porn" : "without porn")")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    SwiftUI.ProgressView(value: min(active, run.goalSeconds), total: max(run.goalSeconds, 1))
-                        .tint(reached ? .green : .blue)
-                    Text("Pauses: \(run.pauses)").font(.footnote).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
+                runningClock(run, now: context.date, clockSize: 56)
+                    .frame(maxWidth: .infinity)
             }
-
-            if run.isCoolingDown {
-                HStack {
-                    Button {
-                        vault.staminaExtendCooldown(seconds: 30)
-                    } label: {
-                        Text("+30 s").frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    Button {
-                        vault.staminaResume()
-                    } label: {
-                        Label("Resume", systemImage: "play.fill").frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.blue)
-                }
-            } else {
-                Button {
-                    vault.staminaCoolDown()
-                } label: {
-                    Label("Close — cool down", systemImage: "snowflake")
-                        .font(.title3.bold())
-                        .frame(maxWidth: .infinity, minHeight: 56)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.cyan)
-            }
-
-            Button {
-                finishing = true
-            } label: {
-                Label("Finish & save", systemImage: "checkmark").frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            Button("Cancel without saving", role: .destructive) { vault.cancelStamina() }
+            runningButtons(run)
         } header: {
             Text("Session")
         }
+    }
+
+    /// MK22.1: iPhone on its side — the time large on the left, the buttons on the right.
+    private func sideways(_ run: MTActiveStamina) -> some View {
+        HStack(spacing: 24) {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                runningClock(run, now: context.date, clockSize: 104)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ViewThatFits(in: .vertical) {
+                VStack(spacing: 12) { runningButtons(run) }
+                ScrollView { VStack(spacing: 12) { runningButtons(run) } }
+            }
+            .frame(width: 260)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
+
+    private func runningClock(_ run: MTActiveStamina, now: Date, clockSize: CGFloat) -> some View {
+        let active = run.active(at: now)
+        let reached = active >= run.goalSeconds
+        return VStack(spacing: 10) {
+            if let until = run.cooldownUntil {
+                let left = until.timeIntervalSince(now)
+                Text(left > 0 ? "COOL DOWN" : "READY")
+                    .font(.caption.bold())
+                    .foregroundStyle(left > 0 ? Color.cyan : Color.green)
+                Text(MTStats.clock(max(0, left)))
+                    .font(.system(size: clockSize, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .foregroundStyle(left > 0 ? Color.cyan : Color.green)
+                Text("Goal timer paused at \(MTStats.clock(active))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(reached ? "GOAL REACHED" : "TIME")
+                    .font(.caption.bold())
+                    .foregroundStyle(reached ? Color.green : Color.blue)
+                Text(MTStats.clock(active))
+                    .font(.system(size: clockSize, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .foregroundStyle(reached ? Color.green : Color.primary)
+                Text("Goal \(MTStats.clock(run.goalSeconds)) · \(run.withPorn == true ? "with porn" : "without porn")")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            SwiftUI.ProgressView(value: min(active, run.goalSeconds), total: max(run.goalSeconds, 1))
+                .tint(reached ? .green : .blue)
+            Text("Pauses: \(run.pauses)").font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func runningButtons(_ run: MTActiveStamina) -> some View {
+        if run.isCoolingDown {
+            HStack {
+                Button {
+                    vault.staminaExtendCooldown(seconds: 30)
+                } label: {
+                    Text("+30 s").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                Button {
+                    vault.staminaResume()
+                } label: {
+                    Label("Resume", systemImage: "play.fill").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+            }
+        } else {
+            Button {
+                vault.staminaCoolDown()
+            } label: {
+                Label("Close — cool down", systemImage: "snowflake")
+                    .font(.title3.bold())
+                    .frame(maxWidth: .infinity, minHeight: 56)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.cyan)
+        }
+
+        Button {
+            finishing = true
+        } label: {
+            Label("Finish & save", systemImage: "checkmark").frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        Button("Cancel without saving", role: .destructive) { confirmCancel = true }
     }
 
     // MARK: Stats

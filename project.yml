@@ -33,7 +33,8 @@ targets:
       properties:
         CFBundleDisplayName: Splitday
         UILaunchScreen: {}
-        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        # MK22.1: landscape is listed so the More Training timers can turn; OrientationLock keeps everything else portrait.
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         NSSupportsLiveActivities: true
         CFBundleURLTypes:
           - CFBundleURLName: com.jason.gymforge
@@ -41,8 +42,8 @@ targets:
         # MK12: long-press menu on the app icon.
         UIApplicationShortcutItems:
           - {UIApplicationShortcutItemType: "gymforge://winddown", UIApplicationShortcutItemTitle: Before bed, UIApplicationShortcutItemIconSymbolName: moon.stars.fill}
-          - {UIApplicationShortcutItemType: "gymforge://dayfold", UIApplicationShortcutItemTitle: Dayfold, UIApplicationShortcutItemIconSymbolName: checklist}
-          - {UIApplicationShortcutItemType: "gymforge://gym", UIApplicationShortcutItemTitle: GymForge, UIApplicationShortcutItemIconSymbolName: dumbbell.fill}
+          - {UIApplicationShortcutItemType: "gymforge://dayfold", UIApplicationShortcutItemTitle: Routine, UIApplicationShortcutItemIconSymbolName: checklist}
+          - {UIApplicationShortcutItemType: "gymforge://wakeup", UIApplicationShortcutItemTitle: Wake-up, UIApplicationShortcutItemIconSymbolName: sun.horizon.fill}
         UIBackgroundModes: [audio, location]
         NSLocationWhenInUseUsageDescription: Splitday uses GPS during outdoor runs recorded on your iPhone to measure distance and pace and save your route.
         NSFaceIDUsageDescription: Splitday uses Face ID to unlock private sections.

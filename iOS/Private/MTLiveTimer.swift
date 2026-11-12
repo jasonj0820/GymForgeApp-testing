@@ -58,7 +58,70 @@ enum MTLiveTimer {
     nonisolated static func content(for data: MTData, now: Date) -> (state: State, stale: Date?, start: Date)? {
         guard var result = baseContent(for: data, now: now) else { return nil }
         result.state.widgetTitle = widgetTitle(for: data)   // MK20.6.1: only the widget reads it
+        result.state.widgetCue = widgetCue(for: data, now: now)   // MK22.1: what to do, widget only
         return result
+    }
+
+    // MARK: What to do (MK22.1)
+
+    /// What to do right now, for the More Training widget (and the timer screen during a rest): the step's
+    /// own cue (guided PAC), otherwise its settings; during a rest, what's coming next. First line = headline.
+    nonisolated static func widgetCue(for data: MTData, now: Date) -> String? {
+        let unit = data.settings.weightUnit
+        if let run = data.activeInterval, let phase = run.currentPhase, phase.stepIndex < run.steps.count {
+            let step = run.steps[phase.stepIndex]
+            if phase.kind == .work {
+                if let cue = step.cue { return cue }
+                var lines: [String] = []
+                if step.type == .highTensionExtender {
+                    let afterNIR = phase.stepIndex > 0 && run.steps[phase.stepIndex - 1].type == .highTensionExtender
+                        && run.steps[phase.stepIndex - 1].nir == true
+                    if step.nir == true {
+                        lines.append("Extender on, NIR on")
+                    } else if afterNIR {
+                        lines.append("NIR off, keep extending")
+                    }
+                }
+                if let setting = settingText(pressure: step.pressureInHg, tension: step.tensionKg, unit: unit) { lines.append(setting) }
+                return lines.isEmpty ? nil : lines.joined(separator: "\n")
+            }
+            // Resting: get the next thing ready.
+            let nextIndex = run.index + 1
+            guard nextIndex < run.phases.count, run.phases[nextIndex].stepIndex < run.steps.count else { return nil }
+            let next = run.phases[nextIndex]
+            let nextStep = run.steps[next.stepIndex]
+            let setting = settingText(pressure: nextStep.pressureInHg, tension: nextStep.tensionKg, unit: unit)
+            if next.stepIndex == phase.stepIndex {
+                return ["Next: round \(next.round) of \(max(nextStep.rounds, 1))", setting].compactMap { $0 }.joined(separator: "\n")
+            }
+            let name = nextStep.type.title + (nextStep.nir == true ? " with NIR" : "")
+            return ["Switch to \(name)", nextStep.cue ?? setting].compactMap { $0 }.joined(separator: "\n")
+        }
+        if let run = data.activeStamina {
+            if let until = run.cooldownUntil {
+                return until > now ? "Cooling down\nResume when the timer ends." : "Cool-down over\nTap Resume when you're ready."
+            }
+            return run.active(at: now) >= run.goalSeconds ? "Goal reached\nKeep going, or finish." : "Keep going\nFeel close? Pause to cool down."
+        }
+        if let active = data.activeSession {
+            var lines: [String] = []
+            if active.nir == true { lines.append("NIR on") }
+            if let setting = settingText(pressure: active.pressureInHg, tension: active.tensionKg, unit: unit) { lines.append(setting) }
+            if let limit = data.settings.limit(for: active.type) { lines.append("Stop at \(limit) min") }
+            return lines.isEmpty ? nil : lines.joined(separator: "\n")
+        }
+        return nil
+    }
+
+    /// "Vacuum 5.0 inHg (17 kPa)" / "Tension 1.8 kg".
+    nonisolated static func settingText(pressure: Double?, tension: Double?, unit: MTWeightUnit) -> String? {
+        if let pressure {
+            return String(format: "Vacuum %.1f inHg (%.0f kPa)", pressure, pressure * MTPlan.kPaPerInHg)
+        }
+        if let tension {
+            return String(format: "Tension %.1f %@", unit.display(tension), unit.rawValue)
+        }
+        return nil
     }
 
     /// The step's name for the More Training widget ("HTE + NIR", "PAC", "Stamina").
@@ -119,7 +182,6 @@ enum MTLiveTimer {
     /// sleeps), and which buttons make sense right now. nil when no timer is running.
     nonisolated static func widgetSnapshot(for data: MTData, now: Date) -> MTWidgetSnapshot? {
         typealias Step = MTWidgetSnapshot.Step
-        typealias Control = MTWidgetSnapshot.Control
         if let run = data.activeInterval, let phase = run.currentPhase {
             func title(_ stepIndex: Int) -> String {
                 guard stepIndex < run.steps.count else { return run.name }
@@ -145,13 +207,8 @@ enum MTLiveTimer {
                 }
                 endsAt = run.index + 41 >= run.phases.count ? start : nil
             }
-            let paused = run.isPaused
-            return MTWidgetSnapshot(kind: .interval, program: run.name, steps: steps, endsAt: endsAt, controls: [
-                paused ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
-                       : Control(action: MTWidgetAction.pause.rawValue, label: "Pause", icon: "pause.fill"),
-                Control(action: MTWidgetAction.skip.rawValue, label: phase.kind == .rest ? "Skip rest" : "Skip", icon: "forward.fill"),
-                Control(action: MTWidgetAction.next.rawValue, label: "Next", icon: "forward.end.fill")
-            ])
+            return MTWidgetSnapshot(kind: .interval, program: run.name, steps: steps, endsAt: endsAt,
+                                    controls: MTWidgetStore.controls(for: current.state))
         }
         if let run = data.activeStamina {
             guard let current = content(for: data, now: now) else { return nil }
@@ -163,17 +220,16 @@ enum MTLiveTimer {
                     later.label = "Cool-down over"
                     later.countdownTo = nil
                     later.next = "Resume when you're ready"
+                    later.widgetCue = "Cool-down over\nTap Resume when you're ready."
                 } else {
                     later.label = "Goal reached"
                     later.countdownTo = nil
+                    later.widgetCue = "Goal reached\nKeep going, or finish."
                 }
                 steps.append(Step(date: stale, title: "Stamina", state: later))
             }
-            return MTWidgetSnapshot(kind: .stamina, program: nil, steps: steps, endsAt: nil, controls: [
-                run.isCoolingDown ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
-                                  : Control(action: MTWidgetAction.coolDown.rawValue, label: "Cool down", icon: "pause.fill"),
-                Control(action: MTWidgetAction.finish.rawValue, label: "Finish", icon: "checkmark")
-            ])
+            return MTWidgetSnapshot(kind: .stamina, program: nil, steps: steps, endsAt: nil,
+                                    controls: MTWidgetStore.controls(for: current.state))
         }
         if let active = data.activeSession, let current = content(for: data, now: now) {
             var steps = [Step(date: min(active.start, now), title: active.type.shortTitle + (active.nir == true ? " + NIR" : ""), state: current.state)]
@@ -183,9 +239,8 @@ enum MTLiveTimer {
                 later.countdownTo = nil
                 steps.append(Step(date: stale, title: steps[0].title, state: later))
             }
-            return MTWidgetSnapshot(kind: .timed, program: nil, steps: steps, endsAt: nil, controls: [
-                Control(action: MTWidgetAction.stop.rawValue, label: "Stop", icon: "stop.fill")
-            ])
+            return MTWidgetSnapshot(kind: .timed, program: nil, steps: steps, endsAt: nil,
+                                    controls: MTWidgetStore.controls(for: current.state))
         }
         return nil
     }
@@ -194,13 +249,31 @@ enum MTLiveTimer {
     /// says to open it instead.
     static func handleWidget(_ action: MTWidgetAction) {
         let vault = MTVault.shared
-        guard vault.isUnlocked else {
-            if var snapshot = MTWidgetStore.load() {
-                snapshot.needsApp = true
-                MTWidgetStore.save(snapshot)
-            }
+        if vault.isUnlocked {
+            apply(action, to: vault)
+            MTWidgetStore.save(widgetSnapshot(for: vault.data, now: .now))
             return
         }
+        // MK22.1: the section is locked with a timer still going — iOS closed the app while you were in
+        // another one, or you locked it yourself. The timer is read just long enough to apply the button;
+        // nothing is shown and the section stays locked.
+        if vault.applyWhileLocked({ apply(action, to: vault) }) { return }
+        // The timer can't be read (the iPhone itself is locked): say so on the widget and on the card.
+        if var snapshot = MTWidgetStore.load() {
+            snapshot.needsApp = true
+            MTWidgetStore.save(snapshot)
+        }
+        Task {
+            for activity in Activity<MTTimerAttributes>.activities where [.active, .stale].contains(activity.activityState) {
+                var state = activity.content.state
+                guard state.needsApp != true, state.finished != true else { continue }
+                state.needsApp = true
+                await activity.update(ActivityContent(state: state, staleDate: activity.content.staleDate, relevanceScore: 100))
+            }
+        }
+    }
+
+    private static func apply(_ action: MTWidgetAction, to vault: MTVault) {
         vault.advanceInterval()
         switch action {
         case .pause: vault.pauseInterval()
@@ -212,7 +285,6 @@ enum MTLiveTimer {
         case .finish: vault.finishStamina()
         case .stop: vault.stopTimed()
         }
-        MTWidgetStore.save(widgetSnapshot(for: vault.data, now: .now))
     }
 
     /// Generic on purpose ("Then work, round 3", never the session type).

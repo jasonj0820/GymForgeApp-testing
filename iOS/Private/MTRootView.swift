@@ -42,7 +42,10 @@ struct MTRootView: View {
         }
         // The screen doesn't auto-lock while a timer runs, open or minimised.
         .onChange(of: vault.data.timerRunning) { _, busy in keepAwake(busy) }
-        .onDisappear { keepAwake(false) }
+        .onDisappear {
+            keepAwake(false)
+            OrientationLock.reset()   // MK22.1: nothing outside the timers stays sideways
+        }
         .onChange(of: vault.isUnlocked) { _, unlocked in
             if !unlocked { dismiss() }
         }

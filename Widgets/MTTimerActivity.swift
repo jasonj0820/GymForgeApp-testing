@@ -29,6 +29,12 @@ struct MTTimerAttributes: ActivityAttributes {
         var widgetTitle: String? = nil
         /// MK20.7: the timer has ended (sent just before the card is taken down, so the widget lets go too).
         var finished: Bool? = nil
+        /// MK22.1: what to do in this step ("Clamp set 1 · Vacuum −8 inHg…"), for the More Training widget
+        /// only. Like the title, it's never drawn on the Lock Screen card or the Dynamic Island.
+        var widgetCue: String? = nil
+        /// MK22.1: a button was pressed but the timer couldn't be reached (the iPhone is locked and iOS had
+        /// closed the app) — the card says to open the app.
+        var needsApp: Bool? = nil
     }
     var startedAt: Date
 
@@ -57,7 +63,7 @@ struct MTTimerLiveActivity: Widget {
             MTWidgetRelay.note(state)
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label(MTTimerLockScreen.title(state, stale: stale), systemImage: "timer")
+                    Label(MTTimerLockScreen.title(state, stale: stale), systemImage: MTTimerLockScreen.symbol(state, filled: false))
                         .font(.caption.bold())
                         .foregroundStyle(.indigo)
                         .lineLimit(1)
@@ -68,12 +74,16 @@ struct MTTimerLiveActivity: Widget {
                         .frame(width: 90, alignment: .trailing)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    if let detail = MTTimerLockScreen.detail(state, stale: stale) {
-                        Text(detail).font(.caption).foregroundStyle(.secondary)
+                    VStack(spacing: 8) {
+                        if let detail = MTTimerLockScreen.detail(state, stale: stale) {
+                            Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        // MK22.1: press and hold the island, then Cool down / Resume (stamina) or Pause / Skip.
+                        MTTimerButtons(state: state)
                     }
                 }
             } compactLeading: {
-                Image(systemName: state.pausedRemaining == nil ? "timer" : "pause.fill").foregroundStyle(.indigo)
+                Image(systemName: MTTimerLockScreen.symbol(state, filled: false)).foregroundStyle(.indigo)
             } compactTrailing: {
                 MTTimerClock(state: state, stale: stale)
                     .font(.caption.monospacedDigit())
@@ -117,22 +127,31 @@ struct MTTimerLockScreen: View {
     let stale: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: state.pausedRemaining == nil ? "timer" : "pause.circle.fill")
-                .font(.title)
-                .foregroundStyle(.indigo)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(Self.title(state, stale: stale)).font(.headline)
-                if let detail = Self.detail(state, stale: stale) {
-                    Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                Image(systemName: Self.symbol(state, filled: true))
+                    .font(.title)
+                    .foregroundStyle(.indigo)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(Self.title(state, stale: stale)).font(.headline)
+                    if let detail = Self.detail(state, stale: stale) {
+                        Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
                 }
+                Spacer()
+                MTTimerClock(state: state, stale: stale)
+                    .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                    .frame(maxWidth: 130, alignment: .trailing)
             }
-            Spacer()
-            MTTimerClock(state: state, stale: stale)
-                .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
-                .frame(maxWidth: 130, alignment: .trailing)
+            MTTimerButtons(state: state)   // MK22.1
         }
         .padding(14)
+    }
+
+    /// The timer symbol; a pause symbol while an interval is paused or a stamina run is cooling down.
+    static func symbol(_ state: MTTimerAttributes.ContentState, filled: Bool) -> String {
+        let paused = state.pausedRemaining != nil || (state.stamina == true && state.label == "Cool-down")
+        return paused ? (filled ? "pause.circle.fill" : "pause.fill") : "timer"
     }
 
     static func title(_ state: MTTimerAttributes.ContentState, stale: Bool) -> String {
@@ -142,6 +161,7 @@ struct MTTimerLockScreen: View {
     }
 
     static func detail(_ state: MTTimerAttributes.ContentState, stale: Bool) -> String? {
+        if state.needsApp == true { return "Open the app to control the timer" }
         if state.pausedRemaining != nil { return "Paused" }
         if stale, state.stamina == true {
             return state.label == "Cool-down" ? "Resume when you're ready" : "Keep going or finish"
@@ -149,6 +169,33 @@ struct MTTimerLockScreen: View {
         if stale { return state.isInterval ? "Open the app to see where you're at" : "Stop when you're ready" }
         if let next = state.next { return next }
         return state.endsAt.map { "Ends \($0.formatted(date: .omitted, time: .shortened))" }
+    }
+}
+
+/// MK22.1: the timer's buttons on the Lock Screen card and in the expanded Dynamic Island. Stamina gets
+/// Cool down / Resume, an interval program Pause / Resume and Skip. They run inside the app, like the
+/// widget's buttons, so they work while you're in another app.
+struct MTTimerButtons: View {
+    let state: MTTimerAttributes.ContentState
+
+    var body: some View {
+        let controls = MTWidgetStore.cardControls(for: state)
+        if !controls.isEmpty {
+            HStack(spacing: 8) {
+                ForEach(controls, id: \.self) { control in
+                    Button(intent: MTWidgetControlIntent(MTWidgetAction(rawValue: control.action) ?? .pause)) {
+                        Label(control.label, systemImage: control.icon)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, minHeight: 38)
+                            .background(.white.opacity(0.16), in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(control.label)
+                }
+            }
+        }
     }
 }
 
@@ -208,7 +255,6 @@ enum MTWidgetStore {
     }
 
     static func fromLiveActivity(_ state: MTTimerAttributes.ContentState, staleDate: Date?, now: Date) -> MTWidgetSnapshot {
-        typealias Control = MTWidgetSnapshot.Control
         let title = state.widgetTitle ?? "Timer"
         let paused = state.pausedRemaining != nil
         var steps = [MTWidgetSnapshot.Step(date: now, title: title, state: state)]
@@ -219,28 +265,47 @@ enum MTWidgetStore {
             if state.isInterval {
                 later.label = "Next step"
                 later.next = "Open the app to see where you're at"
+                later.widgetCue = nil
             } else if state.stamina == true {
-                later.label = state.label == "Cool-down" ? "Cool-down over" : "Goal reached"
+                let cooling = state.label == "Cool-down"
+                later.label = cooling ? "Cool-down over" : "Goal reached"
+                later.widgetCue = cooling ? "Cool-down over\nTap Resume when you're ready." : "Goal reached\nKeep going, or finish."
             } else {
                 later.label = "Limit reached"
             }
             steps.append(.init(date: stale, title: title, state: later))
         }
-        let controls: [Control]
-        if state.isInterval {
-            controls = [paused ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
-                               : Control(action: MTWidgetAction.pause.rawValue, label: "Pause", icon: "pause.fill"),
-                        Control(action: MTWidgetAction.skip.rawValue, label: state.label == "Rest" ? "Skip rest" : "Skip", icon: "forward.fill"),
-                        Control(action: MTWidgetAction.next.rawValue, label: "Next", icon: "forward.end.fill")]
-        } else if state.stamina == true {
-            controls = [state.label == "Cool-down" ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
-                                                   : Control(action: MTWidgetAction.coolDown.rawValue, label: "Cool down", icon: "pause.fill"),
-                        Control(action: MTWidgetAction.finish.rawValue, label: "Finish", icon: "checkmark")]
-        } else {
-            controls = [Control(action: MTWidgetAction.stop.rawValue, label: "Stop", icon: "stop.fill")]
-        }
         let kind: MTWidgetSnapshot.Kind = state.isInterval ? .interval : (state.stamina == true ? .stamina : .timed)
-        return MTWidgetSnapshot(kind: kind, program: nil, steps: steps, endsAt: state.isInterval ? state.endsAt : nil, controls: controls)
+        return MTWidgetSnapshot(kind: kind, program: nil, steps: steps, endsAt: state.isInterval ? state.endsAt : nil,
+                                controls: controls(for: state), needsApp: state.needsApp == true)
+    }
+
+    /// The widget's buttons for a timer in this state.
+    static func controls(for state: MTTimerAttributes.ContentState) -> [MTWidgetSnapshot.Control] {
+        typealias Control = MTWidgetSnapshot.Control
+        if state.isInterval {
+            return [state.pausedRemaining != nil
+                        ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
+                        : Control(action: MTWidgetAction.pause.rawValue, label: "Pause", icon: "pause.fill"),
+                    Control(action: MTWidgetAction.skip.rawValue, label: state.label == "Rest" ? "Skip rest" : "Skip", icon: "forward.fill"),
+                    Control(action: MTWidgetAction.next.rawValue, label: "Next", icon: "forward.end.fill")]
+        }
+        if state.stamina == true {
+            return [state.label == "Cool-down" ? Control(action: MTWidgetAction.resume.rawValue, label: "Resume", icon: "play.fill")
+                                               : Control(action: MTWidgetAction.coolDown.rawValue, label: "Cool down", icon: "pause.fill"),
+                    Control(action: MTWidgetAction.finish.rawValue, label: "Finish", icon: "checkmark")]
+        }
+        return [Control(action: MTWidgetAction.stop.rawValue, label: "Stop", icon: "stop.fill")]
+    }
+
+    /// MK22.1: the buttons on the Lock Screen card and the Dynamic Island — only the ones that are safe to
+    /// hit by accident. Stamina: Cool down / Resume. Intervals: Pause / Resume and Skip (the app can undo a
+    /// skip). Finishing or stopping a session stays in the app and on the widget.
+    static func cardControls(for state: MTTimerAttributes.ContentState) -> [MTWidgetSnapshot.Control] {
+        guard state.finished != true, state.needsApp != true else { return [] }
+        if state.isInterval { return Array(controls(for: state).prefix(2)) }
+        if state.stamina == true { return Array(controls(for: state).prefix(1)) }
+        return []
     }
 
     static func load() -> MTWidgetSnapshot? {

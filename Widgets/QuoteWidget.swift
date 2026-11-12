@@ -166,7 +166,7 @@ struct MTTrainingWidget: Widget {
                 }
         }
         .configurationDisplayName("More Training")
-        .description("Your More Training timer with Pause, Skip and Next while it runs; a motivation quote the rest of the time. Made for StandBy.")
+        .description("Your More Training timer while it runs — what to do in this step, with Pause, Skip and Next. A motivation quote the rest of the time. Made for StandBy.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
@@ -233,36 +233,68 @@ struct MTTrainingWidgetView: View {
         }
     }
 
+    /// MK22.1: with a "what to do" for the step, the widget leads with it: a smaller clock, then the
+    /// instruction (headline first — whatever doesn't fit is cut from the end), then the buttons.
     private func timerView(_ timer: MTTrainingEntry.Running) -> some View {
         let state = timer.step.state
         let small = family == .systemSmall
-        return VStack(alignment: .leading, spacing: small ? 4 : 6) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 1) {
+        let paused = state.pausedRemaining != nil
+        let cue = state.widgetCue
+        return VStack(alignment: .leading, spacing: small ? 3 : 6) {
+            if small {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(timer.step.title)
-                        .font(small ? .headline : .title3.bold())
+                        .font(.subheadline.bold())
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    Text(state.pausedRemaining != nil ? "Paused · \(state.label)" : state.label)
-                        .font(.caption)
-                        .foregroundStyle(.indigo)
+                    Spacer(minLength: 0)
+                    Text(paused ? "Paused" : state.label)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Self.accent)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
-                Spacer(minLength: 0)
-                if !small, let program = timer.program {
-                    Text(program).font(.caption2).foregroundStyle(.white.opacity(0.5)).lineLimit(1)
+                clock(state, size: cue == nil ? 38 : 28)
+                if let cue {
+                    cueText(cue, size: 11)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                } else {
+                    Spacer(minLength: 0)
                 }
+            } else {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(timer.step.title)
+                            .font(.title3.bold())
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Text(paused ? "Paused · \(state.label)" : state.label)
+                            .font(.caption)
+                            .foregroundStyle(Self.accent)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        clock(state, size: cue == nil ? 46 : 38)
+                        if cue == nil, let next = state.next {
+                            Text(next).font(.caption).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: cue == nil ? .infinity : 124, alignment: .leading)
+                    if let cue {
+                        VStack(alignment: .leading, spacing: 3) {
+                            cueText(cue, size: 12)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            if let next = state.next {
+                                Text(next).font(.caption2).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
+                            }
+                        }
+                    } else if let program = timer.program {
+                        Text(program).font(.caption2).foregroundStyle(.white.opacity(0.5)).lineLimit(1)
+                    }
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
             }
-            MTTimerClock(state: state, stale: false)
-                .font(.system(size: small ? 38 : 46, weight: .bold, design: .rounded).monospacedDigit())
-                .foregroundStyle(.white)
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
-            if !small, let next = state.next {
-                Text(next).font(.caption).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
-            }
-            Spacer(minLength: 0)
             if timer.needsApp {
                 Text("Open the app to control the timer").font(.caption2).foregroundStyle(.orange)
             } else {
@@ -278,7 +310,7 @@ struct MTTrainingWidgetView: View {
                             }
                             .font(.caption.bold())
                             .lineLimit(1)
-                            .frame(maxWidth: .infinity, minHeight: small ? 30 : 34)
+                            .frame(maxWidth: .infinity, minHeight: small ? 28 : 34)
                             .background(.white.opacity(0.14), in: Capsule())
                             .foregroundStyle(.white)
                         }
@@ -289,5 +321,27 @@ struct MTTrainingWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// A lighter indigo than the system's: small text on the dark widget has to read from across the room.
+    private static let accent = Color(red: 0.68, green: 0.66, blue: 1.0)
+
+    private func clock(_ state: MTTimerAttributes.ContentState, size: CGFloat) -> some View {
+        MTTimerClock(state: state, stale: false)
+            .font(.system(size: size, weight: .bold, design: .rounded).monospacedDigit())
+            .foregroundStyle(.white)
+            .minimumScaleFactor(0.6)
+            .lineLimit(1)
+    }
+
+    /// The instruction: first line as the headline ("Clamp set 1"), the settings and tips under it.
+    private func cueText(_ cue: String, size: CGFloat) -> some View {
+        let lines = cue.components(separatedBy: "\n")
+        let rest = lines.dropFirst().joined(separator: "\n")
+        return (Text(lines[0]).font(.system(size: size + 2, weight: .bold))
+                + Text(rest.isEmpty ? "" : "\n" + rest).font(.system(size: size)))
+            .foregroundStyle(.white.opacity(0.92))
+            .multilineTextAlignment(.leading)
+            .minimumScaleFactor(0.85)
     }
 }

@@ -79,6 +79,30 @@ final class MTVault: ObservableObject {
         backgroundedAt = nil
     }
 
+    // MARK: MK22.1 — timer buttons while locked
+
+    /// True only inside `applyWhileLocked`, so its change can be saved without unlocking.
+    private var workingLocked = false
+
+    /// A timer button (widget, Lock Screen card, Dynamic Island) pressed while the section is locked: iOS
+    /// closed the app in the background, or you locked it yourself with a timer running. Reads the saved
+    /// timer, applies the change and saves it — without unlocking, without showing anything, and with
+    /// nothing left in memory afterwards. False if there was nothing to apply it to (no timer running, or
+    /// the iPhone itself is locked so the file can't be read).
+    func applyWhileLocked(_ change: () -> Void) -> Bool {
+        guard !isUnlocked, !workingLocked else { return false }
+        defer {
+            workingLocked = false
+            skipUndo = nil
+            data = MTData()
+        }
+        do { try load() } catch { return false }
+        guard data.timerRunning else { return false }
+        workingLocked = true
+        change()
+        return true
+    }
+
     // MARK: MK17 — stay open while a timer runs
 
     private var backgroundedAt: Date?
@@ -918,7 +942,7 @@ final class MTVault: ObservableObject {
     private var unsavedChanges = false
 
     private func save() {
-        guard isUnlocked else { return }
+        guard isUnlocked || workingLocked else { return }
         do {
             let bytes = try JSONEncoder.gymForge.encode(data)
             try writeEncrypted(bytes, to: Self.dataURL)
@@ -1100,7 +1124,7 @@ extension MTVault {
         rescheduleDailyReminder(now: now)
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: Self.trainingReminderIDs)
-        guard isUnlocked, data.settings.trainingNudgeOn, data.stretcherStartedAt == nil, !data.isBusy,
+        guard isUnlocked || workingLocked, data.settings.trainingNudgeOn, data.stretcherStartedAt == nil, !data.isBusy,
               !MTSafety.advice(data, now: now).contains(where: { $0.level == .rest }) else { return }
         let calendar = Calendar.current
         guard let last = MTTrainingDays.lastTrainedDay(data, calendar: calendar) else { return }
@@ -1129,7 +1153,7 @@ extension MTVault {
     func rescheduleDailyReminder(now: Date = .now) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: Self.dailyReminderIDs)
-        guard isUnlocked else { return }
+        guard isUnlocked || workingLocked else { return }
         let calendar = Calendar.current
         for (index, fire) in MTPlan.reminderDates(data, now: now, calendar: calendar).enumerated() {
             let content = UNMutableNotificationContent()
