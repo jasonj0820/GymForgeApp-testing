@@ -11,7 +11,8 @@ rm -rf "$OUT" && mkdir -p "$OUT"
 
 xcodebuild -project Ductile.xcodeproj -scheme Ductile -configuration Release \
   -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" archive \
-  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+  MARKETING_VERSION="${MARKETING:-2.0}" CURRENT_PROJECT_VERSION="${BUILD_NUMBER:-1}"
 
 APP="$ARCHIVE/Products/Applications/Ductile.app"
 [[ -d "$APP/PlugIns/DuctileWidgets.appex" ]] || { echo "Widget extension missing from the app" >&2; exit 1; }

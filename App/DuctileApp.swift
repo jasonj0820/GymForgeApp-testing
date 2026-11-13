@@ -6,6 +6,7 @@ import WidgetKit
 @main
 struct DuctileApp: App {
     @StateObject private var model = Model()
+    @Environment(\.scenePhase) private var phase
 
     var body: some Scene {
         WindowGroup {
@@ -13,21 +14,48 @@ struct DuctileApp: App {
                 .environmentObject(model)
                 .onOpenURL { model.handle($0) }
         }
+        .onChange(of: phase) { _, new in
+            if new == .active { model.refresh() }
+        }
     }
 }
 
 @MainActor
 final class Model: ObservableObject {
-    @Published var blocks = Store.blocks {
-        didSet { Store.blocks = blocks; WidgetCenter.shared.reloadAllTimelines() }
+    @Published var blocks: [Block] {
+        didSet {
+            guard blocks != oldValue else { return }
+            Store.blocks = blocks
+            WidgetCenter.shared.reloadAllTimelines()
+            Reminders.reschedule()
+        }
     }
-    /// Mirror of Store.active; changed only through TimerControl (also used by the Live Activity's pause button).
-    @Published private(set) var active = Store.active
+    /// Mirror of Store.active; changed only through TimerControl (also used by the Live Activity's buttons).
+    @Published private(set) var active: ActiveTimer?
+    @Published var remind = Store.remind {
+        didSet { Store.remind = remind; Reminders.reschedule() }
+    }
+    /// Off = blocks are just a timer; the two Focus Shortcuts are never run.
+    @Published var useFocus = Store.useFocus {
+        didSet { Store.useFocus = useFocus }
+    }
 
     init() {
+        Store.migrateIfNeeded()
+        blocks = Store.blocks
+        active = Store.active
         NotificationCenter.default.addObserver(forName: TimerControl.changed, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.active = Store.active }
+            MainActor.assumeIsolated { self?.refresh() }
         }
+        WidgetCenter.shared.reloadAllTimelines()
+        Reminders.reschedule()
+    }
+
+    /// The Live Activity's buttons change the store behind the app's back; pick that up.
+    func refresh() {
+        active = Store.active
+        let stored = Store.blocks
+        if stored != blocks { blocks = stored }
     }
 
     /// ductile://start?id=… comes from tapping a block on the widget.
@@ -35,7 +63,7 @@ final class Model: ObservableObject {
         guard url.host == "start",
               let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                 .queryItems?.first(where: { $0.name == "id" })?.value.flatMap(UUID.init(uuidString:)),
-              let block = blocks.first(where: { $0.id == id })
+              let block = blocks.first(where: { $0.id == id }), block.outcome == nil
         else { return }
         start(block)
     }
@@ -44,7 +72,7 @@ final class Model: ObservableObject {
         guard active == nil else { return }
         TimerControl.start(block)
         // The Shortcut turns Focus on *until* the end time, so it switches off by itself even if Ductile is closed.
-        UIApplication.shared.open(Links.runShortcut(Links.focusOn, text: String(block.focus)))
+        if useFocus { UIApplication.shared.open(Links.runShortcut(Links.focusOn, text: String(block.focus))) }
     }
 
     func togglePause() { Task { await TimerControl.togglePause() } }
@@ -52,12 +80,41 @@ final class Model: ObservableObject {
     /// nil = stopped without doing it.
     func finish(_ outcome: Block.Outcome?) {
         guard let timer = active else { return }
-        if let outcome, let i = blocks.firstIndex(where: { $0.id == timer.blockID }) {
-            blocks[i].outcome = outcome
-        }
-        Task { await TimerControl.finish() }
-        if timer.isPaused || Date() < timer.ends { // ended early, so Focus may still be on
+        TimerControl.complete(outcome)
+        Task { await TimerControl.endActivities() }
+        if useFocus, timer.isPaused || Date() < timer.ends { // ended early, so Focus may still be on
             UIApplication.shared.open(Links.runShortcut(Links.focusOff))
         }
+    }
+
+    /// Tick a block off (or clear the tick with nil) without running its timer.
+    func mark(_ block: Block, _ outcome: Block.Outcome?) {
+        guard let i = blocks.firstIndex(where: { $0.id == block.id }) else { return }
+        blocks[i].outcome = outcome
+        if outcome == nil { blocks[i].focusedMinutes = nil }
+    }
+
+    func save(_ block: Block) {
+        if let i = blocks.firstIndex(where: { $0.id == block.id }) {
+            blocks[i] = block
+        } else {
+            blocks.append(block)
+        }
+    }
+
+    func delete(_ block: Block) {
+        if active?.blockID == block.id { finish(nil) }
+        blocks.removeAll { $0.id == block.id }
+    }
+
+    func copy(_ block: Block, byDays days: Int) {
+        blocks.append(block.copied(byDays: days))
+    }
+
+    /// Everything planned on `source`, laid onto `day` at the same times.
+    func copyDay(from source: Date, to day: Date) {
+        let calendar = Calendar.current
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: source), to: calendar.startOfDay(for: day)).day ?? 0
+        blocks.append(contentsOf: dayBlocks(blocks, on: source).map { $0.copied(byDays: days) })
     }
 }

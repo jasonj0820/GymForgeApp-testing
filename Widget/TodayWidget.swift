@@ -30,7 +30,7 @@ struct Provider: TimelineProvider {
         // Redraw when each block starts or ends and when the timer runs out, so "now" moves along.
         let changes = (today.flatMap { [$0.start, $0.end] } + [Store.active?.ends].compactMap { $0 })
             .filter { $0 > now }.sorted()
-        let midnight = Calendar.current.startOfDay(for: now).addingTimeInterval(86400)
+        let midnight = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) ?? now.addingTimeInterval(86400)
         completion(Timeline(entries: ([now] + changes).map(entry(at:)), policy: .after(midnight)))
     }
 
@@ -65,11 +65,17 @@ struct TodayView: View {
                     }
                     .font(.caption.bold().monospacedDigit()).foregroundStyle(.orange)
                     .multilineTextAlignment(.trailing)
+                } else if entry.active != nil {
+                    // The timer ran out and the block hasn't been ticked off yet.
+                    Text("Tick it off").font(.caption.bold()).foregroundStyle(.orange)
+                } else if !entry.blocks.isEmpty {
+                    Text("\(entry.blocks.filter { $0.outcome != nil }.count) of \(entry.blocks.count) done")
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
             if shown.isEmpty {
                 Spacer()
-                Text(entry.blocks.isEmpty ? "No blocks today" : "All done today ✓")
+                Text(entry.blocks.isEmpty ? (SharedGroup.id == nil ? "Open Ductile: the widget can't read your blocks in this install" : "No blocks today") : "All done today ✓")
                     .font(.caption).foregroundStyle(.secondary)
             }
             ForEach(shown) { block in
@@ -94,12 +100,14 @@ struct TodayView: View {
 
     private func row(_ block: Block) -> some View {
         let isRunning = running?.blockID == block.id
+        let missed = !isRunning && block.isMissed(at: entry.date)
         return HStack(spacing: 6) {
-            RoundedRectangle(cornerRadius: 2).fill(isRunning ? Color.orange : .accentColor).frame(width: 3)
+            RoundedRectangle(cornerRadius: 2).fill(isRunning ? Color.orange : missed ? Color.red : .accentColor).frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(block.title).font(.subheadline.bold()).lineLimit(1)
-                Text("\(block.start.formatted(date: .omitted, time: .shortened))–\(block.end.formatted(date: .omitted, time: .shortened)) · \(durationText(block.focus))")
-                    .font(.caption2).foregroundStyle(.secondary)
+                Text(missed ? "Missed · the minimum still counts"
+                            : "\(block.start.formatted(date: .omitted, time: .shortened))–\(block.end.formatted(date: .omitted, time: .shortened)) · \(durationText(block.focus))")
+                    .font(.caption2).foregroundStyle(missed ? Color.red : Color.secondary).lineLimit(1)
             }
             Spacer(minLength: 0)
             if family != .systemSmall {

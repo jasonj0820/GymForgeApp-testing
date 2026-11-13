@@ -1,5 +1,5 @@
 # Builds Ductile on GitHub's Macs on every push (or Actions → Build Ductile → Run workflow).
-# Download the IPA from the run's "Artifacts" section and install it with SideStore.
+# Download the IPA from the run's "Artifacts" section and install it with Sideloadly.
 name: Build Ductile
 
 on:
@@ -15,7 +15,8 @@ jobs:
       - name: Logic checks
         run: swiftc Shared/Block.swift Scripts/checks/main.swift -o checks-bin && ./checks-bin
       - name: Build unsigned IPA
-        run: zsh Scripts/build_ipa.sh "MK1.3-build-${GITHUB_RUN_NUMBER}"
+        # A new build number each time, so iOS refreshes the widget instead of keeping the old one cached.
+        run: BUILD_NUMBER="${GITHUB_RUN_NUMBER}" zsh Scripts/build_ipa.sh "MK2-build-${GITHUB_RUN_NUMBER}"
       - uses: actions/upload-artifact@v4
         with:
           name: Ductile-IPA
