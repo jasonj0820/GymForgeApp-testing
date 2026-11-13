@@ -86,7 +86,7 @@ assert(reminders(for: [w], now: w.startBy).isEmpty && reminders(for: [w], now: o
 assert(reminders(for: (0..<50).map { _ in w }, now: noon).count == 40, "capped under iOS's limit of 64")
 
 // MK2: one broken block doesn't empty the calendar
-Store.defaults.set(#"[{"title":"broken"},{"id":"\#(UUID().uuidString)","title":"Fine","start":0,"minutes":30}]"#.data(using: .utf8)!, forKey: "blocks")
+Store.defaults.set(#"[{"title":"broken"},{"id":"\#(UUID().uuidString)","title":"Fine","start":0,"minutes":30,"fullTask":"","minTask":""}]"#.data(using: .utf8)!, forKey: "blocks")
 assert(Store.blocks.map(\.title) == ["Fine"], "the readable block survives: \(Store.blocks.map(\.title))")
 Store.defaults.removeObject(forKey: "blocks")
 
