@@ -11,6 +11,9 @@
 - Stamina's "Cancel without saving" asks before throwing the session away.
 
 **Elsewhere**
+- **Deleting asks first.** Swiping a workout out of History, a routine out of Workouts, or a run or game out of Cardio used to delete it on the spot with no way back. Each now asks before it goes.
+- **History is grouped by month**, with the number of workouts in each.
+- **Start from the Workouts tab**: swipe a routine right (or touch and hold it) to start it. Rows show when you last did each one.
 - The app calls itself **Splitday** everywhere now (Watch title, connection help, Health and Focus help, backup reminder, the Sergeant Cluck widget). File names of backups are unchanged, so old backups still restore.
 - **Progress opens and searches faster** with a long history: every lift's trend comes from one pass over the log instead of one pass per exercise.
 - Ticking a routine step gives a light tap.

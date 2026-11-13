@@ -81,7 +81,7 @@ struct MTStaminaView: View {
             .buttonStyle(.borderedProminent)
             .tint(.blue)
         } footer: {
-            Text("When you feel close, tap Cool down — the goal timer stops for \(vault.data.settings.cooldownSeconds) s, then resume.")
+            Text("When you feel close, tap Cool down — the goal timer stops for \(vault.data.settings.cooldownSeconds) s, then resume. In another app, press and hold the Dynamic Island for the same button; it's on the Lock Screen card and the widget too.")
         }
     }
 

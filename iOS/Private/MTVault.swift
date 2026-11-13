@@ -87,8 +87,8 @@ final class MTVault: ObservableObject {
     /// A timer button (widget, Lock Screen card, Dynamic Island) pressed while the section is locked: iOS
     /// closed the app in the background, or you locked it yourself with a timer running. Reads the saved
     /// timer, applies the change and saves it — without unlocking, without showing anything, and with
-    /// nothing left in memory afterwards. False if there was nothing to apply it to (no timer running, or
-    /// the iPhone itself is locked so the file can't be read).
+    /// nothing left in memory afterwards. False only if the saved timer can't be read (the iPhone itself is
+    /// locked).
     func applyWhileLocked(_ change: () -> Void) -> Bool {
         guard !isUnlocked, !workingLocked else { return false }
         defer {
@@ -97,7 +97,11 @@ final class MTVault: ObservableObject {
             data = MTData()
         }
         do { try load() } catch { return false }
-        guard data.timerRunning else { return false }
+        guard data.timerRunning else {
+            // The timer had already ended: take the card down and give the widget its quote back.
+            MTLiveTimer.sync(data)
+            return true
+        }
         workingLocked = true
         change()
         return true

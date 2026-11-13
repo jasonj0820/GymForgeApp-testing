@@ -107,7 +107,7 @@ struct MTSettingsView: View {
                 Text("Widget")
             } footer: {
                 Text(SharedGroup.id != nil
-                     ? "The More Training widget reads the running timer from storage shared with the app. \"Never\" means the widget hasn't been added, or hasn't refreshed since this update."
+                     ? "The More Training widget reads the running timer from storage shared with the app, and shows what to do in the current step. Its buttons, and the ones on the Lock Screen card and in the Dynamic Island (press and hold it), work without opening the app. \"Never\" means the widget hasn't been added, or hasn't refreshed since this update."
                      : "This install has no storage shared between the app and its widgets (the signing tool removed it). The More Training widget follows the Lock Screen timer card instead, so Live Activities must be on, and it only knows the current step.")
             }
 

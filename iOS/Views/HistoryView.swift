@@ -5,45 +5,73 @@ struct HistoryView: View {
     @State private var missedRoutine: WorkoutRoutine?
     @State private var missedDate = Date()
     @State private var pickingDate = false
+    @State private var deleting: WorkoutLog?
+
+    /// MK22.1: one section per month, newest first.
+    private struct Month: Identifiable {
+        let id: Date
+        let logs: [WorkoutLog]
+    }
+
+    private var months: [Month] {
+        let calendar = Calendar.current
+        let groups = Dictionary(grouping: store.sortedLogs) {
+            calendar.dateInterval(of: .month, for: $0.startedAt)?.start ?? calendar.startOfDay(for: $0.startedAt)
+        }
+        return groups.keys.sorted(by: >).map { Month(id: $0, logs: groups[$0] ?? []) }
+    }
 
     var body: some View {
         List {
             if store.workoutLogs.isEmpty {
                 ContentUnavailableView("No workouts yet", systemImage: "clock.arrow.circlepath", description: Text("Finished workouts appear here."))
             }
-            ForEach(store.sortedLogs) { log in
-                NavigationLink {
-                    WorkoutDetailView(log: log)
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(log.routineName).font(.headline)
-                            if log.prCount > 0 {
-                                Image(systemName: "trophy.fill").foregroundStyle(.yellow).font(.caption)
+            ForEach(months) { month in
+                Section {
+                    ForEach(month.logs) { log in
+                        NavigationLink {
+                            WorkoutDetailView(log: log)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(log.routineName).font(.headline)
+                                    if log.prCount > 0 {
+                                        Image(systemName: "trophy.fill").foregroundStyle(.yellow).font(.caption)
+                                    }
+                                    if log.isDeload == true {
+                                        Image(systemName: "leaf.fill").foregroundStyle(.green).font(.caption)
+                                    }
+                                    if log.isManual == true {
+                                        Image(systemName: "hand.draw").foregroundStyle(.secondary).font(.caption)
+                                    }
+                                    Spacer()
+                                    Text(log.startedAt.formatted(date: .abbreviated, time: .omitted))
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Text("\(GFFormat.duration(log.duration)) · \(log.totalSets) sets · \(GFFormat.kg(log.totalVolumeKg.rounded())) kg volume")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
-                            if log.isDeload == true {
-                                Image(systemName: "leaf.fill").foregroundStyle(.green).font(.caption)
-                            }
-                            if log.isManual == true {
-                                Image(systemName: "hand.draw").foregroundStyle(.secondary).font(.caption)
-                            }
-                            Spacer()
-                            Text(log.startedAt.formatted(date: .abbreviated, time: .omitted))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
                         }
-                        Text("\(GFFormat.duration(log.duration)) · \(log.totalSets) sets · \(GFFormat.kg(log.totalVolumeKg.rounded())) kg volume")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
+                    // MK22.1: a swipe used to delete the workout on the spot, with no way back.
+                    .onDelete { offsets in
+                        if let index = offsets.first { deleting = month.logs[index] }
+                    }
+                } header: {
+                    Text("\(month.id.formatted(.dateTime.month(.wide).year())) · \(month.logs.count) workout\(month.logs.count == 1 ? "" : "s")")
                 }
-            }
-            .onDelete { offsets in
-                let logs = store.sortedLogs
-                for index in offsets { store.deleteWorkout(logs[index]) }
             }
         }
         .navigationTitle("History")
+        .confirmationDialog("Delete this workout?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                            titleVisibility: .visible, presenting: deleting) { log in
+            Button("Delete workout", role: .destructive) { store.deleteWorkout(log) }
+            Button("Keep it", role: .cancel) {}
+        } message: { log in
+            Text("\(log.routineName), \(log.startedAt.formatted(date: .abbreviated, time: .omitted)). Its sets leave your history and your progress charts. This can't be undone.")
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {

@@ -150,6 +150,7 @@ private struct EfficiencyPoint: Identifiable {
 /// Run and basketball history, best times and the fitness trend.
 struct CardioHistoryView: View {
     @EnvironmentObject private var store: PhoneAppStore
+    @State private var deleting: CardioSession?
 
     var body: some View {
         let runs = store.runs
@@ -188,17 +189,24 @@ struct CardioHistoryView: View {
                 ForEach(runs) { run in
                     NavigationLink { RunDetailView(session: run) } label: { row(run) }
                 }
-                .onDelete { offsets in for index in offsets { store.deleteCardio(runs[index]) } }
+                .onDelete { offsets in if let index = offsets.first { deleting = runs[index] } }   // MK22.1: asks first
             }
             Section("Basketball") {
                 if games.isEmpty { Text("No basketball yet.").foregroundStyle(.secondary) }
                 ForEach(games) { game in
                     NavigationLink { BasketballDetailView(session: game) } label: { row(game) }
                 }
-                .onDelete { offsets in for index in offsets { store.deleteCardio(games[index]) } }
+                .onDelete { offsets in if let index = offsets.first { deleting = games[index] } }
             }
         }
         .navigationTitle("Cardio")
+        .confirmationDialog("Delete this session?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                            titleVisibility: .visible, presenting: deleting) { session in
+            Button("Delete \(session.title)", role: .destructive) { store.deleteCardio(session) }
+            Button("Keep it", role: .cancel) {}
+        } message: { session in
+            Text("\(session.startedAt.formatted(date: .abbreviated, time: .omitted)). This can't be undone.")
+        }
     }
 
     private func row(_ session: CardioSession) -> some View {
