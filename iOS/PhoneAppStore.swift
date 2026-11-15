@@ -324,7 +324,14 @@ final class PhoneAppStore: ObservableObject {
     }
 
     func deleteRoutines(at offsets: IndexSet) {
+        let gone = Set(offsets.map { routines[$0].id })
         routines.remove(atOffsets: offsets)
+        // MK24: days planned for a deleted routine (from today on) go back to unplanned, instead of
+        // silently falling through to "whichever routine you've gone longest without".
+        let today = Calendar.current.startOfDay(for: .now)
+        let before = extras.dayPlans.count
+        extras.dayPlans.removeAll { $0.day >= today && $0.routineID.map(gone.contains) == true }
+        if extras.dayPlans.count != before { saveExtras() }
         persistAndSync()
     }
 
@@ -336,6 +343,13 @@ final class PhoneAppStore: ObservableObject {
     func updateRoutine(_ routine: WorkoutRoutine) {
         guard let idx = routines.firstIndex(where: { $0.id == routine.id }) else { return }
         routines[idx] = routine
+        // MK24: a renamed routine keeps its planned days, under its new name.
+        var renamed = false
+        for i in extras.dayPlans.indices where extras.dayPlans[i].routineID == routine.id && extras.dayPlans[i].routineName != routine.name {
+            extras.dayPlans[i].routineName = routine.name
+            renamed = true
+        }
+        if renamed { saveExtras() }
         persistAndSync()
     }
 

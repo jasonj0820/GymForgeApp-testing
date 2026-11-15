@@ -1,7 +1,7 @@
 import ActivityKit
 import Foundation
 import UIKit
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// MK11: sleep schedule, wind-down Live Activity and reminders.
 extension PhoneAppStore {

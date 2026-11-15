@@ -770,6 +770,44 @@ struct GymForgeChecks {
         sickLog.sessionTags = [.sick]
         check(sickLog.skipsProgression && SessionTag.explaining(sickLog.tagSet) == .sick, "a 'feeling sick' day is excused and doesn't drive progression")
 
+        // MK24 (33): the fixed-day split, day by day. Week of Mon 9 Nov 2026, Brisbane.
+        var bne = Calendar(identifier: .gregorian)
+        bne.timeZone = TimeZone(identifier: "Australia/Brisbane")!
+        let brisbane = bne
+        func at(_ day: Int, _ hour: Int = 18, _ minute: Int = 0) -> Date {
+            brisbane.date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour, minute: minute))!
+        }
+        func split(_ day: Int, _ done: [(date: Date, slot: FixedSplit.Slot)], court: FixedSplit.Court? = nil) -> FixedSplit.Day {
+            FixedSplit.day(at(day, 12, 0), done: done, court: court, calendar: brisbane)
+        }
+        check(split(9, []).kind == .train(.chest) && split(10, []).kind == .train(.back) && split(11, []).kind == .train(.legs),
+              "Mon chest, Tue back, Wed legs")
+        check(split(12, [(at(11), .legs)]).kind == .rest, "Thursday is a buffer once legs are done")
+        check(split(12, []).kind == .train(.legs), "Wednesday missed → legs on Thursday")
+        check(split(13, [(at(9), .chest)]).kind == .askCourt, "Friday asks about basketball first")
+        check(split(13, [(at(9), .chest)], court: .fullCourt).kind == .basketball, "full court → no chest")
+        check(split(13, [(at(9), .chest)], court: .light).kind == .microChest, "light court → micro chest")
+        let friday = split(13, [], court: FixedSplit.Court.none)
+        check(friday.kind == .train(.chest) && friday.compensate, "no court and Monday missed → chest with an extra set")
+        let saturday = split(14, [(at(9), .chest), (at(12), .legs)])
+        check(saturday.kind == .train(.back) && saturday.compensate && saturday.protectLowerBack,
+              "Tuesday missed + legs on Thursday → back with an extra set, no lower-back-heavy lifts")
+        check(split(15, []).kind == .rest, "Sunday is rest")
+        check(split(16, [(at(9), .chest), (at(10), .back), (at(11), .legs)]).kind == .train(.chest), "a new week starts clean")
+
+        // MK24 (20): day boundaries. A late session counts on the day it was done, in your time zone.
+        check(split(12, [(at(11, 23, 30), .legs)]).kind == .rest, "legs at 11:30 pm Wednesday still count for Wednesday")
+        var perth = Calendar(identifier: .gregorian)
+        perth.timeZone = TimeZone(identifier: "Australia/Perth")!
+        check(FixedSplit.day(at(12, 12, 0), done: [(at(11, 23, 30), .legs)], court: nil, calendar: perth).kind == .rest,
+              "flying west to Perth: Wednesday's late legs are still Wednesday")
+        var auckland = Calendar(identifier: .gregorian)
+        auckland.timeZone = TimeZone(identifier: "Pacific/Auckland")!
+        // 11:30 pm Brisbane = 2:30 am Thursday in Auckland: legs moved to Thursday, and already done today.
+        let east = FixedSplit.day(at(12, 12, 0), done: [(at(11, 23, 30), .legs)], court: nil, calendar: auckland)
+        check(east.kind == .train(.legs), "flying east to Auckland: the session lands on Thursday (it's shown as done there)")
+        check(ConsistencyCalculator.stats(logs: [], weeklyGoal: 4, breaks: []).weeklyGoal == 4, "no history keeps the goal")
+
         print("PASS: all GymForge checks")
     }
 }

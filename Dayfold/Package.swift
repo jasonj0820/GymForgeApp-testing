@@ -4,7 +4,7 @@ let package = Package(
     name: "DayfoldCore",
     products: [.library(name: "DayfoldCore", targets: ["DayfoldCore"])],
     targets: [
-        .target(name: "DayfoldCore", path: "Shared", sources: ["DayfoldModels.swift"]),
+        .target(name: "DayfoldCore", path: "Shared", exclude: ["DayfoldStore.swift"], sources: ["DayfoldModels.swift"]),
         .testTarget(name: "DayfoldCoreTests", dependencies: ["DayfoldCore"], path: "Tests")
     ]
 )

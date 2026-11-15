@@ -413,6 +413,7 @@ struct SettingsDataPage: View {
             }
 
             Section("Data") {
+                NavigationLink { DataCheckView() } label: { Label("Data check-up", systemImage: "checklist.checked") }
                 LabeledContent("Routines", value: "\(store.routines.count)")
                 LabeledContent("Workouts logged", value: "\(store.workoutLogs.count)")
                 LabeledContent("Data file", value: store.dataFileSize)

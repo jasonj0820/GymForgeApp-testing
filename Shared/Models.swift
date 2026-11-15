@@ -451,7 +451,7 @@ public enum SessionTag: String, Codable, CaseIterable, Identifiable, Hashable {
 }
 
 public struct BodyMetricPoint: Identifiable, Codable, Hashable {
-    public enum Metric: String, Codable { case bodyWeight, bodyFatPercentage, leanMass, restingHeartRate, heartRateVariability }
+    public enum Metric: String, Codable, Sendable { case bodyWeight, bodyFatPercentage, leanMass, restingHeartRate, heartRateVariability }
     public var id: UUID
     public var metric: Metric
     public var date: Date

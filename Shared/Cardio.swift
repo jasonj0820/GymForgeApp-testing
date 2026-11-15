@@ -3,7 +3,7 @@ import Foundation
 // MK9.1: runs (outdoor GPS or treadmill) and basketball as their own workouts — recorded by the Watch,
 // or (MK10) by the iPhone or logged afterwards, with an effort rating instead of heart rate.
 
-public enum ActivityKind: String, Codable, CaseIterable, Identifiable {
+public enum ActivityKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case run, basketball
     public var id: String { rawValue }
 }

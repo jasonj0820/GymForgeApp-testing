@@ -8,13 +8,13 @@ import UniformTypeIdentifiers
 /// without asking — and the file is useless without the passcode. Keeps the newest 4.
 @MainActor
 enum AutoBackup {
-    private static let enabledKey = "autobackup.enabled"
+    nonisolated private static let enabledKey = "autobackup.enabled"
     private static let bookmarkKey = "autobackup.folderBookmark"
-    private static let lastKey = "autobackup.last"
-    private static let statusKey = "autobackup.status"
+    nonisolated private static let lastKey = "autobackup.last"
+    nonisolated private static let statusKey = "autobackup.status"
     private static let keychainService = "com.gymforge.autobackup"
     static let filePrefix = "GymForge-auto-"
-    private static let dailyKey = "autobackup.daily"
+    nonisolated private static let dailyKey = "autobackup.daily"
     /// MK23: daily instead of weekly (a week's lifting is a lot to lose).
     nonisolated static var daily: Bool {
         get { UserDefaults.standard.bool(forKey: dailyKey) }
