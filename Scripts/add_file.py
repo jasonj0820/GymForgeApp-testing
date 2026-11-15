@@ -35,8 +35,10 @@ def add(new_path, sibling_path):
     file_ref = new_id("ref:" + new_path, text)
 
     # 1. the file itself
+    # Names with characters outside [A-Za-z0-9_./] (e.g. "+") must be quoted in the project file.
+    quoted = name if all(c.isalnum() or c in "_./" for c in name) else f'"{name}"'
     text = text.replace(ref.group(0), ref.group(0) +
-        f"\t\t{file_ref} /* {name} */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = {name}; sourceTree = \"<group>\"; }};\n", 1)
+        f"\t\t{file_ref} /* {name} */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = {quoted}; sourceTree = \"<group>\"; }};\n", 1)
 
     # 2. its folder group: the group listing whose children include the sibling
     child = f"\t\t\t\t{sibling_ref} /* {sibling} */,\n"

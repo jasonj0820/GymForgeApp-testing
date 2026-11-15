@@ -374,9 +374,9 @@
 		6991D52489E3408EC2DE7FA5 /* CluckWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CluckWatchWidget.swift; sourceTree = "<group>"; };
 		81E19773868498CFC7A7CDEA /* AutoBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoBackup.swift; sourceTree = "<group>"; };
 		3145E99D8EC01E2796D4109E /* HealthBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthBridge.swift; sourceTree = "<group>"; };
-		FB28919B7C9128845467962D /* PhoneAppStore+Coach24.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneAppStore+Coach24.swift; sourceTree = "<group>"; };
+		FB28919B7C9128845467962D /* PhoneAppStore+Coach24.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhoneAppStore+Coach24.swift"; sourceTree = "<group>"; };
 		14CE091D45967F75CFB28C40 /* SetListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetListener.swift; sourceTree = "<group>"; };
-		B77DF5D750F17BBC29D48E94 /* PhoneAppStore+Live.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneAppStore+Live.swift; sourceTree = "<group>"; };
+		B77DF5D750F17BBC29D48E94 /* PhoneAppStore+Live.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhoneAppStore+Live.swift"; sourceTree = "<group>"; };
 		CC552F28ACA8804B64129B53 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		C0892BED1CED669BA7F267C0 /* DailyNudges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyNudges.swift; sourceTree = "<group>"; };
 		9A18DC6F0CB840DA375EDD19 /* BackupStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupStatus.swift; sourceTree = "<group>"; };
