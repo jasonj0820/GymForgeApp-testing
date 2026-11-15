@@ -210,6 +210,7 @@ struct ExerciseProgressView: View {
     @EnvironmentObject private var store: PhoneAppStore
     @State private var range: ChartRange = .threeMonths
     @State private var search = ""
+    @AppStorage(PinnedLifts.key) private var pinnedRaw = ""   // MK24 (80)
 
     private struct Record: Identifiable {
         let id: UUID
@@ -313,6 +314,10 @@ struct ExerciseProgressView: View {
         if trends.isEmpty {
             Text("No exercise matches that.").foregroundStyle(.secondary)
         }
+        // MK24 (80): pinned lifts first (long-press a lift to pin it).
+        let pinned = PinnedLifts.keys(pinnedRaw)
+        group("Pinned", "pin.fill", .yellow, trends.filter { pinned.contains($0.exercise.historyKey) }
+            .sorted { $0.exercise.name < $1.exercise.name })
         group("Going up", "arrow.up.right", .green, up)
         group("Slipping", "arrow.down.right", .orange, down)
         group("Holding", "arrow.right", .gray, holding)
@@ -371,6 +376,14 @@ struct ExerciseProgressView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            let isPinned = PinnedLifts.keys(pinnedRaw).contains(trend.exercise.historyKey)
+            Button {
+                pinnedRaw = PinnedLifts.toggled(trend.exercise.historyKey, in: pinnedRaw)
+            } label: {
+                Label(isPinned ? "Unpin" : "Pin to the top", systemImage: isPinned ? "pin.slash" : "pin")
+            }
+        }
     }
 
     // MARK: Records
@@ -435,6 +448,24 @@ struct ExerciseProgressView: View {
                 HistoryView()
             } label: {
                 moreRow("clock.arrow.circlepath", "Workout history", "Every workout you've logged")
+            }
+            Divider()
+            NavigationLink {
+                MuscleTrendView()
+            } label: {
+                moreRow("chart.bar.xaxis", "Sets per muscle over time", "Weekly hard sets for each muscle, 6 months")
+            }
+            Divider()
+            NavigationLink {
+                ComparePeriodsView()
+            } label: {
+                moreRow("rectangle.split.2x1", "Compare two periods", "This month vs last, this block vs the one before")
+            }
+            Divider()
+            NavigationLink {
+                YearInReviewView()
+            } label: {
+                moreRow("sparkles.rectangle.stack", "Year in review", "Your year in one page, ready to share")
             }
         }
         .buttonStyle(.plain)
@@ -513,6 +544,10 @@ struct LiftDetailView: View {
     let exercise: ExerciseDefinition
     @State private var range: ChartRange
     @State private var metric: LiftMetric?
+    // MK24 (80, 84, 85)
+    @AppStorage(PinnedLifts.key) private var pinnedRaw = ""
+    @AppStorage("lift.showBodyWeight") private var showBodyWeight = false
+    @AppStorage("lift.showMarkers") private var showMarkers = false
 
     init(exercise: ExerciseDefinition, range: ChartRange) {
         self.exercise = exercise
@@ -547,6 +582,16 @@ struct LiftDetailView: View {
         }
         .navigationTitle(exercise.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            let pinned = PinnedLifts.keys(pinnedRaw).contains(exercise.historyKey)
+            Button {
+                pinnedRaw = PinnedLifts.toggled(exercise.historyKey, in: pinnedRaw)
+                Haptics.tap()
+            } label: {
+                Image(systemName: pinned ? "pin.fill" : "pin")
+            }
+            .accessibilityLabel(pinned ? "Unpin" : "Pin to the top of Progress")
+        }
     }
 
     /// Sessions that get a diamond: a set flagged as a record when it was logged, or a new best estimated max.
@@ -597,12 +642,41 @@ struct LiftDetailView: View {
                                        description: Text("Pick a longer range, or log \(exercise.name) again and the line appears."))
                     .frame(height: 200)
             } else {
+                let values = points.map { metric.value($0.log) }
+                let low = values.min() ?? 0, high = values.max() ?? 1
+                let weights = bodyWeights(from: points.first?.date, to: points.last?.date)
+                let increases = showMarkers ? LiftMarkers.weightIncreases(points.map { (date: $0.date, value: $0.log.bestWeightKg) }) : []
+                let rangeChanges = showMarkers ? LiftMarkers.repRangeChanges(points.map { (date: $0.date, low: $0.log.repMinAtTime, high: $0.log.repMaxAtTime) }) : []
                 Chart {
                     ForEach(points) { point in
-                        LineMark(x: .value("Date", point.date), y: .value(metric.rawValue, metric.value(point.log)))
+                        LineMark(x: .value("Date", point.date), y: .value(metric.rawValue, metric.value(point.log)),
+                                 series: .value("Line", "lift"))
                             .interpolationMethod(.monotone)
                         PointMark(x: .value("Date", point.date), y: .value(metric.rawValue, metric.value(point.log)))
                             .symbolSize(28)
+                    }
+                    // MK24 (84): body weight, scaled onto the lift's range so the two shapes can be compared.
+                    if showBodyWeight, let wLow = weights.map(\.value).min(), let wHigh = weights.map(\.value).max() {
+                        ForEach(weights, id: \.date) { w in
+                            let scaled = wHigh > wLow ? low + (w.value - wLow) / (wHigh - wLow) * (high - low) : (low + high) / 2
+                            LineMark(x: .value("Date", w.date), y: .value(metric.rawValue, scaled), series: .value("Line", "body"))
+                                .foregroundStyle(.purple.opacity(0.55))
+                                .lineStyle(StrokeStyle(lineWidth: 2, dash: [4, 3]))
+                                .interpolationMethod(.monotone)
+                        }
+                    }
+                    // MK24 (85): where the weight went up, and where the rep range changed.
+                    ForEach(increases, id: \.self) { date in
+                        RuleMark(x: .value("Date", date))
+                            .foregroundStyle(.green.opacity(0.3))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
+                    }
+                    ForEach(rangeChanges, id: \.date) { change in
+                        RuleMark(x: .value("Date", change.date))
+                            .foregroundStyle(.blue.opacity(0.5))
+                            .annotation(position: .top, alignment: .leading) {
+                                Text(change.text).font(.caption2.bold()).foregroundStyle(.blue)
+                            }
                     }
                     ForEach(points.filter { records.contains($0.workoutID) }) { point in
                         PointMark(x: .value("Date", point.date), y: .value(metric.rawValue, metric.value(point.log)))
@@ -617,8 +691,32 @@ struct LiftDetailView: View {
             Text(metric.caption + (records.isEmpty ? "" : " Orange diamonds are records."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Toggle(isOn: $showBodyWeight) { Label("Body weight", systemImage: "scalemass") }
+                Toggle(isOn: $showMarkers) { Label("Markers", systemImage: "flag") }
+            }
+            .toggleStyle(.button)
+            .font(.caption)
+            if showBodyWeight {
+                let weights = bodyWeights(from: points.first?.date, to: points.last?.date)
+                if let first = weights.first, let last = weights.last {
+                    Text("Purple dashes: body weight, \(GFFormat.kg(first.value)) → \(GFFormat.kg(last.value)) kg (scaled to fit).")
+                        .font(.caption).foregroundStyle(.purple)
+                } else {
+                    Text("No weigh-ins in this range.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if showMarkers {
+                Text("Green lines: the weight went up. Blue: the rep range changed.").font(.caption).foregroundStyle(.secondary)
+            }
         }
         .card()
+    }
+
+    private func bodyWeights(from start: Date?, to end: Date?) -> [(date: Date, value: Double)] {
+        guard let start, let end else { return [] }
+        return store.healthKit.bodyWeight.filter { $0.date >= start.addingTimeInterval(-3 * 86_400) && $0.date <= end.addingTimeInterval(86_400) }
+            .sorted { $0.date < $1.date }.map { (date: $0.date, value: $0.value) }
     }
 
     private var nextStep: some View {

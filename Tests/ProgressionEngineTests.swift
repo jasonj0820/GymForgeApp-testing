@@ -873,6 +873,30 @@ struct GymForgeChecks {
         let rotation = AccessoryRotation.plan([pushDay])
         check(rotation.count == 1 && rotation[0].to.name == "Machine Lateral", "rotation moves the raise to its last option, not the bench")
 
+        // MK24 F: compare periods, year in review, chart markers.
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = TimeZone(identifier: "Australia/Brisbane")!
+        gregorian.firstWeekday = 2
+        func session(_ d: Date, _ w: Double) -> WorkoutLog {
+            WorkoutLog(routineID: routine.id, routineName: "Test", startedAt: d, endedAt: d.addingTimeInterval(3600), exercises: [log(press, [(w, 10), (w, 9)])])
+        }
+        let jan5 = gregorian.date(from: DateComponents(year: 2026, month: 1, day: 5, hour: 17))!   // a Monday
+        let yearLogs = (0..<10).map { session(jan5.addingTimeInterval(Double($0) * 7 * 86_400), 80 + Double($0)) }
+            + [session(jan5.addingTimeInterval(2 * 86_400), 80)]   // two sessions in week 1
+        let periodA = PeriodStats.make(yearLogs, from: jan5, to: jan5.addingTimeInterval(28 * 86_400))
+        let periodB = PeriodStats.make(yearLogs, from: jan5.addingTimeInterval(28 * 86_400), to: jan5.addingTimeInterval(56 * 86_400))
+        check(periodA.sessions == 5 && periodB.sessions == 4 && periodA.sets == 10, "period counts")
+        let change = PeriodStats.liftChanges(periodA, periodB).first
+        check(change?.from == 83 && change?.to == 87, "heaviest set 83 → 87 kg between periods")
+        let review = YearReview.make(yearLogs, year: 2026, calendar: gregorian)
+        check(review.sessions == 11 && review.bestWeek == 2 && review.longestStreakWeeks == 10, "year: sessions, best week, 10-week streak")
+        check(review.mostImproved.first?.to == 89 && review.busiestMonth == 1, "year: most improved lift and busiest month")
+        check(YearReview.make(yearLogs, year: 2026, weekGoal: 2, calendar: gregorian).longestStreakWeeks == 1, "streak with a 2-a-week bar")
+        let pts = [(date: jan5, value: 80.0), (date: jan5.addingTimeInterval(86_400), value: 82.5), (date: jan5.addingTimeInterval(2 * 86_400), value: 82.5)]
+        check(LiftMarkers.weightIncreases(pts) == [jan5.addingTimeInterval(86_400)], "marker where the weight went up")
+        let ranges = [(date: jan5, low: 8, high: 12), (date: jan5.addingTimeInterval(86_400), low: 6, high: 10)]
+        check(LiftMarkers.repRangeChanges(ranges).map(\.text) == ["6–10"], "marker where the rep range changed")
+
         print("PASS: all GymForge checks")
     }
 }

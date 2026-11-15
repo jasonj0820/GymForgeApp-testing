@@ -33,7 +33,7 @@ final class SetListener: ObservableObject {
         }
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .measurement, options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
+            try session.setCategory(.playAndRecord, mode: .measurement, options: [.duckOthers, .defaultToSpeaker, .allowBluetoothHFP])
             try session.setActive(true)
         } catch {
             problem = "Couldn't use the microphone."

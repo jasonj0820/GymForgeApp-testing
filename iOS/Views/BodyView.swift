@@ -23,6 +23,10 @@ struct BodyView: View {
                     NavigationLink { RecoveryView() } label: {
                         sectionLink("bed.double.fill", "Sleep & recovery", "Last night, your schedule, recovery score")
                     }
+                    Divider()
+                    NavigationLink { ProgressPhotosView() } label: {
+                        sectionLink("person.crop.rectangle", "Progress photos", "Front, side and back, encrypted on this iPhone")
+                    }
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 16)
