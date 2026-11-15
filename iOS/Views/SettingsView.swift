@@ -1,22 +1,78 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// MK23: Settings was one list of 18 sections. It's now four pages plus Diagnostics, with the state of
+/// your backups at the top because that's the one thing here that can cost you data.
 struct SettingsView: View {
     @EnvironmentObject private var store: PhoneAppStore
-    @State private var exporting = false
-    @State private var importingFile = false
-    @State private var pendingRestore: AppSnapshot?
-    @State private var pendingRestoreDate: Date?
-    @State private var message: String?
-    @AppStorage("cluck.liveActivity") private var cluckIsland = true
-    @AppStorage(RestSound.modeKey) private var restSound = RestSound.mode.rawValue
-    @AppStorage(SetTick.animationKey) private var tickAnimation = true
-    @AppStorage(SetTick.hapticKey) private var tickHaptic = true
+    @State private var refresh = 0
+
+    var body: some View {
+        let _ = refresh
+        Form {
+            Section {
+                NavigationLink { SettingsDataPage() } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: BackupStatus.exportOK ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                            .font(.title2)
+                            .foregroundStyle(BackupStatus.exportOK ? .green : .orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(BackupStatus.summary).font(.headline)
+                            Text(BackupStatus.exportOK
+                                 ? "Automatic backup: \(BackupStatus.filesLine)"
+                                 : "Nothing recent holds everything. Set up the automatic backup, or export by hand.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+
+            Section {
+                page("You and your goals", "person.crop.circle", "Height, age, phase, weekly goal, Health import") { SettingsYouPage() }
+                page("Training and coach", "figure.strengthtraining.traditional", "Coach style, blocks, weekly split, routine, Sergeant Cluck") { SettingsTrainingPage() }
+                page("Sounds and reminders", "bell", "Rest timer, set tick, speeches, notifications") { SettingsSoundsPage() }
+                page("Data and devices", "externaldrive", "Backups, import, Apple Health, Apple Watch") { SettingsDataPage() }
+            }
+
+            Section {
+                page("Diagnostics", "stethoscope", "What this install can do, recent problems") { DiagnosticsView() }
+            } footer: {
+                Text("Splitday \(BuildInfo.summary)")
+            }
+        }
+        .navigationTitle("Settings")
+        .onAppear {
+            refresh += 1
+            Usage.opened("Settings")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AppLog.changed)) { _ in refresh += 1 }
+    }
+
+    private func page<Destination: View>(_ title: String, _ icon: String, _ detail: String,
+                                         @ViewBuilder destination: @escaping () -> Destination) -> some View {
+        NavigationLink(destination: destination) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).font(.title3).foregroundStyle(.tint).frame(width: 30)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+}
+
+// MARK: - You and your goals
+
+struct SettingsYouPage: View {
+    @EnvironmentObject private var store: PhoneAppStore
 
     var body: some View {
         Form {
             YourDetailsSection()
-            HealthImportSection()
 
             Section {
                 Picker("Phase", selection: Binding(
@@ -44,8 +100,23 @@ struct SettingsView: View {
                 Text("Phase sets your protein target, the coach's goal, plateau advice and report cards. Bulk 1.6 g/kg · Recomp and Cut 2.2 g/kg.")
             }
 
+            HealthImportSection()
+        }
+        .navigationTitle("You and your goals")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Training and coach
+
+struct SettingsTrainingPage: View {
+    @EnvironmentObject private var store: PhoneAppStore
+    @AppStorage("cluck.liveActivity") private var cluckIsland = true
+
+    var body: some View {
+        Form {
             Section {
-                Picker("Coach style", selection: profileBinding(\.coachStyle)) {
+                Picker("Coach style", selection: store.profileBinding(\.coachStyle)) {
                     ForEach(CoachStyle.allCases) { Text($0.title).tag($0) }
                 }
             } header: {
@@ -72,7 +143,14 @@ struct SettingsView: View {
                 Text("Deload: one less set per exercise and ~10% lighter for 7 days. Deload and light sessions don't count against your progression.")
             }
 
-            // MK22: the routine's settings live here now (they used to be a tab of the separate Dayfold half).
+            Section {
+                Toggle("Fixed-day split", isOn: Binding(get: { store.fixedSplitOn }, set: { store.fixedSplitOn = $0 }))
+            } header: {
+                Text("Weekly split")
+            } footer: {
+                Text("Mon chest · Tue back · Wed legs · Thu buffer (legs if Wednesday was missed) · Fri chest or basketball · Sat back · Sun rest. Missed days are skipped, never shifted. Off = rotate your routines on any days.")
+            }
+
             Section {
                 NavigationLink { DayfoldManageView() } label: { Label("Steps", systemImage: "checklist") }
                 NavigationLink { DayfoldSettingsView() } label: { Label("Reminders and Watch sync", systemImage: "bell") }
@@ -84,12 +162,10 @@ struct SettingsView: View {
             }
 
             Section {
-                Toggle("Sergeant Cluck", isOn: profileBinding(\.cluckEnabled))
+                Toggle("Sergeant Cluck", isOn: store.profileBinding(\.cluckEnabled))
                 if store.profile.cluckEnabled {
                     Toggle("Show on Dynamic Island", isOn: $cluckIsland)
                         .onChange(of: cluckIsland) { _, _ in store.refreshCluck() }
-                }
-                if store.profile.cluckEnabled {
                     let state = CluckEngine.evaluate(store.cluckSnapshot)
                     HStack(spacing: 12) {
                         CluckView(mood: state.mood, animated: true).frame(width: 44, height: 44)
@@ -104,7 +180,6 @@ struct SettingsView: View {
                 Text("A furious chicken who guards your weekly goal. He only nags when you're down to 1 or 0 spare rest days: 5:10pm, 7:00pm and a last call at 8:30pm (in your coach style). Logging or starting a workout calms him down. \"Not today\" snoozes once per week. Rest days you plan ahead (Plan week) keep him calm on the day; sick and travel days stand him down. Add the Sergeant Cluck widget to your Home or Lock Screen — it turns angry at 5:10pm by itself. While he's on, he replaces the regular \"behind your goal\" reminders.")
             }
 
-            Group {
             Section {
                 Stepper("Max heart rate: \(min(220, max(140, store.profile.maxHeartRateSetting ?? Int(store.estimatedMaxHeartRate))))",
                         value: Binding(
@@ -127,25 +202,50 @@ struct SettingsView: View {
             } footer: {
                 Text("Used for run and basketball zones. If you don't set it, it's the highest heart rate Splitday has seen in the last year (at least 180), or 190.")
             }
+        }
+        .navigationTitle("Training and coach")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 
+    private func sample(for style: CoachStyle) -> String {
+        switch style {
+        case .pushMe: return "e.g. “You've missed two sessions. Get back in today.”"
+        case .motivating: return "e.g. “One workout today gets you moving again.”"
+        case .analytical: return "e.g. “Adherence fell from 92% to 68% over the last month.”"
+        case .supportive: return "e.g. “Any session counts — no pressure.”"
+        case .heartbreak: return "Breakup fuel — turns the hurt into reps. Also shown on your Lock Screen during workouts. e.g. “She left. The bar stayed. Pick it up.”"
+        case .hardTruth: return "Blunt, no-excuses discipline talk — also shown on your Lock Screen during workouts. e.g. “Discipline is doing it when you don't feel like it.”"
+        }
+    }
+}
+
+// MARK: - Sounds and reminders
+
+struct SettingsSoundsPage: View {
+    @EnvironmentObject private var store: PhoneAppStore
+    @AppStorage(RestSound.modeKey) private var restSound = RestSound.mode.rawValue
+    @AppStorage(SetTick.animationKey) private var tickAnimation = true
+    @AppStorage(SetTick.hapticKey) private var tickHaptic = true
+
+    var body: some View {
+        Form {
             Section {
                 NavigationLink {
-                    SpeechLibraryView()
+                    NotificationCheckView()
                 } label: {
-                    Label("Motivational speeches", systemImage: "music.note.list")
+                    Label("Check notifications", systemImage: "bell.badge")
                 }
-            } footer: {
-                Text("Import your own audio files. Play them from the workout screen — they pause your music while they play.")
-            }
-
-            Section {
-                Toggle("Green tick when a set is logged", isOn: $tickAnimation)
-                Toggle("Double-tap vibration", isOn: $tickHaptic)
-                    .onChange(of: tickHaptic) { _, on in if on { SetTick.playHaptic(pr: false) } }
+                Toggle("Workout reminders", isOn: Binding(
+                    get: { store.profile.reminders },
+                    set: { value in Task { await store.setReminders(enabled: value) } }
+                ))
+                if store.profile.reminders {
+                    DatePicker("Remind me at", selection: reminderTime, displayedComponents: .hourAndMinute)
+                }
             } header: {
-                Text("Set complete")
+                Text("Reminders")
             } footer: {
-                Text("A green tick pops up on the workout screen for every set (gold with confetti for a PR, and it says when an exercise is done) — including sets logged on your Watch. With Reduce Motion on, it just fades in.")
+                Text("Nudges when you're falling behind your weekly goal or have had 2+ days off, in your coach style. Plus a note on the 1st when your monthly report is ready. Routine reminders are under Training and coach → Routine.")
             }
 
             Section {
@@ -165,123 +265,130 @@ struct SettingsView: View {
                         Label("Play sample announcement", systemImage: "speaker.wave.2.fill")
                     }
                 }
-                Toggle("End rest when heart rate drops", isOn: profileBinding(\.autoRest))
+                Toggle("End rest when heart rate drops", isOn: store.profileBinding(\.autoRest))
                 if store.profile.autoRest {
-                    Stepper("Below \(store.profile.autoRestBPM) BPM", value: profileBinding(\.autoRestBPM), in: 80...150, step: 5)
+                    Stepper("Below \(store.profile.autoRestBPM) BPM", value: store.profileBinding(\.autoRestBPM), in: 80...150, step: 5)
                 }
             } header: {
                 Text("Rest timer")
             } footer: {
                 Text("Train announcement: a three-note chime, then a voice reads out what's next (\"The next exercise is Lat Pulldown. 8 reps.\") over your music, while Splitday is open. With the iPhone locked you get the chime only. On the Watch, rest ends early (with the Rest finished buzz) once your heart rate falls below this — but never before half the planned rest.")
             }
+
+            Section {
+                Toggle("Green tick when a set is logged", isOn: $tickAnimation)
+                Toggle("Double-tap vibration", isOn: $tickHaptic)
+                    .onChange(of: tickHaptic) { _, on in if on { SetTick.playHaptic(pr: false) } }
+            } header: {
+                Text("Set complete")
+            } footer: {
+                Text("A green tick pops up on the workout screen for every set (gold with confetti for a PR, and it says when an exercise is done) — including sets logged on your Watch. With Reduce Motion on, it just fades in.")
             }
 
             Section {
                 NavigationLink {
-                    NotificationCheckView()
+                    SpeechLibraryView()
                 } label: {
-                    Label("Check notifications", systemImage: "bell.badge")
+                    Label("Motivational speeches", systemImage: "music.note.list")
                 }
-                Toggle("Workout reminders", isOn: Binding(
-                    get: { store.profile.reminders },
-                    set: { value in Task { await store.setReminders(enabled: value) } }
-                ))
-                if store.profile.reminders {
-                    DatePicker("Remind me at", selection: reminderTime, displayedComponents: .hourAndMinute)
-                }
-            } header: {
-                Text("Reminders")
             } footer: {
-                Text("Nudges when you're falling behind your weekly goal or have had 2+ days off, in your coach style. Plus a note on the 1st when your monthly report is ready.")
+                Text("Import your own audio files. Once there's at least one, a player appears on the workout screen. They pause your music while they play.")
             }
+        }
+        .navigationTitle("Sounds and reminders")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 
+    private var reminderTime: Binding<Date> {
+        Binding(
+            get: {
+                Calendar.current.date(bySettingHour: store.profile.reminderHour ?? 17,
+                                      minute: store.profile.reminderMinute ?? 30,
+                                      second: 0, of: .now) ?? .now
+            },
+            set: { date in
+                var profile = store.profile
+                let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+                profile.reminderHour = parts.hour
+                profile.reminderMinute = parts.minute
+                store.setProfile(profile)
+            }
+        )
+    }
+}
+
+// MARK: - Data and devices
+
+struct SettingsDataPage: View {
+    @EnvironmentObject private var store: PhoneAppStore
+    @State private var exporting = false
+    @State private var importingFile = false
+    @State private var pendingRestore: AppSnapshot?
+    @State private var pendingRestoreDate: Date?
+    @State private var message: String?
+    @State private var refresh = 0
+
+    var body: some View {
+        let _ = refresh
+        Form {
             Section {
-                Toggle("Back up to iCloud", isOn: Binding(
-                    get: { store.cloud.isEnabled },
-                    set: { store.cloud.isEnabled = $0 }
-                ))
-                if !store.cloud.isSignedIn {
-                    Text("Sign in to iCloud (and turn on iCloud Drive) to use backups.")
-                        .font(.footnote)
-                        .foregroundStyle(.orange)
-                }
-                if let date = store.cloud.lastBackupDate {
-                    LabeledContent("Last backup", value: date.formatted(date: .abbreviated, time: .shortened))
-                }
-                if let status = store.cloud.statusMessage {
-                    Text(status).font(.footnote).foregroundStyle(.red)
-                }
-                Button {
-                    Task { await store.backupNow() }
+                statusRow("Last backup that holds everything", BackupStatus.exportLine, ok: BackupStatus.exportOK)
+                NavigationLink {
+                    AutoBackupView()
                 } label: {
-                    HStack {
-                        Text("Back up now")
-                        if store.cloud.isWorking { Spacer(); SwiftUI.ProgressView() }
-                    }
+                    LabeledContent("Automatic backup to Files", value: BackupStatus.filesLine)
                 }
-                .disabled(!store.cloud.isSignedIn || store.cloud.isWorking)
-                Button("Restore from iCloud…") {
-                    Task {
-                        do {
-                            let backup = try await store.cloud.fetchLatest()
-                            pendingRestore = backup.snapshot
-                            pendingRestoreDate = backup.date
-                        } catch {
-                            message = error.localizedDescription
-                        }
-                    }
-                }
-                .disabled(!store.cloud.isSignedIn || store.cloud.isWorking)
                 NavigationLink {
                     FullBackupView()
                 } label: {
                     Label("Export & import everything", systemImage: "externaldrive.fill")
-                        .bold()
                 }
-                Button("Export backup file (gym only)") { exporting = true }
-                Button("Restore from backup file (gym only)…") { importingFile = true }
             } header: {
                 Text("Backup")
             } footer: {
-                Text("Routines, workout history and settings back up automatically after changes (keeps the last 14 days). A backup file can be saved to Files or AirDropped.")
+                Text("\"Everything\" is one encrypted file: routines, history, settings, imported Health data, and More Training with its photos. It's the only backup that survives re-signing the app with a different Apple ID or tool, because More Training's key lives in this iPhone's Keychain and doesn't move with the app. Keep one that's less than two weeks old.")
             }
 
-            Group {
-                Section("Import") {
-                    NavigationLink {
-                        StrongImportView()
+            Section {
+                let copies = SafetyCopy.all
+                if copies.isEmpty {
+                    Text("None yet. One is kept the first time each new build opens.").foregroundStyle(.secondary)
+                }
+                ForEach(copies) { copy in
+                    Button {
+                        if let snapshot = SafetyCopy.read(copy) {
+                            pendingRestore = snapshot
+                            pendingRestoreDate = copy.date
+                        } else {
+                            message = BackupError.unreadable.localizedDescription
+                        }
                     } label: {
-                        Label("Import from Strong", systemImage: "square.and.arrow.down")
+                        LabeledContent("Before build \(copy.build)", value: copy.date.formatted(date: .abbreviated, time: .shortened))
                     }
+                    .tint(.primary)
                 }
-
-                Section {
-                    Toggle("Fixed-day split", isOn: Binding(get: { store.fixedSplitOn }, set: { store.fixedSplitOn = $0 }))
-                } header: {
-                    Text("Weekly split")
-                } footer: {
-                    Text("Mon chest · Tue back · Wed legs · Thu buffer (legs if Wednesday was missed) · Fri chest or basketball · Sat back · Sun rest. Missed days are skipped, never shifted. Off = rotate your routines on any days.")
-                }
-
-                Section("Apple Health") {
-                    Button("Request Health access") {
-                        Task { await store.requestHealthAccess() }
-                    }
-                    Button("Refresh Health data") {
-                        Task { await store.appBecameActive() }
-                    }
-                    // MK19.3.1: say what happened — iOS only shows the Health pop-up once, so a second tap looks dead.
-                    if let error = store.healthKit.authorizationError {
-                        Text("Health said: \(error)").font(.footnote).foregroundStyle(.red)
-                    } else if store.healthKit.hasRequestedAuthorization {
-                        Text("Asked ✓ iOS only shows the Health pop-up the first time. To change what Splitday can see: Settings → Health → Data Access & Devices → Splitday.")
-                            .font(.footnote).foregroundStyle(.green)
-                    }
-                    Text("If weight, body fat or sleep doesn't appear: Settings → Health → Data Access & Devices → Splitday, and turn on Weight, Body Fat Percentage, Sleep, Resting Heart Rate and Heart Rate Variability.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
+            } header: {
+                Text("Safety copies")
+            } footer: {
+                Text("Your gym data as it was just before each update, kept on this iPhone (newest 5). Tap one to go back to it. They're gone if the app is deleted, so they don't replace a backup.")
             }
+
+            Section {
+                Button("Export backup file (gym only)") { exporting = true }
+                Button("Restore from backup file (gym only)…") { importingFile = true }
+                NavigationLink {
+                    StrongImportView()
+                } label: {
+                    Label("Import from Strong", systemImage: "square.and.arrow.down")
+                }
+            } header: {
+                Text("Files")
+            } footer: {
+                Text("A plain file with routines, workout history and settings, without More Training. Save it to Files or AirDrop it.")
+            }
+
+            cloudSection
+            healthSection
 
             Section {
                 Text(store.watchBridge.statusText)
@@ -302,15 +409,19 @@ struct SettingsView: View {
             } header: {
                 Text("Apple Watch")
             } footer: {
-                Text("For the test, open Splitday on the Watch first. If it says the iPhone can't see Splitday on your Watch, delete the Watch app, reinstall from Xcode, and open both apps once.")
+                Text("For the test, open Splitday on the Watch first. If it says the iPhone can't see Splitday on your Watch, delete the Watch app, reinstall it, and open both apps once.")
             }
 
             Section("Data") {
                 LabeledContent("Routines", value: "\(store.routines.count)")
                 LabeledContent("Workouts logged", value: "\(store.workoutLogs.count)")
+                LabeledContent("Data file", value: store.dataFileSize)
             }
         }
-        .navigationTitle("Settings")
+        .navigationTitle("Data and devices")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { refresh += 1 }
+        .onReceive(NotificationCenter.default.publisher(for: AppLog.changed)) { _ in refresh += 1 }
         .fileExporter(isPresented: $exporting, document: BackupDocument(snapshot: store.snapshot), contentType: .json,
                       defaultFilename: "GymForge-backup-\(Date().formatted(.iso8601.year().month().day()))") { result in
             if case .failure(let error) = result { message = error.localizedDescription }
@@ -357,42 +468,95 @@ struct SettingsView: View {
         }
     }
 
-    private func profileBinding<Value>(_ keyPath: WritableKeyPath<UserProfile, Value>) -> Binding<Value> {
-        Binding(
-            get: { store.profile[keyPath: keyPath] },
-            set: { value in
-                var profile = store.profile
-                profile[keyPath: keyPath] = value
-                store.setProfile(profile)
-            }
-        )
+    private func statusRow(_ title: String, _ value: String, ok: Bool) -> some View {
+        HStack {
+            Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(ok ? .green : .orange)
+            Text(title)
+            Spacer(minLength: 8)
+            Text(value).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 
-    private var reminderTime: Binding<Date> {
-        Binding(
-            get: {
-                Calendar.current.date(bySettingHour: store.profile.reminderHour ?? 17,
-                                      minute: store.profile.reminderMinute ?? 30,
-                                      second: 0, of: .now) ?? .now
-            },
-            set: { date in
-                var profile = store.profile
-                let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
-                profile.reminderHour = parts.hour
-                profile.reminderMinute = parts.minute
-                store.setProfile(profile)
+    /// iCloud only works when the install kept its iCloud entitlement; sideloaded ones don't.
+    @ViewBuilder
+    private var cloudSection: some View {
+        if store.cloud.isSignedIn {
+            Section {
+                Toggle("Back up to iCloud", isOn: Binding(
+                    get: { store.cloud.isEnabled },
+                    set: { store.cloud.isEnabled = $0 }
+                ))
+                if let date = store.cloud.lastBackupDate {
+                    LabeledContent("Last backup", value: date.formatted(date: .abbreviated, time: .shortened))
+                }
+                if let status = store.cloud.statusMessage {
+                    Text(status).font(.footnote).foregroundStyle(.red)
+                }
+                Button {
+                    Task { await store.backupNow() }
+                } label: {
+                    HStack {
+                        Text("Back up now")
+                        if store.cloud.isWorking { Spacer(); SwiftUI.ProgressView() }
+                    }
+                }
+                .disabled(store.cloud.isWorking)
+                Button("Restore from iCloud…") {
+                    Task {
+                        do {
+                            let backup = try await store.cloud.fetchLatest()
+                            pendingRestore = backup.snapshot
+                            pendingRestoreDate = backup.date
+                        } catch {
+                            message = error.localizedDescription
+                        }
+                    }
+                }
+                .disabled(store.cloud.isWorking)
+            } header: {
+                Text("iCloud")
+            } footer: {
+                Text("Routines, workout history and settings (not More Training) back up after changes; the last 14 days are kept.")
             }
-        )
+        } else {
+            Section {
+                Label("Not available in this install", systemImage: "icloud.slash").foregroundStyle(.secondary)
+            } header: {
+                Text("iCloud")
+            } footer: {
+                Text("Splitday's own iCloud backup needs an entitlement that sideloading tools remove (or this iPhone isn't signed in to iCloud Drive). Use the automatic backup above and pick a folder in iCloud Drive: that does work, and it holds more.")
+            }
+        }
     }
 
-    private func sample(for style: CoachStyle) -> String {
-        switch style {
-        case .pushMe: return "e.g. “You've missed two sessions. Get back in today.”"
-        case .motivating: return "e.g. “One workout today gets you moving again.”"
-        case .analytical: return "e.g. “Adherence fell from 92% to 68% over the last month.”"
-        case .supportive: return "e.g. “Any session counts — no pressure.”"
-        case .heartbreak: return "Breakup fuel — turns the hurt into reps. Also shown on your Lock Screen during workouts. e.g. “She left. The bar stayed. Pick it up.”"
-        case .hardTruth: return "Blunt, no-excuses discipline talk — also shown on your Lock Screen during workouts. e.g. “Discipline is doing it when you don't feel like it.”"
+    /// Same idea for Apple Health: once it has answered with an error, stop offering buttons that can't work.
+    @ViewBuilder
+    private var healthSection: some View {
+        Section {
+            if let error = store.healthKit.authorizationError {
+                Label("Not available in this install", systemImage: "heart.slash").foregroundStyle(.secondary)
+                Text("Health said: \(error)").font(.footnote).foregroundStyle(.secondary)
+                Button("Try again") { Task { await store.requestHealthAccess() } }
+            } else {
+                Button("Request Health access") {
+                    Task { await store.requestHealthAccess() }
+                }
+                Button("Refresh Health data") {
+                    Task { await store.appBecameActive() }
+                }
+                if store.healthKit.hasRequestedAuthorization {
+                    Text("Asked ✓ iOS only shows the Health pop-up the first time. To change what Splitday can see: Settings → Health → Data Access & Devices → Splitday.")
+                        .font(.footnote).foregroundStyle(.green)
+                }
+            }
+        } header: {
+            Text("Apple Health")
+        } footer: {
+            Text(store.healthKit.authorizationError != nil
+                 ? "Sideloading tools remove Apple Health. Your weight and body fat come from the Sunday weigh-in, your details from You and your goals, and older history from an Apple Health export (You and your goals → Apple Health export)."
+                 : "If weight, body fat or sleep doesn't appear: Settings → Health → Data Access & Devices → Splitday, and turn on Weight, Body Fat Percentage, Sleep, Resting Heart Rate and Heart Rate Variability.")
         }
     }
 }

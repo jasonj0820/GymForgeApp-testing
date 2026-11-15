@@ -14,8 +14,15 @@ enum AutoBackup {
     private static let statusKey = "autobackup.status"
     private static let keychainService = "com.gymforge.autobackup"
     static let filePrefix = "GymForge-auto-"
-    static let interval: TimeInterval = 7 * 86_400
-    static let keep = 4
+    private static let dailyKey = "autobackup.daily"
+    /// MK23: daily instead of weekly (a week's lifting is a lot to lose).
+    nonisolated static var daily: Bool {
+        get { UserDefaults.standard.bool(forKey: dailyKey) }
+        set { UserDefaults.standard.set(newValue, forKey: dailyKey) }
+    }
+    /// A little under a day / a week, so opening the app at the same time each day still counts as due.
+    static var interval: TimeInterval { daily ? 20 * 3600 : 7 * 86_400 }
+    static var keep: Int { daily ? 7 : 4 }
 
     nonisolated static var isEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: enabledKey) }
@@ -96,8 +103,9 @@ enum AutoBackup {
     }
 
     /// Called when the app becomes active (waits a moment so launch stays smooth).
+    /// MK23: also runs the first time a new build opens, whatever the schedule says.
     static func runIfDue(store: PhoneAppStore) {
-        guard isEnabled, isDue, folderURL != nil, hasPasscode else { return }
+        guard !Demo.isOn, isEnabled, isDue || SafetyCopy.newBuildThisLaunch, folderURL != nil, hasPasscode else { return }
         Task {
             try? await Task.sleep(for: .seconds(3))
             _ = await runNow(store: store)
@@ -156,6 +164,7 @@ enum AutoBackup {
         switch outcome {
         case .success(let result):
             lastBackup = .now
+            NotificationCenter.default.post(name: AppLog.changed, object: nil)   // refreshes the backup status rows
             let message = "Backed up \(result.workouts) workouts" + (result.summary.isEmpty ? "" : ", " + result.summary) + " to \(folder.lastPathComponent)."
             status = message
             return message
@@ -165,6 +174,7 @@ enum AutoBackup {
     }
 
     private static func fail(_ message: String) -> String {
+        AppLog.error("Backup", "Automatic backup failed: " + message)
         status = "Last automatic backup failed: " + message
         return message
     }
@@ -175,6 +185,7 @@ enum AutoBackup {
 struct AutoBackupView: View {
     @EnvironmentObject private var store: PhoneAppStore
     @State private var enabled = AutoBackup.isEnabled
+    @State private var daily = AutoBackup.daily
     @State private var choosingFolder = false
     @State private var newPasscode = ""
     @State private var confirmPasscode = ""
@@ -186,10 +197,17 @@ struct AutoBackupView: View {
         let _ = refresh
         Form {
             Section {
-                Toggle("Automatic weekly backup", isOn: $enabled)
+                Toggle("Automatic backup", isOn: $enabled)
                     .onChange(of: enabled) { _, value in AutoBackup.isEnabled = value }
+                if enabled {
+                    Picker("How often", selection: $daily) {
+                        Text("Daily").tag(true)
+                        Text("Weekly").tag(false)
+                    }
+                    .onChange(of: daily) { _, value in AutoBackup.daily = value; refresh += 1 }
+                }
             } footer: {
-                Text("Every 7 days, when you open Splitday, everything (gym, More Training and photos) is saved to the folder you pick — encrypted with your backup passcode. The newest 4 are kept. Restore with \"Import everything…\".")
+                Text("When you open Splitday and a backup is due, everything (gym, imported Health data, More Training and photos) is saved to the folder you pick, encrypted with your backup passcode. Daily keeps the newest 7, weekly the newest 4. It also runs the first time a new build opens. Pick a folder in iCloud Drive and the copies leave the phone. Restore with \"Import everything…\".")
             }
             if enabled {
                 Section("Where") {

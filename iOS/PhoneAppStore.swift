@@ -41,6 +41,8 @@ final class PhoneAppStore: ObservableObject {
     @Published var cluckSnoozedDay: Date? = CluckStore.load()?.snoozedDay
     /// Rest days, pain flags, nutrition, tape measurements.
     @Published var extras = GymExtras()
+    /// MK23: why the last save failed (nil = saving normally). Shown on Today and in Diagnostics.
+    @Published private(set) var saveProblem: String?
 
     let healthKit = HealthKitClient()
     let watchBridge = PhoneWatchBridge()
@@ -56,6 +58,14 @@ final class PhoneAppStore: ObservableObject {
         dayfold.onChange = { [weak store] in store?.dayfoldChanged() }
         dayfold.isRestDay = { [weak store] in store?.isRestDay() ?? false }
         dayfold.mealPrepTitle = { [weak store] in MealPrep.title(target: store?.proteinTargetG) }
+        // MK23: one Sunday ping, not two, when the routine already reminds you to weigh in.
+        WeighInReminder.coveredByRoutine = { [weak dayfold] in
+            guard let config = dayfold?.snapshot.configuration else { return false }
+            let reminded = config.routines.contains { $0.kind == .weekly && $0.remindersEnabled }
+            return reminded && config.tasks.contains {
+                $0.enabled && $0.routine == .weekly && $0.weekdays.contains(1) && $0.title.localizedCaseInsensitiveContains("weigh")
+            }
+        }
         return store
     }()
     let cloud = CloudBackup()
@@ -78,7 +88,9 @@ final class PhoneAppStore: ObservableObject {
     private var backupReady = false
 
     init() {
+        SafetyCopy.makeIfNewBuild(from: snapshotURL)   // MK23: before this build reads or changes anything
         load()
+        _ = writer   // made now, so it sees the app come on screen
         healthKit.setManual(extras.weighIns)
         healthKit.setLocalSleep(extras.manualSleep)
         ensurePhaseRecord()
@@ -245,6 +257,7 @@ final class PhoneAppStore: ObservableObject {
     // MARK: App lifecycle
 
     func requestHealthAccess() async {
+        guard !Demo.isOn else { return }
         await healthKit.requestAuthorization()
     }
 
@@ -254,6 +267,7 @@ final class PhoneAppStore: ObservableObject {
     /// Asks for notification permission if needed, and re-plans everything whenever permission
     /// changes (notifications planned before permission is granted are silently dropped by iOS).
     func ensureNotifications() async {
+        guard !Demo.isOn else { return }
         let center = UNUserNotificationCenter.current()
         var status = await center.notificationSettings().authorizationStatus
         if status == .notDetermined && (profile.cluckEnabled || profile.reminders) {
@@ -1206,18 +1220,50 @@ final class PhoneAppStore: ObservableObject {
         }
     }
 
+    /// MK23: at most one send per burst of changes. Every tick of a box used to pack and send the lot.
     func pushSnapshotToWatch() {
-        watchBridge.sync(snapshot: snapshot.trimmedForWatch())
+        guard writer.isActive else {
+            // Not on screen (a notification button, a Watch message): send now, the app may be paused next.
+            watchBridge.sync(snapshot: snapshot.trimmedForWatch())
+            return
+        }
+        guard !watchPushWaiting else { return }
+        watchPushWaiting = true
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            guard let self else { return }
+            self.watchPushWaiting = false
+            self.watchBridge.sync(snapshot: self.snapshot.trimmedForWatch())
+        }
     }
+    private var watchPushWaiting = false
 
     // MARK: Persistence
 
     private var snapshotURL: URL {
         let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("gymforge.json")
+        // Demo mode has its own file, so pictures for GitHub never touch (or show) real data.
+        return base.appendingPathComponent(Demo.isOn ? "gymforge-demo.json" : "gymforge.json")
+    }
+
+    /// "1.2 MB", for Diagnostics.
+    var dataFileSize: String {
+        let bytes = (try? FileManager.default.attributesOfItem(atPath: snapshotURL.path)[.size] as? Int) ?? nil
+        return bytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "No file yet"
     }
 
     private func load() {
+        if Demo.isOn {
+            let demo = Demo.snapshot()
+            routines = demo.routines
+            workoutLogs = demo.workoutLogs
+            weeklyGoal = demo.weeklyGoal
+            profile = demo.profile ?? UserProfile()
+            extras = demo.extras ?? GymExtras()
+            cardioSessions = []
+            hadLocalData = true
+            return
+        }
         guard FileManager.default.fileExists(atPath: snapshotURL.path) else { return }
         hadLocalData = true
         do {
@@ -1231,7 +1277,7 @@ final class PhoneAppStore: ObservableObject {
         } catch {
             // Never overwrite data we couldn't read (e.g. an older build installed over a newer one):
             // keep a copy, then behave like a fresh install (offers the iCloud backup, holds new backups until then).
-            print("Could not load snapshot: \(error)")
+            AppLog.error("Data", "Your data file couldn't be read, so it was set aside untouched: \(error.localizedDescription)")
             let stamp = Int(Date().timeIntervalSince1970)
             let keep = snapshotURL.deletingLastPathComponent().appendingPathComponent("gymforge-unreadable-\(stamp).json")
             try? FileManager.default.copyItem(at: snapshotURL, to: keep)
@@ -1274,13 +1320,36 @@ final class PhoneAppStore: ObservableObject {
         }
     }
 
-    private func save() {
-        do {
-            try FileStore.shared.save(snapshot, to: snapshotURL)
-        } catch {
-            print("Could not save snapshot: \(error)")
+    /// MK23: written in the background, once per burst of changes (see SnapshotWriter). A failure is no
+    /// longer silent: it's logged and shown on Today until a save works again.
+    private lazy var writer: SnapshotWriter = {
+        let writer = SnapshotWriter(url: snapshotURL)
+        writer.onResult = { [weak self] problem in
+            Task { @MainActor in self?.saveFinished(problem) }
         }
-        if backupReady { cloud.scheduleBackup(snapshot) }
+        return writer
+    }()
+
+    private func save() {
+        writer.write(snapshot)
+        if backupReady, !Demo.isOn { cloud.scheduleBackup(snapshot) }
+    }
+
+    private func saveFinished(_ problem: String?) {
+        if let problem { AppLog.error("Save", "Your latest changes couldn't be saved: \(problem)") }
+        if saveProblem != problem { saveProblem = problem }
+    }
+
+    /// For settings screens: a two-way link to one profile field.
+    func profileBinding<Value>(_ keyPath: WritableKeyPath<UserProfile, Value>) -> Binding<Value> {
+        Binding(
+            get: { self.profile[keyPath: keyPath] },
+            set: { value in
+                var profile = self.profile
+                profile[keyPath: keyPath] = value
+                self.setProfile(profile)
+            }
+        )
     }
 
     func persistAndSync() {

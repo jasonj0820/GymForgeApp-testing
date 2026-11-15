@@ -11,13 +11,16 @@ struct FullBackupPayload: Codable {
     var gym: AppSnapshot
     /// Private section export (JSON), nil if it was skipped.
     var privateData: Data?
+    /// MK23: weight, body fat, sleep and heart-rate history brought in from an Apple Health export.
+    /// It used to live outside every backup, so a restore lost it. Optional: older files open as before.
+    var healthImport: HealthImportData?
 }
 
 enum FullBackup {
     static let magic = "GFALL1"
 
     static func make(gym: AppSnapshot, privateData: Data?, passcode: String) throws -> Data {
-        let payload = FullBackupPayload(createdAt: .now, gym: gym, privateData: privateData)
+        let payload = FullBackupPayload(createdAt: .now, gym: gym, privateData: privateData, healthImport: HealthImportData.load())
         let json = try JSONEncoder.gymForge.encode(payload)
         let compressed = try (json as NSData).compressed(using: .lzfse) as Data
         return try MTVault.seal(compressed, passcode: passcode, magic: magic)
@@ -97,7 +100,7 @@ struct FullBackupView: View {
             } header: {
                 Text("Export")
             } footer: {
-                Text("One encrypted file with all routines, workout history, settings and every private section (with photos). Face ID is needed to include the private parts. Keep the passcode safe — the file can't be opened without it.")
+                Text("One encrypted file with all routines, workout history, settings, imported Health data and every private section (with photos). Face ID is needed to include the private parts. Keep the passcode safe — the file can't be opened without it.")
             }
 
             Section {
@@ -116,7 +119,7 @@ struct FullBackupView: View {
                 NavigationLink {
                     AutoBackupView()
                 } label: {
-                    LabeledContent("Automatic weekly backup",
+                    LabeledContent("Automatic backup",
                                    value: AutoBackup.isEnabled ? (AutoBackup.lastBackup.map { "Last " + $0.formatted(.relative(presentation: .named)) } ?? "On") : "Off")
                 }
             }
@@ -137,7 +140,9 @@ struct FullBackupView: View {
         .navigationBarTitleDisplayMode(.inline)
         .fileExporter(isPresented: $exporting, document: document, contentType: .data, defaultFilename: FullBackup.fileName) { result in
             switch result {
-            case .success: message = "Exported and verified: \(exportSummary). Save a copy off this phone too (Files → iCloud Drive, or AirDrop to your Mac)."
+            case .success:
+                BackupStatus.lastManualExport = .now
+                message = "Exported and verified: \(exportSummary). Save a copy off this phone too (Files → iCloud Drive, or AirDrop to your Mac)."
             case .failure(let error): message = error.localizedDescription
             }
             document = nil
@@ -230,6 +235,10 @@ struct FullBackupView: View {
 
     private func restore(_ payload: FullBackupPayload) async {
         store.restore(payload.gym)
+        if let health = payload.healthImport {
+            try? health.save()
+            store.healthKit.setImported(health)
+        }
         var privateCount = 0
         if let privateData = payload.privateData {
             let vault = MTVault.shared

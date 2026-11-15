@@ -4,9 +4,21 @@ struct RootTabView: View {
     @EnvironmentObject private var store: PhoneAppStore
     @EnvironmentObject private var dayfold: DayfoldStore
     @State private var showRoutine = false
+    @State private var tab: String
+    @State private var showWhatsNew = false
+
+    /// MK23: which tab opens first (demo screens ask for a specific one).
+    init(startTab: String = "today") {
+        _tab = State(initialValue: startTab)
+    }
 
     var body: some View {
         tabs
+            // MK23: once per new build.
+            .sheet(isPresented: $showWhatsNew) {
+                NavigationStack { WhatsNewView(asSheet: true) }
+            }
+            .onChange(of: tab) { _, new in Usage.opened("Tab: " + new.capitalized) }
             // MK10: runs / basketball recorded on the iPhone.
             .modifier(PhoneRecorderPresenter(recorder: store.phoneRecorder))
             .fullScreenCover(isPresented: Binding(
@@ -78,6 +90,11 @@ struct RootTabView: View {
                 Text(dayfold.errorMessage ?? "")
             }
             .onAppear {
+                Usage.opened("Tab: " + tab.capitalized)
+                if WhatsNewView.isDue {
+                    // A brand-new install has nothing "new" to be told about.
+                    if store.workoutLogs.isEmpty { WhatsNewView.markSeen() } else { showWhatsNew = true }
+                }
                 if PhoneAppDelegate.pendingReview {
                     PhoneAppDelegate.pendingReview = false
                     store.showWeeklyReview = true
@@ -86,17 +103,22 @@ struct RootTabView: View {
     }
 
     private var tabs: some View {
-        TabView {
+        TabView(selection: $tab) {
             NavigationStack { TodayView() }
                 .tabItem { Label("Today", systemImage: "bolt.heart") }
+                .tag("today")
             NavigationStack { RoutinesView() }
                 .tabItem { Label("Workouts", systemImage: "list.bullet.rectangle") }
+                .tag("workouts")
             NavigationStack { ExerciseProgressView() }
                 .tabItem { Label("Progress", systemImage: "chart.xyaxis.line") }
+                .tag("progress")
             NavigationStack { BodyView() }
                 .tabItem { Label("Body", systemImage: "figure") }
+                .tag("body")
             NavigationStack { CoachView() }
                 .tabItem { Label("Coach", systemImage: "sparkles") }
+                .tag("coach")
         }
     }
 }

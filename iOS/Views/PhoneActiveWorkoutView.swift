@@ -6,6 +6,7 @@ struct PhoneActiveWorkoutView: View {
     @EnvironmentObject private var store: PhoneAppStore
     @State private var weightText = ""
     @State private var repsText = ""
+    @ObservedObject private var speeches = SpeechPlayer.shared
     @State private var minutesText = ""
     @State private var kmText = ""
     @State private var confirmDiscard = false
@@ -89,6 +90,12 @@ struct PhoneActiveWorkoutView: View {
             kmText = ""
             effort = nil
         }
+        // MK23: the screen stays on while the workout screen is open (it used to dim and lock mid-rest).
+        .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true
+            Usage.opened("Workout screen")
+        }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         .onChange(of: weightText) { _, _ in sendDraft() }
         .onChange(of: repsText) { _, _ in sendDraft() }
         .onChange(of: minutesText) { _, _ in sendDraft() }
@@ -222,7 +229,8 @@ struct PhoneActiveWorkoutView: View {
             Section {
                 statusRow(state)
                 motivationCard(state)
-                SpeechMiniPlayer()
+                // MK23: the player only takes a row once there's something to play (Settings → Sounds and reminders).
+                if !speeches.tracks.isEmpty { SpeechMiniPlayer() }
                 if state.deload {
                     Label("Light session — one less set, ~10% lighter. Won't affect progression.", systemImage: "leaf.fill")
                         .font(.footnote)
@@ -317,16 +325,25 @@ struct PhoneActiveWorkoutView: View {
             }
             if let item = state.currentItem, !state.isComplete {
                 let exercise = item.exercise
+                // MK23: with the boxes empty, Complete logs the planned (grey) numbers, and says which.
+                let entry = setEntry(item)
+                let usingPlan = !exercise.isCardio && (typedReps == nil || (typedWeight == nil && !exercise.isBodyweight))
                 Button {
-                    logSet(exercise)
+                    logSet(item)
                 } label: {
-                    Label(exercise.isCardio ? "Log cardio" : "Complete set & rest", systemImage: exercise.isCardio ? "checkmark" : "timer")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
+                    VStack(spacing: 1) {
+                        Label(exercise.isCardio ? "Log cardio" : "Complete set & rest", systemImage: exercise.isCardio ? "checkmark" : "timer")
+                            .font(.headline)
+                        if usingPlan, let entry {
+                            Text("as planned: " + (exercise.isBodyweight ? "\(entry.reps) reps" : "\(GFFormat.kg(entry.weight)) kg × \(entry.reps)"))
+                                .font(.caption)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(exercise.isCardio ? (typedSeconds ?? 0) <= 0 : (typedReps == nil || (typedWeight == nil && !exercise.isBodyweight)))
+                .disabled(exercise.isCardio ? (typedSeconds ?? 0) <= 0 : entry == nil)
             } else {
                 Button {
                     store.finishWorkout()
@@ -828,13 +845,24 @@ struct PhoneActiveWorkoutView: View {
         }
     }
 
-    private func logSet(_ exercise: ExerciseDefinition) {
+    /// What Complete will log: what you typed, and for a box left empty, the planned number shown in grey.
+    /// nil when there's nothing sensible to log (no plan and nothing typed).
+    private func setEntry(_ item: RoutineExercise) -> (weight: Double, reps: Int)? {
+        let hint = store.prefill(for: item)
+        let reps = typedReps ?? hint.reps
+        guard reps > 0 else { return nil }
+        if item.exercise.isBodyweight { return (typedWeight ?? 0, reps) }
+        let weight = typedWeight ?? hint.weightKg
+        return weight > 0 ? (weight, reps) : nil
+    }
+
+    private func logSet(_ item: RoutineExercise) {
         focusedField = nil
-        if exercise.isCardio {
+        if item.exercise.isCardio {
             guard let seconds = typedSeconds, seconds > 0 else { return }
             store.completeSetOnPhone(weightKg: 0, reps: 0, durationSeconds: seconds, distanceKm: typedKm)
-        } else if let count = typedReps, let weight = typedWeight ?? (exercise.isBodyweight ? 0 : nil) {
-            store.completeSetOnPhone(weightKg: weight, reps: count, rir: effort)
+        } else if let entry = setEntry(item) {
+            store.completeSetOnPhone(weightKg: entry.weight, reps: entry.reps, rir: effort)
         }
     }
 }

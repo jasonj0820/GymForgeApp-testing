@@ -22,7 +22,14 @@ struct GymForgeApp: App {
     var body: some Scene {
         WindowGroup {
             // MK22: one app. The routine (formerly the separate Dayfold half) lives on Today.
-            RootTabView()
+            // MK23: in demo mode (`-demo YES -screen …`) one screen opens directly, with made-up data.
+            Group {
+                if Demo.isOn, let screen = Demo.screen {
+                    DemoRoot(screen: screen)
+                } else {
+                    RootTabView()
+                }
+            }
             .environmentObject(store)
             .environmentObject(dayfold)
             .sheet(isPresented: $showWindDown) {
@@ -37,6 +44,7 @@ struct GymForgeApp: App {
             .task {
                 // One permission prompt at a time: Health first, then notifications,
                 // then (re)plan every notification now that they're allowed.
+                guard !Demo.isOn else { return }   // demo: no prompts, no notifications
                 await store.requestHealthAccess()
                 await store.appBecameActive()
                 dayfoldBecameActive()
@@ -49,7 +57,7 @@ struct GymForgeApp: App {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active, launched {
+            if phase == .active, launched, !Demo.isOn {
                 Task {
                     await store.appBecameActive()
                     dayfoldBecameActive()

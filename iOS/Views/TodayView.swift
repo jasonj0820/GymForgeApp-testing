@@ -107,6 +107,18 @@ struct TodayView: View {
                         .card()
                 }
                 BreakBanner()
+                // MK23: a failed save used to be silent.
+                if let problem = store.saveProblem {
+                    NavigationLink { DiagnosticsView() } label: {
+                        Label("Your latest changes aren't being saved (\(problem)). Tap for details; don't close the app until this clears.",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.leading)
+                            .card()
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 HomeHeroCard(today: today)
                 HomeRoutineCard(showWeighIn: $showWeighIn)
@@ -556,6 +568,7 @@ struct HomeWeekCard: View {
 /// phase warnings, the coach's top note — as one-line rows. Hidden when there's nothing.
 struct HomeHeadsUpCard: View {
     @EnvironmentObject private var store: PhoneAppStore
+    @EnvironmentObject private var dayfold: DayfoldStore
     @Binding var showWeighIn: Bool
 
     var body: some View {
@@ -565,18 +578,28 @@ struct HomeHeadsUpCard: View {
         let phase = store.phaseCoach
         let phaseAlert = phase.muscleWarning ?? phase.deloadSuggestion ?? phase.miniCutPrompt
         let insight = store.coachInsights.first { $0.kind != .recovery || readiness == nil }
-        let weighIn = Calendar.current.component(.weekday, from: .now) == 1 && store.extras.weighIn(on: .now) == nil
+        // MK23: when the routine card above already lists the weigh-in step, don't ask for it twice.
+        let inRoutine = dayfold.todayRows().contains { RoutineOrder.needsWeighIn($0, store: store) }
+        let weighIn = Calendar.current.component(.weekday, from: .now) == 1 && store.extras.weighIn(on: .now) == nil && !inRoutine
+        let backupStale = !Demo.isOn && BackupStatus.isStale(workouts: store.workoutLogs.count)
         // With the fixed-day split on, the split already says which days you train — no prompt to plan.
         let planWeek = store.weekNeedsPlan && store.todayPlanKind == nil && !store.fixedSplitOn
         let reviewDue = store.weeklyReviewDue
         let hasPhase = phase.miniCutDone || phaseAlert != nil
-        let urgent = weighIn || reviewDue || review != nil || planWeek || lowRecovery
+        let urgent = weighIn || reviewDue || review != nil || planWeek || lowRecovery || backupStale
         if urgent || hasPhase || insight != nil {
             VStack(alignment: .leading, spacing: 0) {
                 Text("For you").font(.headline).padding(.bottom, 4)
                 if weighIn {
                     Button { showWeighIn = true } label: {
                         row("scalemass.fill", .accentColor, "Sunday weigh-in", "Log this week's weight and body fat.")
+                    }
+                }
+                if backupStale {
+                    NavigationLink { SettingsDataPage() } label: {
+                        row("externaldrive.badge.exclamationmark", .orange,
+                            BackupStatus.daysSinceFull.map { "Last full backup was \($0) days ago" } ?? "No full backup yet",
+                            "More Training can't be recovered after a re-sign without one. Turn on the automatic backup.")
                     }
                 }
                 if reviewDue {

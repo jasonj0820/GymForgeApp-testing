@@ -65,6 +65,7 @@ extension PhoneAppStore {
             syncSleepActivity(now: now)
         }
         scheduleWakeChecklist(now: now)   // ticking the morning list cancels its follow-up
+        WeighInReminder.reschedule(weighIns: extras.weighIns)   // MK23: follows the routine's weigh-in step
     }
 
     // MARK: MK15 — rest days, nightly recap, wake-up checklist

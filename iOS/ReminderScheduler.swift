@@ -125,10 +125,15 @@ enum WeighInReminder {
         set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
     }
 
+    /// MK23: set by the store. True when the routine has a Sunday weigh-in step and its reminder is on,
+    /// in which case that reminder covers it and this one would be a second ping at the same time.
+    @MainActor static var coveredByRoutine: () -> Bool = { false }
+
+    @MainActor
     static func reschedule(weighIns: [WeighIn], now: Date = .now) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: ids)
-        guard enabled else { return }
+        guard enabled, !coveredByRoutine() else { return }
         let calendar = Calendar.current
         var next = WeighIn.sunday(onOrBefore: now, calendar: calendar)
         var index = 0

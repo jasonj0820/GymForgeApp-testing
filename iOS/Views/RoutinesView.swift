@@ -19,14 +19,26 @@ struct RoutinesView: View {
             Section {
                 ForEach(store.routines) { routine in
                     let canStart = !routine.exercises.isEmpty && store.activeWorkout == nil
-                    NavigationLink {
-                        RoutineEditorView(routine: routine)
-                    } label: {
-                        VStack(alignment: .leading) {
-                            Text(routine.name).font(.headline)
-                            Text(detail(routine))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        // MK23: starting was hidden behind a swipe.
+                        Button {
+                            Task { await store.startWorkout(routine) }
+                        } label: {
+                            Image(systemName: "play.circle.fill").font(.system(size: 34))
+                        }
+                        .buttonStyle(.borderless)
+                        .tint(.green)
+                        .disabled(!canStart)
+                        .accessibilityLabel("Start \(routine.name)")
+                        NavigationLink {
+                            RoutineEditorView(routine: routine)
+                        } label: {
+                            VStack(alignment: .leading) {
+                                Text(routine.name).font(.headline)
+                                Text(detail(routine))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     // MK22.1: start a workout from here too, not only from Today.
@@ -56,7 +68,7 @@ struct RoutinesView: View {
                 Text("Routines")
             } footer: {
                 if !store.routines.isEmpty {
-                    Text("Tap a routine to edit it. Swipe right (or touch and hold) to start it.")
+                    Text("Tap ▶ to start a routine, or its name to edit it.")
                 }
             }
         }

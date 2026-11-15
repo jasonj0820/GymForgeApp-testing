@@ -1,11 +1,18 @@
-# MK16: builds Splitday on GitHub's Macs on every push (and on demand: Actions → Build Splitday → Run workflow).
-# Runs the logic checks and Dayfold tests, then makes an unsigned IPA you install with SideStore / AltStore,
-# which sign it with your own Apple ID. Download it from the run's "Artifacts" section.
+# Builds Splitday on GitHub's Macs on every push (and on demand: Actions → Build Splitday → Run workflow).
+#
+#   build   logic checks, then an unsigned IPA. It's attached to the run (Artifacts → Splitday-IPA) and,
+#           since MK23, published as a Release so it downloads directly from the repo's Releases page.
+#   screens (MK23) the app in the iOS Simulator with made-up data, one picture per screen, pushed to the
+#           `ci-screens` branch. Lets a build be looked at before it's installed.
 name: Build Splitday
 
 on:
   push:
+    branches-ignore: [ci-screens]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -33,3 +40,48 @@ jobs:
           name: Splitday-IPA
           path: build/ipa/*.ipa
           if-no-files-found: error
+
+      # A direct download: github.com/<you>/<repo>/releases. Never fails the build if it can't publish.
+      - name: Publish as a Release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${GITHUB_RUN_NUMBER}" build/ipa/*.ipa \
+            --target "${GITHUB_SHA}" \
+            --title "Splitday build ${GITHUB_RUN_NUMBER} (${GITHUB_REF_NAME})" \
+            --notes "Branch \`${GITHUB_REF_NAME}\`: $(git log -1 --pretty=%s). Download the .ipa below and install it with Sideloadly over the existing app (don't delete the app first)."
+
+  screens:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pictures of every screen (demo data)
+        run: zsh Scripts/screenshots.sh
+
+      - name: Build log, if it failed
+        if: failure()
+        run: tail -60 build/sim-build.log || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Splitday-screens
+          path: build/screens
+          if-no-files-found: ignore
+
+      # One commit, replaced each time, so the pictures never pile up in the repo's history.
+      - name: Push pictures to the ci-screens branch
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/screens && cp build/screens/* /tmp/screens/
+          cd /tmp/screens
+          printf '# Splitday screens\n\nBuild %s from branch `%s` (%s), demo data.\n\n' "${GITHUB_RUN_NUMBER}" "${GITHUB_REF_NAME}" "${GITHUB_SHA::7}" > README.md
+          for f in *.jpg; do printf '### %s\n<img src="%s" width="300">\n\n' "${f%.jpg}" "$f" >> README.md; done
+          git init -q -b ci-screens
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "Screens: build ${GITHUB_RUN_NUMBER} (${GITHUB_REF_NAME})"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-screens

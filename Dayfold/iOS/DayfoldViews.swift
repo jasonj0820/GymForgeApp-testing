@@ -55,6 +55,8 @@ struct HomeRoutineCard: View {
     @EnvironmentObject private var dayfold: DayfoldStore
     @EnvironmentObject private var store: PhoneAppStore
     @Binding var showWeighIn: Bool
+    /// MK23: the step just ticked here. It leaves the list straight away, so Undo stays for a few seconds.
+    @State private var justTicked: TaskOccurrence?
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
@@ -90,13 +92,36 @@ struct HomeRoutineCard: View {
                         ForEach(open.prefix(3)) { row in
                             let weighIn = RoutineOrder.needsWeighIn(row, store: store)
                             TaskRow(row: row, color: .green, compact: true, note: weighIn ? "Opens the weigh-in" : nil) {
-                                if weighIn { showWeighIn = true } else { dayfold.setDone(row, done: true) }
+                                if weighIn {
+                                    showWeighIn = true
+                                } else {
+                                    dayfold.setDone(row, done: true)
+                                    justTicked = row
+                                }
                             }
                         }
                         if open.count > 3 {
                             NavigationLink { RoutineScreen() } label: {
                                 Text("\(open.count - 3) more").font(.footnote.weight(.semibold))
                             }
+                        }
+                    }
+                    if let ticked = justTicked {
+                        HStack {
+                            Text("Ticked \"\(ticked.task.title)\"").font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                            Spacer()
+                            Button("Undo") {
+                                // The row as it stands now (ticked), so the right day's tick is removed.
+                                if let current = dayfold.todayRows().first(where: { $0.id == ticked.id }) {
+                                    dayfold.setDone(current, done: false)
+                                }
+                                justTicked = nil
+                            }
+                            .font(.footnote.weight(.semibold))
+                        }
+                        .task(id: ticked.id) {
+                            try? await Task.sleep(nanoseconds: 8_000_000_000)
+                            if !Task.isCancelled { justTicked = nil }
                         }
                     }
                 }

@@ -438,7 +438,9 @@ public enum CoachBrain {
             }
         }
         if let best {
-            let to = min(best.item.exercise.defaultSets + sets, 5)
+            // MK23: one set at a time. Jumping 3 → 5 in a week is how joints complain; if the muscle is
+            // still short after the usual wait, the next suggestion adds another.
+            let to = min(best.item.exercise.defaultSets + min(sets, 1), 5)
             return [CoachProposal(id: "sets-\(best.item.id)-up",
                                   title: "\(best.item.exercise.name) (\(best.routine.name)): \(best.item.exercise.defaultSets) → \(to) sets",
                                   reason: reason, change: .sets(routineID: best.routine.id, itemID: best.item.id, to: to),
