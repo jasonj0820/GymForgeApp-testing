@@ -62,6 +62,7 @@ enum SafetyCopy {
 }
 
 /// MK23: where your backups stand, in words. Shown in Settings, Diagnostics and (when stale) on Today.
+@MainActor
 enum BackupStatus {
     private static let exportKey = "fullbackup.lastExport"
 
