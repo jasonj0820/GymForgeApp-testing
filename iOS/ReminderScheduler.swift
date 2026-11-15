@@ -17,6 +17,7 @@ enum ReminderScheduler {
         case .denied:
             return false
         default:
+            guard !Demo.isOn else { return false }   // demo pictures: no system prompt
             return (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
         }
     }

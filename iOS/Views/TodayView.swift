@@ -47,7 +47,9 @@ extension PhoneAppStore {
         }
         let trained = workoutLogs.filter { $0.countsAsTraining && Calendar.current.isDateInToday($0.startedAt) }
         let split: FixedSplit.Day? = fixedSplitOn ? splitToday : nil
-        let next = suggestedRoutine
+        // MK23: on the fixed split, "up next" is the split's next session (it used to show whichever
+        // routine you'd gone longest without, e.g. Leg Day on a Sunday when Monday is chest).
+        let next = (split != nil ? splitNextRoutine : nil) ?? suggestedRoutine
         if let split {
             switch split.kind {
             case .askCourt:

@@ -26,6 +26,7 @@ final class DayfoldNotifications: ObservableObject {
         refreshPermission()
     }
     func requestPermission() async {
+        guard !Demo.isOn else { return }   // demo pictures: no system prompt
         do {
             _ = try await center.requestAuthorization(options: [.alert, .sound, .badge])
             refreshPermission()

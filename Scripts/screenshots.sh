@@ -12,9 +12,9 @@ BUNDLE="com.jason.gymforge"
 rm -rf "$OUT"; mkdir -p "$OUT"
 
 # Screen names understood by DemoRoot (iOS/Views/DiagnosticsView.swift). "-end" = bottom of the page.
-SCREENS=(today today-end workout workouts progress progress-end lift body body-end coach routine
+SCREENS=(today today-end workouts progress progress-end lift body body-end coach coach-end routine
          settings settings-you settings-training settings-sounds settings-data diagnostics whatsnew
-         history nutrition recovery plan review month preview)
+         history nutrition recovery plan review month preview workout workout-end)
 
 echo "Building for the simulator…"
 xcodebuild -project GymForge.xcodeproj -scheme GymForge -configuration Debug \
@@ -49,7 +49,9 @@ xcrun simctl status_bar "$DEVICE" override --time "9:41" --batteryState charged 
 
 shoot() {   # name, appearance
   xcrun simctl ui "$DEVICE" appearance "$2" 2>/dev/null
-  xcrun simctl launch "$DEVICE" "$BUNDLE" -demo YES -screen "$1" > /dev/null 2>&1 || { echo "  ✗ $1 didn't launch"; return; }
+  # Australian region: weeks start on Monday and dates read day-first, as on the phone this is built for.
+  xcrun simctl launch "$DEVICE" "$BUNDLE" -demo YES -screen "$1" -AppleLocale en_AU -AppleLanguages "(en-AU)" > /dev/null 2>&1 \
+    || { echo "  ✗ $1 didn't launch"; return; }
   sleep 7
   local png="$OUT/$1-$2.png"
   xcrun simctl io "$DEVICE" screenshot "$png" > /dev/null 2>&1
@@ -64,7 +66,7 @@ shoot() {   # name, appearance
 }
 
 for screen in "${SCREENS[@]}"; do shoot "$screen" light; done
-for screen in today workout progress settings; do shoot "$screen" dark; done
+for screen in today progress lift workout; do shoot "$screen" dark; done
 
 xcrun simctl shutdown "$DEVICE" 2>/dev/null
 COUNT=$(ls "$OUT" | wc -l | tr -d ' ')

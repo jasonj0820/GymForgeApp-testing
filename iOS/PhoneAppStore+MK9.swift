@@ -132,6 +132,25 @@ extension PhoneAppStore {
 
     var splitToday: FixedSplit.Day { FixedSplit.day(.now, done: splitDone, court: courtToday) }
 
+    /// MK23: the next training day on the split after today, as a routine (Friday counts as chest).
+    var splitNextRoutine: WorkoutRoutine? {
+        guard fixedSplitOn else { return nil }
+        let calendar = Calendar.current
+        let done = splitDone
+        for offset in 1...7 {
+            guard let date = calendar.date(byAdding: .day, value: offset, to: .now) else { continue }
+            switch FixedSplit.day(date, done: done, court: nil, calendar: calendar).kind {
+            case .train(let slot):
+                if let routine = splitRoutine(slot) { return routine }
+            case .askCourt, .microChest:
+                if let routine = splitRoutine(.chest) { return routine }
+            case .basketball, .rest:
+                continue
+            }
+        }
+        return nil
+    }
+
     /// Today's split session, already adjusted (extra sets, lower-back swaps, micro chest). nil once done or on rest days.
     var splitRoutineToday: WorkoutRoutine? {
         guard fixedSplitOn else { return nil }

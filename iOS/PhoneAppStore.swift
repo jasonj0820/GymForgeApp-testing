@@ -1292,6 +1292,7 @@ final class PhoneAppStore: ObservableObject {
     }
 
     private func persistActiveWorkout() {
+        guard !Demo.isOn else { return }   // a demo workout must not reopen on the next launch
         if let state = activeWorkout, let data = try? JSONEncoder.gymForge.encode(state) {
             try? data.write(to: activeWorkoutURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         } else {
@@ -1300,7 +1301,7 @@ final class PhoneAppStore: ObservableObject {
     }
 
     private func restoreActiveWorkout() {
-        guard activeWorkout == nil,
+        guard !Demo.isOn, activeWorkout == nil,
               let data = try? Data(contentsOf: activeWorkoutURL),
               let state = try? JSONDecoder.gymForge.decode(ActiveWorkoutState.self, from: data),
               abs(state.startedAt.timeIntervalSinceNow) < 6 * 3600,
