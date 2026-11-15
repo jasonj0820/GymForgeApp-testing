@@ -174,7 +174,7 @@ struct CourtView: View {
     var body: some View {
         GeometryReader { geo in
             let scale = geo.size.width / CourtZone.width
-            func point(_ x: Double, _ y: Double) -> CGPoint { CGPoint(x: (x + CourtZone.width / 2) * scale, y: y * scale) }
+            let point = { (x: Double, y: Double) -> CGPoint in CGPoint(x: (x + CourtZone.width / 2) * scale, y: y * scale) }
             ZStack {
                 RoundedRectangle(cornerRadius: 8).fill(Color.orange.opacity(0.12))
                 Path { p in
