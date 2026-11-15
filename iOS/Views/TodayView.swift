@@ -83,6 +83,7 @@ struct TodayView: View {
     @State private var askMoreTraining = false
     @State private var showMoreTraining = false
     @State private var showWeighIn = false
+    @State private var quickAdd: QuickAdd?
     @AppStorage("checkin.dismissedDay") private var dismissedDay = ""
     private var checkInDismissed: Bool {
         get { dismissedDay == Date.now.formatted(.iso8601.year().month().day()) }
@@ -103,7 +104,7 @@ struct TodayView: View {
                 }
                 .contentShape(Rectangle())
                 .onLongPressGesture(minimumDuration: 0.8) {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    Haptics.heavy()
                     askMoreTraining = true
                 }
 
@@ -136,6 +137,9 @@ struct TodayView: View {
                                 .buttonStyle(.borderless).padding(14).accessibilityLabel("Not today")
                         }
                 }
+                SundayResetCard()
+                DayTimelineCard()
+                DayNotesCard()
                 HomeRoutineCard(showWeighIn: $showWeighIn)
                 HomeWeekCard()
                 HomeHeadsUpCard(showWeighIn: $showWeighIn)
@@ -167,6 +171,7 @@ struct TodayView: View {
                 .environmentObject(MTVault.shared)
         }
         .sheet(isPresented: $showWeighIn) { WeighInSheet().environmentObject(store) }
+        .sheet(item: $quickAdd) { QuickAddSheet(kind: $0).environmentObject(store) }
         .refreshable { await store.appBecameActive() }
         .onReceive(NotificationCenter.default.publisher(for: .openMoreTraining)) { _ in
             if !showMoreTraining { askMoreTraining = true }
@@ -174,6 +179,7 @@ struct TodayView: View {
         .toolbar {
             // MK15: More Training in plain sight (still Face ID / passcode). Long-pressing the title still works.
             Button { askMoreTraining = true } label: { Label("More Training", systemImage: "lock.shield.fill") }
+            QuickAddMenu(sheet: $quickAdd, showWeighIn: $showWeighIn)
             NavigationLink { SettingsView() } label: { Image(systemName: "gearshape") }
         }
     }

@@ -49,6 +49,9 @@ targets:
         NSFaceIDUsageDescription: Splitday uses Face ID to unlock private sections.
         NSPhotoLibraryUsageDescription: Splitday can import photos you choose and remove the originals if you ask it to.
         NSCameraUsageDescription: Splitday uses the camera for progress photos, which are stored only inside the app.
+        NSCalendarsFullAccessUsageDescription: Splitday shows today's events next to your session and bedtime, skips the gym nudge when you're busy, and eases the week's goal in exam weeks. It never changes your calendar.
+        NSMicrophoneUsageDescription: Splitday listens when you hold the mic button in a workout, so you can say a set like "80 for 10".
+        NSSpeechRecognitionUsageDescription: Splitday turns what you say in a workout ("80 for 10") into a logged set, on your iPhone.
         NSUbiquitousContainers:
           iCloud.com.jason.gymforge:
             NSUbiquitousContainerIsDocumentScopePublic: true

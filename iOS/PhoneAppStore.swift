@@ -313,6 +313,7 @@ final class PhoneAppStore: ObservableObject {
         refreshSleep()
         rescheduleReminders()
         AutoBackup.runIfDue(store: self)
+        DailyNudges.reschedule(store: self)
     }
 
     // MARK: Routines
@@ -1215,6 +1216,7 @@ final class PhoneAppStore: ObservableObject {
         }
         persistAndSync()
         rescheduleReminders()
+        DailyNudges.reschedule(store: self)   // MK24: no "leave for the gym" once you've been
 
         // Show the summary for a workout that just ended (not for an old one arriving late).
         if (wasActive || summaryLog?.id == log.id), Date().timeIntervalSince(log.endedAt) < 30 * 60 {

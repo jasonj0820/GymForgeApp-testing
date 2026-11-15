@@ -109,6 +109,7 @@ struct WeeklyReviewView: View {
             }
         }
         .navigationTitle("Weekly review")
+        .onAppear { UserDefaults.standard.set(Date(), forKey: SundayResetView.reviewOpenedKey) }   // MK24: Sunday reset ticks it
         .navigationBarTitleDisplayMode(.inline)
     }
 

@@ -3,7 +3,6 @@ import SwiftUI
 struct RootTabView: View {
     @EnvironmentObject private var store: PhoneAppStore
     @EnvironmentObject private var dayfold: DayfoldStore
-    @State private var showRoutine = false
     @State private var tab: String
     @State private var showWhatsNew = false
 
@@ -65,21 +64,9 @@ struct RootTabView: View {
                 PhoneAppDelegate.pendingReview = false
                 store.showWeeklyReview = true
             }
-            // MK22: a routine reminder (or the Routine quick action) opens the routine over whatever tab you're on.
-            .sheet(isPresented: $showRoutine) {
-                NavigationStack {
-                    RoutineScreen()
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("Done") { showRoutine = false }
-                            }
-                        }
-                }
-                .environmentObject(store)
-                .environmentObject(dayfold)
-            }
+            // MK24: a routine reminder (or the Routine quick action) switches to the Routine tab.
             .onReceive(NotificationCenter.default.publisher(for: .dayfoldOpenRoutine)) { _ in
-                showRoutine = true
+                tab = "routine"
             }
             .alert("Something needs attention", isPresented: Binding(
                 get: { dayfold.errorMessage != nil },
@@ -110,15 +97,16 @@ struct RootTabView: View {
             NavigationStack { RoutinesView() }
                 .tabItem { Label("Workouts", systemImage: "list.bullet.rectangle") }
                 .tag("workouts")
+            // MK24: the routine gets its own tab; Coach moved to the top of Workouts.
+            NavigationStack { RoutineScreen() }
+                .tabItem { Label("Routine", systemImage: "checklist") }
+                .tag("routine")
             NavigationStack { ExerciseProgressView() }
                 .tabItem { Label("Progress", systemImage: "chart.xyaxis.line") }
                 .tag("progress")
             NavigationStack { BodyView() }
                 .tabItem { Label("Body", systemImage: "figure") }
                 .tag("body")
-            NavigationStack { CoachView() }
-                .tabItem { Label("Coach", systemImage: "sparkles") }
-                .tag("coach")
         }
     }
 }

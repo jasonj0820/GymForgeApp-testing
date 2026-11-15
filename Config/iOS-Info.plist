@@ -31,6 +31,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Splitday shows today's events next to your session and bedtime, skips the gym nudge when you're busy, and eases the week's goal in exam weeks. It never changes your calendar.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Splitday uses the camera for progress photos, which are stored only inside the app.</string>
 	<key>NSFaceIDUsageDescription</key>
@@ -41,8 +43,12 @@
 	<string>Splitday saves workouts and active energy data to Apple Health.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Splitday uses GPS during outdoor runs recorded on your iPhone to measure distance and pace and save your route.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Splitday listens when you hold the mic button in a workout, so you can say a set like "80 for 10".</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Splitday can import photos you choose and remove the originals if you ask it to.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Splitday turns what you say in a workout ("80 for 10") into a logged set, on your iPhone.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSUbiquitousContainers</key>

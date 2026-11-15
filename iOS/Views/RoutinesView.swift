@@ -9,6 +9,17 @@ struct RoutinesView: View {
     var body: some View {
         List {
             Section {
+                // MK24: Coach lives here now (the Routine took its tab).
+                NavigationLink {
+                    CoachView()
+                } label: {
+                    let count = store.coachProposals.count
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label("Coach", systemImage: "sparkles").font(.headline)
+                        Text(count == 0 ? "No changes suggested" : "\(count) suggested change\(count == 1 ? "" : "s")")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 NavigationLink {
                     HistoryView()
                 } label: {

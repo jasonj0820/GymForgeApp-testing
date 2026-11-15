@@ -248,6 +248,8 @@ struct SettingsSoundsPage: View {
                 Text("Nudges when you're falling behind your weekly goal or have had 2+ days off, in your coach style. Plus a note on the 1st when your monthly report is ready. Routine reminders are under Training and coach → Routine.")
             }
 
+            YourDaySettingsSection()
+
             Section {
                 Picker("When rest ends", selection: $restSound) {
                     ForEach(RestAlertSound.allCases) { sound in

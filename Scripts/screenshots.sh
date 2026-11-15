@@ -14,7 +14,7 @@ rm -rf "$OUT"; mkdir -p "$OUT"
 # Screen names understood by DemoRoot (iOS/Views/DiagnosticsView.swift). "-end" = bottom of the page.
 SCREENS=(today today-end workouts progress progress-end lift body body-end coach coach-end routine
          settings settings-you settings-training settings-sounds settings-data diagnostics whatsnew
-         history nutrition recovery plan review month preview workout workout-end)
+         history nutrition recovery plan review month preview workout workout-end sunday)
 
 echo "Building for the simulator…"
 xcodebuild -project GymForge.xcodeproj -scheme GymForge -configuration Debug \

@@ -808,6 +808,12 @@ struct GymForgeChecks {
         check(east.kind == .train(.legs), "flying east to Auckland: the session lands on Thursday (it's shown as done there)")
         check(ConsistencyCalculator.stats(logs: [], weeklyGoal: 4, breaks: []).weeklyGoal == 4, "no history keeps the goal")
 
+        // MK24 C: usual start time and heavy-week words.
+        check(UsualTime.median([]) == nil, "no sessions → no usual time")
+        check(UsualTime.median([1050, 1060, 1065, 600, 1070]) == 1060, "median ignores one early outlier")
+        check(BusyWords.isHeavy("COMP2041 Exam") && BusyWords.isHeavy("Assignment 2 due"), "exams and assignments are heavy")
+        check(!BusyWords.isHeavy("Lecture") && !BusyWords.isHeavy("Testing day out") , "lectures (and 'testing') aren't")
+
         print("PASS: all GymForge checks")
     }
 }

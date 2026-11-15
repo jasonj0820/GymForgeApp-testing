@@ -262,7 +262,7 @@ struct DemoRoot: View {
     @EnvironmentObject private var store: PhoneAppStore
     let screen: String
 
-    static let tabs = ["today", "workouts", "progress", "body", "coach"]
+    static let tabs = ["today", "workouts", "routine", "progress", "body"]
 
     var body: some View {
         let atEnd = screen.hasSuffix("-end")
@@ -290,7 +290,8 @@ struct DemoRoot: View {
         case "settings-data": SettingsDataPage()
         case "diagnostics": DiagnosticsView()
         case "whatsnew": WhatsNewView()
-        case "routine": RoutineScreen()
+        case "coach": CoachView()
+        case "sunday": SundayResetView()
         case "history": HistoryView()
         case "nutrition": NutritionView()
         case "recovery": RecoveryView()
