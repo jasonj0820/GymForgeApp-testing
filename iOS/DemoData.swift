@@ -78,6 +78,7 @@ enum Demo {
             extras.weighIns.append(WeighIn(date: morning, weightKg: (77.4 - Double(week) * 0.16 + (random.unit() - 0.5) * 0.5).rounded(toPlaces: 1),
                                            bodyFatPercent: (15.6 - Double(week) * 0.03 + (random.unit() - 0.5) * 0.4).rounded(toPlaces: 1)))
         }
+        extras.weighIns.sort { $0.date < $1.date }   // oldest first, as the app keeps them
         for offset in 0..<10 {
             guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else { continue }
             extras.nutrition.append(NutritionDay(day: day, creatine: offset != 3, proteinG: offset == 0 ? 85 : 120 + Double(Int(random.unit() * 40)),

@@ -65,6 +65,9 @@ shoot() {   # name, appearance
   fi
 }
 
+# The very first launch after install is slow (the first picture came out blank), so warm up once.
+xcrun simctl launch "$DEVICE" "$BUNDLE" -demo YES -screen today > /dev/null 2>&1; sleep 15
+xcrun simctl terminate "$DEVICE" "$BUNDLE" > /dev/null 2>&1
 for screen in "${SCREENS[@]}"; do shoot "$screen" light; done
 for screen in today progress lift workout; do shoot "$screen" dark; done
 
