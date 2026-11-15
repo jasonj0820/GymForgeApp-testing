@@ -51,7 +51,7 @@ public struct Badge: Identifiable, Equatable {
     public let progress: Double
 }
 
-public enum Milestones {
+public enum BadgeBook {
     public struct Totals: Equatable {
         public var sessions: Int
         public var bestStreakWeeks: Int

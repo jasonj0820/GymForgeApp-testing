@@ -963,10 +963,10 @@ struct GymForgeChecks {
         let freeze = StreakFreeze.run([.hit, .hit, .hit, .hit, .miss, .hit, .pause, .hit])
         check(freeze.streak == 6 && freeze.banked == 0 && freeze.used == 1, "4 goal weeks earn a freeze that covers the next miss")
         check(StreakFreeze.run([.hit, .miss, .hit]).streak == 1, "no freeze yet: a miss resets")
-        let badges = Milestones.badges(.init(sessions: 30, bestStreakWeeks: 4, prs: 0, volumeTonnes: 12, routineSteps: 0, proteinDaysInARow: 0))
+        let badges = BadgeBook.badges(.init(sessions: 30, bestStreakWeeks: 4, prs: 0, volumeTonnes: 12, routineSteps: 0, proteinDaysInARow: 0))
         check(badges.filter(\.earned).map(\.id) == ["sessions.10", "sessions.25", "streak.4", "volume.10"], "badges earned")
         let proteinDays = (0..<5).map { NutritionDay(day: jan5.addingTimeInterval(-Double($0) * 86_400), proteinG: $0 == 0 ? 50 : 160) }
-        check(Milestones.proteinRun(proteinDays, target: 150, now: jan5, calendar: gregorian) == 4, "protein run starts yesterday when today isn't hit yet")
+        check(BadgeBook.proteinRun(proteinDays, target: 150, now: jan5, calendar: gregorian) == 4, "protein run starts yesterday when today isn't hit yet")
         let night = QuietWindow(start: 22 * 60 + 30, end: 6 * 60 + 30)
         let work = QuietWindow(start: 9 * 60, end: 17 * 60, weekdays: [2, 3, 4, 5, 6])
         func at(_ h: Int, _ m: Int, dayOffset: Double = 0) -> Date {

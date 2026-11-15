@@ -4,18 +4,18 @@ import UserNotifications
 // MARK: - MK24 (150): milestone badges
 
 extension PhoneAppStore {
-    var milestoneTotals: Milestones.Totals {
+    var milestoneTotals: BadgeBook.Totals {
         let training = workoutLogs.filter(\.countsAsTraining)
         let current = consistency.streakWeeks
         let best = max(UserDefaults.standard.integer(forKey: "streak.best"), current)
         if best > UserDefaults.standard.integer(forKey: "streak.best") { UserDefaults.standard.set(best, forKey: "streak.best") }
         let steps = dayfold?.snapshot.completions.values.filter { $0.done && $0.skipped != true }.count ?? 0
-        return Milestones.Totals(sessions: training.count, bestStreakWeeks: best, prs: training.reduce(0) { $0 + $1.prCount },
+        return BadgeBook.Totals(sessions: training.count, bestStreakWeeks: best, prs: training.reduce(0) { $0 + $1.prCount },
                                  volumeTonnes: training.reduce(0) { $0 + $1.totalVolumeKg } / 1000, routineSteps: steps,
-                                 proteinDaysInARow: Milestones.proteinRun(extras.nutrition, target: proteinTargetG ?? 0))
+                                 proteinDaysInARow: BadgeBook.proteinRun(extras.nutrition, target: proteinTargetG ?? 0))
     }
 
-    var badges: [Badge] { Milestones.badges(milestoneTotals) }
+    var badges: [Badge] { BadgeBook.badges(milestoneTotals) }
 }
 
 struct BadgesView: View {
@@ -80,7 +80,7 @@ enum CluckPraise {
     static func check(store: PhoneAppStore) {
         guard !Demo.isOn else { return }
         var lines: [String] = []
-        let protein = Milestones.proteinRun(store.extras.nutrition, target: store.proteinTargetG ?? 0)
+        let protein = BadgeBook.proteinRun(store.extras.nutrition, target: store.proteinTargetG ?? 0)
         if milestones.contains(protein), once("protein", protein) {
             lines.append(protein >= 14 ? "\(protein) days straight on protein. I've stopped checking. Almost."
                          : "\(protein) days in a row on protein. Sergeant Cluck nods. Once.")
