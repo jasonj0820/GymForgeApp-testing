@@ -89,7 +89,9 @@
 		36CAFF2484B326D6CBB48163 /* ProgramSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 132B3481E67E4ABD0215D672 /* ProgramSettingsView.swift */; };
 		61CB259477F94159EDF14279 /* StrongImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36E0E07D0D4C917FFA22D69 /* StrongImportView.swift */; };
 		441866E7753DD5A78C01CF8A /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7C2A7F2436AD23E17A4CEC /* WorkoutActivityAttributes.swift */; };
+		B811188901DF192AA22DB886 /* RoutineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988C0ACA02B2D95E57CC0968 /* RoutineWidget.swift */; };
 		E41041EEBE17D0765E972DC0 /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7C2A7F2436AD23E17A4CEC /* WorkoutActivityAttributes.swift */; };
+		82ADFE23DF9AB453316812F5 /* RoutineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988C0ACA02B2D95E57CC0968 /* RoutineWidget.swift */; };
 		08CE127F1DBDAD1F23A52A03 /* GymForgeWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A800FDAAC20306EFF64AAD /* GymForgeWidgets.swift */; };
 		85DACC0FBF2873807273E9E0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5AA738421DC9D567623E115E /* Assets.xcassets */; };
 		84856B47DDCF2E478443F019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5F47D16A2AD1376EE242C6A0 /* Assets.xcassets */; };
@@ -136,6 +138,7 @@
 		2116A98B7958672EE7083416 /* GymForgeWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA0754C6DEA6F6C46371E0BE /* GymForgeWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		66E8285EA55450521C1BA320 /* AutoBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E19773868498CFC7A7CDEA /* AutoBackup.swift */; };
 		C2B89BCF5615E52251C29554 /* HealthBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3145E99D8EC01E2796D4109E /* HealthBridge.swift */; };
+		8A4584D030871792784A459C /* RoutineExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30806884C286BCA84F8F93 /* RoutineExtras.swift */; };
 		B6E48509773B6BFC7076C0A8 /* PhoneAppStore+Body24.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D8E511EF024638D45AE4E5C /* PhoneAppStore+Body24.swift */; };
 		46188FEEE74122FF5EDFB1F6 /* PhoneAppStore+Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF9B0F0BB45FA49067B6741C /* PhoneAppStore+Food.swift */; };
 		E8423282C2F705C7DE584EDE /* ProgressPhotos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C430C6D095DDC47C4DE9ED /* ProgressPhotos.swift */; };
@@ -353,6 +356,7 @@
 		132B3481E67E4ABD0215D672 /* ProgramSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgramSettingsView.swift; sourceTree = "<group>"; };
 		D36E0E07D0D4C917FFA22D69 /* StrongImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrongImportView.swift; sourceTree = "<group>"; };
 		AA7C2A7F2436AD23E17A4CEC /* WorkoutActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActivityAttributes.swift; sourceTree = "<group>"; };
+		988C0ACA02B2D95E57CC0968 /* RoutineWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineWidget.swift; sourceTree = "<group>"; };
 		D9A800FDAAC20306EFF64AAD /* GymForgeWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GymForgeWidgets.swift; sourceTree = "<group>"; };
 		5AA738421DC9D567623E115E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5F47D16A2AD1376EE242C6A0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -391,6 +395,7 @@
 		6991D52489E3408EC2DE7FA5 /* CluckWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CluckWatchWidget.swift; sourceTree = "<group>"; };
 		81E19773868498CFC7A7CDEA /* AutoBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoBackup.swift; sourceTree = "<group>"; };
 		3145E99D8EC01E2796D4109E /* HealthBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthBridge.swift; sourceTree = "<group>"; };
+		BB30806884C286BCA84F8F93 /* RoutineExtras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineExtras.swift; sourceTree = "<group>"; };
 		1D8E511EF024638D45AE4E5C /* PhoneAppStore+Body24.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhoneAppStore+Body24.swift"; sourceTree = "<group>"; };
 		AF9B0F0BB45FA49067B6741C /* PhoneAppStore+Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhoneAppStore+Food.swift"; sourceTree = "<group>"; };
 		43C430C6D095DDC47C4DE9ED /* ProgressPhotos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressPhotos.swift; sourceTree = "<group>"; };
@@ -571,6 +576,7 @@
 				418A8303F616AF04ACD4AEF4 /* CluckNotifier.swift */,
 				81E19773868498CFC7A7CDEA /* AutoBackup.swift */,
 				3145E99D8EC01E2796D4109E /* HealthBridge.swift */,
+				BB30806884C286BCA84F8F93 /* RoutineExtras.swift */,
 				1D8E511EF024638D45AE4E5C /* PhoneAppStore+Body24.swift */,
 				AF9B0F0BB45FA49067B6741C /* PhoneAppStore+Food.swift */,
 				43C430C6D095DDC47C4DE9ED /* ProgressPhotos.swift */,
@@ -705,6 +711,7 @@
 				47D31D6BDBA0EB6E56CCBE69 /* QuoteWidget.swift */,
 				5DB15CB56EF496D767ED7BA2 /* QuoteLibrary.swift */,
 				AA7C2A7F2436AD23E17A4CEC /* WorkoutActivityAttributes.swift */,
+				988C0ACA02B2D95E57CC0968 /* RoutineWidget.swift */,
 				D9A800FDAAC20306EFF64AAD /* GymForgeWidgets.swift */,
 				53D4FF496F112E034D2523B3 /* Cluck.swift */,
 				C57F31821CB8A42BC4D47BB8 /* CluckView.swift */,
@@ -1025,6 +1032,7 @@
 				36CAFF2484B326D6CBB48163 /* ProgramSettingsView.swift in Sources */,
 				61CB259477F94159EDF14279 /* StrongImportView.swift in Sources */,
 				441866E7753DD5A78C01CF8A /* WorkoutActivityAttributes.swift in Sources */,
+				B811188901DF192AA22DB886 /* RoutineWidget.swift in Sources */,
 				C18E404CF9741EAC47BE58C5 /* MTModels.swift in Sources */,
 				5AE1E946CB8DCEF2354BB3D4 /* MTVault.swift in Sources */,
 				D643A8B261FE14BF01C37B63 /* MTRootView.swift in Sources */,
@@ -1056,6 +1064,7 @@
 				B17870E11275205A035C1E8D /* TapeMeasurementsView.swift in Sources */,
 				66E8285EA55450521C1BA320 /* AutoBackup.swift in Sources */,
 				C2B89BCF5615E52251C29554 /* HealthBridge.swift in Sources */,
+				8A4584D030871792784A459C /* RoutineExtras.swift in Sources */,
 				B6E48509773B6BFC7076C0A8 /* PhoneAppStore+Body24.swift in Sources */,
 				46188FEEE74122FF5EDFB1F6 /* PhoneAppStore+Food.swift in Sources */,
 				E8423282C2F705C7DE584EDE /* ProgressPhotos.swift in Sources */,
@@ -1129,6 +1138,7 @@
 				9FF01E4A97B809C0748BE657 /* QuoteWidget.swift in Sources */,
 				A6BB6223E491453EB8ACA341 /* QuoteLibrary.swift in Sources */,
 				E41041EEBE17D0765E972DC0 /* WorkoutActivityAttributes.swift in Sources */,
+				82ADFE23DF9AB453316812F5 /* RoutineWidget.swift in Sources */,
 				08CE127F1DBDAD1F23A52A03 /* GymForgeWidgets.swift in Sources */,
 				EA1065B2BEBB3781945BF3DF /* Cluck.swift in Sources */,
 				1CB32B1A261EB337F2767D02 /* CluckView.swift in Sources */,

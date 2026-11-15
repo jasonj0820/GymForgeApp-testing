@@ -18,6 +18,9 @@ struct GymForgeApp: App {
         MTWidgetControl.handler = { MTLiveTimer.handleWidget($0) }
         // MK24: the workout Live Activity's Done button logs the planned set here.
         WorkoutWidgetControl.handler = { PhoneAppStore.shared.completeSetFromLockScreen() }
+        // MK24 (111, 117): the routine widget's ticks and the routine reminders' Done buttons.
+        RoutineWidgetControl.handler = { PhoneAppStore.shared.tickRoutineStep($0) }
+        RoutineStepReminders.registerCategories()
         SharedGroup.migrateIfNeeded()   // MK20.7: sideloaded installs get a renamed App Group
     }
 

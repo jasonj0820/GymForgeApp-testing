@@ -60,12 +60,17 @@ final class PhoneAppStore: ObservableObject {
         dayfold.onChange = { [weak store] in store?.dayfoldChanged() }
         dayfold.isRestDay = { [weak store] in store?.isRestDay() ?? false }
         dayfold.mealPrepTitle = { [weak store] in MealPrep.title(target: store?.proteinTargetG) }
+        // MK24 (119): sick and travel days pause the routine.
+        dayfold.isPaused = { [weak store] date in store?.extras.dayPlan(on: date)?.kind.isExcused ?? false }
+        DayfoldNotifications.isPaused = { [weak store] date in
+            MainActor.assumeIsolated { store?.extras.dayPlan(on: date)?.kind.isExcused ?? false }
+        }
         // MK23: one Sunday ping, not two, when the routine already reminds you to weigh in.
         WeighInReminder.coveredByRoutine = { [weak dayfold] in
             guard let config = dayfold?.snapshot.configuration else { return false }
             let reminded = config.routines.contains { $0.kind == .weekly && $0.remindersEnabled }
             return reminded && config.tasks.contains {
-                $0.enabled && $0.routine == .weekly && $0.weekdays.contains(1) && $0.title.localizedCaseInsensitiveContains("weigh")
+                $0.enabled && $0.routine == .weekly && $0.weekdays.contains(WeighIn.weekday) && $0.isWeighIn
             }
         }
         return store
@@ -688,6 +693,11 @@ final class PhoneAppStore: ObservableObject {
         }
         persistAndSync()
         ProteinNotifier.reschedule(store: self)
+        // MK24 (124): routine steps linked to creatine or the protein target tick themselves.
+        if cal.isDateInToday(date) {
+            if day.creatine { dayfold?.autoTick(.creatine) }
+            if let target = proteinTargetG, target > 0, day.proteinG >= target { dayfold?.autoTick(.protein) }
+        }
     }
 
     func toggleCreatine() { updateNutrition { $0.creatine.toggle() } }

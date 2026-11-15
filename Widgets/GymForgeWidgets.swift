@@ -13,6 +13,7 @@ struct GymForgeWidgets: WidgetBundle {
         QuoteWidget()
         MTTimerLiveActivity()
         MTTrainingWidget()
+        RoutineWidget()
     }
 }
 

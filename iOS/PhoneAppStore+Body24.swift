@@ -18,6 +18,7 @@ extension PhoneAppStore {
         let cutoff = WaterMath.key(Date.now.addingTimeInterval(-400 * 86_400))
         extras.water = extras.water.filter { $0.key >= cutoff }
         saveExtras()
+        if (extras.water[key] ?? 0) >= waterTarget { dayfold?.autoTick(.water) }   // MK24 (124)
     }
 
     // MARK: Caffeine (102)

@@ -66,6 +66,13 @@ extension PhoneAppStore {
         }
         scheduleWakeChecklist(now: now)   // ticking the morning list cancels its follow-up
         WeighInReminder.reschedule(weighIns: extras.weighIns)   // MK23: follows the routine's weigh-in step
+        // MK24 (124): a creatine step ticked anywhere (the list, the widget, Siri) ticks the nutrition card too.
+        if let dayfold, !nutritionToday().creatine,
+           RoutineKind.allCases.flatMap({ dayfold.rows($0, now: now) }).contains(where: { $0.task.action == .creatine && $0.done && !$0.skipped }) {
+            toggleCreatine()
+        }
+        RoutineWidgetFeed.publish(store: self)   // MK24 (111)
+        RoutineStepReminders.reschedule(store: self)   // MK24 (115, 116)
     }
 
     // MARK: MK15 — rest days, nightly recap, wake-up checklist

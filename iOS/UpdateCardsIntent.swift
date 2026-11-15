@@ -25,5 +25,8 @@ struct GymForgeShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: UpdateCardsIntent(), phrases: ["Update \(.applicationName) cards"],
                     shortTitle: "Update cards", systemImageName: "rectangle.stack.badge.person.crop")
+        // MK24 (126)
+        AppShortcut(intent: TickRoutineStepAppIntent(), phrases: ["Tick a step in \(.applicationName)", "Mark a \(.applicationName) step done"],
+                    shortTitle: "Tick a step", systemImageName: "checklist")
     }
 }

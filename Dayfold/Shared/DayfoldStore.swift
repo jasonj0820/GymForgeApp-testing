@@ -21,6 +21,8 @@ final class DayfoldStore: ObservableObject {
     /// Called after any check-off or edit (GymForge refreshes the wind-down Live Activity).
     var onChange: () -> Void = {}
     #endif
+    /// MK24 (119): sick and travel days pause the routine (set by GymForge on the iPhone).
+    var isPaused: (Date) -> Bool = { _ in false }
     private let url: URL
     private var observer: NSObjectProtocol?
 
@@ -52,6 +54,16 @@ final class DayfoldStore: ObservableObject {
             if !snapshot.configuration.tasks.contains(where: \.wake) {
                 let next = (snapshot.configuration.tasks.map(\.order).max() ?? -1) + 1
                 snapshot.configuration.tasks += RoutineTask.wakeStarters(startOrder: next)
+                snapshot.configuration.revision = Date()
+            }
+        }
+        // MK24 (15, 124): weigh-in steps get a proper link once, so renaming one no longer breaks it.
+        let linkedKey = "dayfold.actionsLinked"
+        if !UserDefaults.standard.bool(forKey: linkedKey) {
+            UserDefaults.standard.set(true, forKey: linkedKey)
+            for index in snapshot.configuration.tasks.indices where snapshot.configuration.tasks[index].action == nil
+                && snapshot.configuration.tasks[index].title.localizedCaseInsensitiveContains("weigh") {
+                snapshot.configuration.tasks[index].action = .weighIn
                 snapshot.configuration.revision = Date()
             }
         }
@@ -90,7 +102,7 @@ final class DayfoldStore: ObservableObject {
         guard let latest = weightDates.max() else { return }
         var ticked = false
         for row in RoutineKind.allCases.flatMap({ rows($0) })
-        where !row.done && row.task.title.localizedCaseInsensitiveContains("weigh") && latest >= row.due {
+        where !row.done && row.task.isWeighIn && latest >= row.due {
             snapshot.completions[row.id] = DayfoldCompletion(id: row.id, taskID: row.task.id, occurrence: row.due, done: true, changedAt: latest)
             ticked = true
         }
@@ -100,6 +112,42 @@ final class DayfoldStore: ObservableObject {
     func setDone(_ row: TaskOccurrence, done: Bool) {
         snapshot.completions[row.id] = DayfoldCompletion(id: row.id, taskID: row.task.id, occurrence: row.due, done: done, changedAt: Date())
         changed()
+    }
+
+    /// MK24 (118): not today, without breaking the streak.
+    func skip(_ row: TaskOccurrence) {
+        snapshot.completions[row.id] = DayfoldCompletion(id: row.id, taskID: row.task.id, occurrence: row.due, done: false,
+                                                         changedAt: Date(), skipped: true)
+        changed()
+    }
+
+    /// MK24 (124): ticks today's steps linked to an action (creatine taken, protein or water target hit).
+    func autoTick(_ action: StepAction, now: Date = Date()) {
+        var ticked = false
+        for row in RoutineKind.allCases.flatMap({ rows($0, now: now) }) where !row.done && row.task.action == action {
+            snapshot.completions[row.id] = DayfoldCompletion(id: row.id, taskID: row.task.id, occurrence: row.due, done: true, changedAt: now)
+            ticked = true
+        }
+        if ticked { changed() }
+    }
+
+    /// MK24 (112, 119): a step's streak, with sick / travel days not breaking it.
+    func streak(_ task: RoutineTask) -> (current: Int, best: Int) {
+        ScheduleEngine.streak(task, completions: snapshot.completions, now: Date(), paused: isPaused)
+    }
+
+    func stats(from start: Date, to end: Date) -> (done: Int, due: Int, perTask: [(title: String, done: Int, due: Int)]) {
+        ScheduleEngine.stats(snapshot, from: start, to: end, paused: isPaused)
+    }
+
+    /// MK24 (122): adds a ready-made set, leaving out steps you already have (same title).
+    func addReadyMade(_ name: String) {
+        let existing = Set(snapshot.configuration.tasks.map { $0.title.lowercased() })
+        let next = (snapshot.configuration.tasks.map(\.order).max() ?? -1) + 1
+        let new = ScheduleEngine.readyMade(name, startOrder: next).filter { !existing.contains($0.title.lowercased()) }
+        guard !new.isEmpty else { return }
+        snapshot.configuration.tasks += new
+        configChanged()
     }
 
     func saveTask(_ task: RoutineTask) {

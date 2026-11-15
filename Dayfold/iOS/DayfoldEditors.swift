@@ -10,6 +10,14 @@ struct DayfoldManageView: View {
             Section {
                 Text("Drag to reorder, tap to edit, or add a new step. Switch on Wake-up or Before bed to put a step on those checklists.")
                     .foregroundStyle(.secondary).font(.subheadline)
+                // MK24 (122)
+                Menu {
+                    Button("Morning: water, creatine, daylight, bed") { store.addReadyMade("morning") }
+                    Button("Evening: phone away, clothes, stretch, skincare") { store.addReadyMade("evening") }
+                    Button("Sunday reset: weigh-in, laundry, kitchen, plan") { store.addReadyMade("sunday") }
+                } label: {
+                    Label("Add a ready-made set", systemImage: "square.stack.3d.up")
+                }
             }
             ForEach(RoutineKind.allCases) { kind in
                 Section {
@@ -85,6 +93,7 @@ struct TaskEditor: View {
                         Stepper("Day \(task.monthDay)", value: $task.monthDay, in: 1...31)
                     } header: { Text("Due on") } footer: { Text("Shorter months use their last day. Completing late never shifts the date.") }
                 }
+                StepExtrasSection(task: $task)
                 if task.routine != .daily {
                     Section {
                         Stepper(task.retryDays == 1 ? "Remind every day" : "Remind every \(task.retryDays) days", value: $task.retryDays, in: 1...14)
@@ -270,5 +279,59 @@ struct MotivationSettingsView: View {
         .onChange(of: topics) { _, value in QuoteSettings.topics = value; QuoteNotifier.reschedule() }
         .onChange(of: tough) { _, value in QuoteSettings.tough = value; QuoteNotifier.reschedule() }
         .onChange(of: notify) { _, value in QuoteSettings.notify = value; QuoteNotifier.reschedule() }
+    }
+}
+
+/// MK24 (113–116, 124): what a step does beyond a tick.
+struct StepExtrasSection: View {
+    @Binding var task: RoutineTask
+    @State private var settingHome = false
+    @State private var homeProblem: String?
+
+    var body: some View {
+        Section {
+            Picker("Linked to", selection: $task.action) {
+                Text("Nothing").tag(StepAction?.none)
+                ForEach(StepAction.allCases) { Text($0.title).tag(StepAction?.some($0)) }
+            }
+            Stepper(task.timerMinutes.map { "Timer: \($0) min" } ?? "Timer: off", value: Binding(
+                get: { task.timerMinutes ?? 0 },
+                set: { task.timerMinutes = $0 > 0 ? $0 : nil }
+            ), in: 0...120, step: 5)
+            TextField("Open a link, app or Shortcut name", text: Binding(
+                get: { task.link ?? "" },
+                set: { task.link = $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+            ))
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            Toggle("Its own reminder", isOn: Binding(
+                get: { task.reminderMinutes != nil },
+                set: { task.reminderMinutes = $0 ? (task.reminderMinutes ?? 18 * 60) : nil }
+            ))
+            if let minutes = task.reminderMinutes {
+                DatePicker("At", selection: Binding(
+                    get: { Calendar.current.date(byAdding: .minute, value: minutes, to: Calendar.current.startOfDay(for: Date())) ?? Date() },
+                    set: { let c = Calendar.current.dateComponents([.hour, .minute], from: $0); task.reminderMinutes = (c.hour ?? 0) * 60 + (c.minute ?? 0) }
+                ), displayedComponents: .hourAndMinute)
+            }
+            Toggle("Remind me when I get home", isOn: $task.atHome)
+            if task.atHome {
+                Button {
+                    Task {
+                        settingHome = true
+                        homeProblem = await HomePlace.setToHere() ? nil : "Couldn't get your location. Allow location for Splitday, then try again at home."
+                        settingHome = false
+                    }
+                } label: {
+                    Label(settingHome ? "Finding you…" : (HomePlace.coordinate == nil ? "Set home to where I am now" : "Home is set · update to here"),
+                          systemImage: "house")
+                }
+                if let homeProblem { Text(homeProblem).font(.caption).foregroundStyle(.orange) }
+            }
+        } header: {
+            Text("Extras")
+        } footer: {
+            Text("Linked steps tick themselves (weigh-in, creatine, protein and water targets). A link can be a web address, an app link like spotify:, or the name of a Shortcut. A timer starts from the step's ⏱ button.")
+        }
     }
 }

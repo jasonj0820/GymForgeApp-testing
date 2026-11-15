@@ -98,6 +98,10 @@ struct WeeklyReviewView: View {
                 if !review.followUps.isEmpty { Text("Swipe left when you're done with one.") }
             }
 
+            // MK24 (123): how the routine went.
+            Section {
+                RoutineStatsBlock(start: start, end: start.addingTimeInterval(7 * 86_400), title: "Routine")
+            }
             Section {
                 NavigationLink {
                     WeekPlanView(nextWeek: Calendar.current.component(.weekday, from: .now) == 1)

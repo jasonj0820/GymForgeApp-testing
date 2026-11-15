@@ -177,6 +177,14 @@ final class PhoneAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
             }
             return
         }
+        // MK24 (117): Done / All done on a routine reminder, without opening the app.
+        if response.actionIdentifier == RoutineStepReminders.doneAction || response.actionIdentifier == RoutineStepReminders.doneAllAction {
+            Task { @MainActor in
+                _ = RoutineStepReminders.handle(response, store: PhoneAppStore.shared)
+                completionHandler()
+            }
+            return
+        }
         if response.actionIdentifier == CluckNotifier.snoozeAction {
             CluckNotifier.handleSnooze()
             NotificationCenter.default.post(name: .cluckChanged, object: nil)

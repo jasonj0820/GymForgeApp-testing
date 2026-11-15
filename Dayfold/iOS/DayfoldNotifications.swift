@@ -12,6 +12,8 @@ final class DayfoldNotifications: ObservableObject {
     static let prefix = "dayfold."
     // iOS keeps 64 pending notifications per app; GymForge uses ~35 (wind-down, nags, Cluck, review) + 6 protein + 4 wake-up + 6 quotes.
     static let cap = 10
+    /// MK24 (119): set by GymForge — sick and travel days.
+    static var isPaused: (Date) -> Bool = { _ in false }
     @Published var permission = "Not enabled"
     @Published var problem: String?
     @Published var openedRoutine: RoutineKind?
@@ -69,7 +71,11 @@ final class DayfoldNotifications: ObservableObject {
                     if Task.isCancelled { return }
                     let time = settings.time(for: calendar.component(.weekday, from: date))
                     guard let fire = calendar.date(bySettingHour: time.hour, minute: time.minute, second: 0, of: date), fire > now else { continue }
-                    let due = ScheduleEngine.rows(snapshot, kind: settings.kind, now: fire).filter { !$0.done && $0.retryToday }.map(\.task.title)
+                    // MK24 (119): nothing on sick and travel days.
+                    if Self.isPaused(date) { continue }
+                    let dueRows = ScheduleEngine.rows(snapshot, kind: settings.kind, now: fire).filter { !$0.done && $0.retryToday }
+                    let due = dueRows.map(\.task.title)
+                    let dueIDs = dueRows.map(\.task.id.uuidString)
                     guard !due.isEmpty else { continue }
                     // MK14: today and tomorrow also get follow-ups while something's still undone.
                     let chasers = offset < 2 ? ScheduleEngine.followUps(after: fire, calendar: calendar) : []
@@ -81,7 +87,8 @@ final class DayfoldNotifications: ObservableObject {
                         content.sound = .default
                         content.interruptionLevel = .active
                         content.threadIdentifier = Self.prefix + settings.kind.rawValue
-                        content.userInfo = ["routine": settings.kind.rawValue]
+                        content.userInfo = ["routine": settings.kind.rawValue, "taskIDs": dueIDs]
+                        content.categoryIdentifier = "dayfold.routine"   // MK24 (117): "All done" right on the notification
                         let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: time)
                         let identifier = "\(Self.prefix)\(generation)-\(settings.kind.rawValue)-\(offset)-\(index)"
                         let request = UNNotificationRequest(identifier: identifier, content: content,

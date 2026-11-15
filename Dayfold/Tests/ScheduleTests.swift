@@ -176,4 +176,43 @@ final class ScheduleTests: XCTestCase {
         XCTAssertTrue(ScheduleEngine.occurrence(kept, on: thu, completions: done, calendar: calendar)!.done)
         XCTAssertNil(ScheduleEngine.absTask(completions: done, restDay: false, now: date("2026-11-03 09:00"), calendar: calendar))
     }
+
+    // MK24: streaks, skips, stats, next due, ready-made sets, old files.
+    func testStreakSkipAndStats() {
+        let daily = task(kind: .daily)
+        var records: [String: DayfoldCompletion] = [:]
+        for day in ["2026-10-10", "2026-10-11", "2026-10-12", "2026-10-14"] {
+            let c = completed(daily, due: day + " 00:00", at: day + " 20:00")
+            records[c.id] = c
+        }
+        let skipDue = date("2026-10-15 00:00")
+        let skipKey = ScheduleEngine.key(daily.id, skipDue, calendar: calendar)
+        records[skipKey] = DayfoldCompletion(id: skipKey, taskID: daily.id, occurrence: skipDue, done: false, changedAt: skipDue, skipped: true)
+        let now = date("2026-10-16 12:00")
+        let streak = ScheduleEngine.streak(daily, completions: records, now: now, calendar: calendar)
+        XCTAssertEqual(streak.current, 1)   // the 14th; the skipped 15th and today (still due) don't break it
+        XCTAssertEqual(streak.best, 3)
+        var snapshot = DayfoldSnapshot(configuration: DayfoldConfiguration(tasks: [daily], routines: []))
+        snapshot.completions = records
+        let stats = ScheduleEngine.stats(snapshot, from: date("2026-10-10 00:00"), to: date("2026-10-17 00:00"), now: now, calendar: calendar)
+        XCTAssertEqual(stats.done, 4)
+        XCTAssertEqual(stats.due, 5)
+        let paused = ScheduleEngine.streak(daily, completions: records, now: now,
+                                           paused: { self.calendar.isDate($0, inSameDayAs: self.date("2026-10-13 00:00")) }, calendar: calendar)
+        XCTAssertEqual(paused.current, 4)   // a sick day on the 13th no longer breaks it: 10, 11, 12, 14
+    }
+    func testNextDueAndReadyMade() {
+        var monthly = task(kind: .monthly)
+        monthly.monthDay = 20
+        XCTAssertEqual(ScheduleEngine.nextDue(monthly, after: date("2026-10-16 12:00"), calendar: calendar), date("2026-10-20 00:00"))
+        XCTAssertEqual(ScheduleEngine.readyMade("morning", startOrder: 5).map(\.order), [5, 6, 7, 8])
+        XCTAssertTrue(ScheduleEngine.readyMade("sunday", startOrder: 0).first?.isWeighIn == true)
+    }
+    func testOldTaskDecodesWithoutNewFields() throws {
+        let json = #"{"id":"6A1F0000-0000-4000-8000-000000000999","title":"Weigh in","routine":"weekly","weekdays":[1],"monthDay":1,"month":1,"retryDays":1,"order":0,"createdAt":0,"enabled":true}"#
+        let decoded = try JSONDecoder().decode(RoutineTask.self, from: Data(json.utf8))
+        XCTAssertNil(decoded.action)
+        XCTAssertTrue(decoded.isWeighIn)   // still found by its title
+        XCTAssertFalse(decoded.atHome)
+    }
 }

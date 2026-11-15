@@ -47,6 +47,17 @@ struct RoutineTask: Codable, Identifiable, Equatable {
     var bedtime: Bool = false
     // Part of the wake-up checklist.
     var wake: Bool = false
+    // MK24: a built-in timer, a link or app to open, the step's own reminder (minutes after midnight),
+    // "when I get home", and what the step does in Splitday (instead of guessing from its title).
+    var timerMinutes: Int? = nil
+    var link: String? = nil
+    var reminderMinutes: Int? = nil
+    var atHome: Bool = false
+    var action: StepAction? = nil
+
+    /// Weigh-in steps from before MK24 were found by the word "weigh" in the title.
+    var isWeighIn: Bool { action == .weighIn || (action == nil && title.localizedCaseInsensitiveContains("weigh")) }
+
     var scheduleLabel: String {
         switch routine {
         case .daily: return "Every day"
@@ -77,8 +88,30 @@ extension RoutineTask {
         order = try c.decode(Int.self, forKey: .order)
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         enabled = try c.decode(Bool.self, forKey: .enabled)
+        timerMinutes = try c.decodeIfPresent(Int.self, forKey: .timerMinutes)
+        link = try c.decodeIfPresent(String.self, forKey: .link)
+        reminderMinutes = try c.decodeIfPresent(Int.self, forKey: .reminderMinutes)
+        atHome = try c.decodeIfPresent(Bool.self, forKey: .atHome) ?? false
+        action = (try? c.decodeIfPresent(StepAction.self, forKey: .action)) ?? nil   // unknown values (newer build) read as none
     }
 }
+
+/// MK24 (124): what a step is linked to in Splitday.
+enum StepAction: String, Codable, CaseIterable, Identifiable {
+    case weighIn, creatine, packBag, protein, water
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .weighIn: "Weigh-in (opens the weigh-in, ticks itself)"
+        case .creatine: "Creatine (ticks the nutrition card too)"
+        case .packBag: "Pack the gym bag"
+        case .protein: "Protein target (ticks itself once hit)"
+        case .water: "Water target (ticks itself once hit)"
+        }
+    }
+}
+
+
 
 struct RoutineSettings: Codable, Equatable {
     var kind: RoutineKind
@@ -152,6 +185,8 @@ struct DayfoldCompletion: Codable, Identifiable, Equatable {
     var done: Bool
     var changedAt: Date
     var mutationID: UUID = UUID()
+    /// MK24 (118): skipped for today: off the list and the streak carries on, but it isn't counted as done.
+    var skipped: Bool? = nil
 }
 
 struct DayfoldSnapshot: Codable {
@@ -167,6 +202,8 @@ struct TaskOccurrence: Identifiable {
     var completedAt: Date?
     var overdue: Bool
     var retryToday: Bool
+    /// MK24 (118): skipped for today (shown with the done ones; the streak carries on).
+    var skipped: Bool = false
     var id: String { ScheduleEngine.key(task.id, due) }
 }
 
@@ -216,11 +253,12 @@ enum ScheduleEngine {
         guard let due = latestDue(task, onOrBefore: today, calendar: calendar),
               due >= calendar.startOfDay(for: task.createdAt) else { return nil }
         let record = completions[key(task.id, due, calendar: calendar)]
-        let isDone = record?.done == true
+        let isSkipped = record?.skipped == true
+        let isDone = record?.done == true || isSkipped
         let age = calendar.dateComponents([.day], from: due, to: today).day ?? 0
         return TaskOccurrence(task: task, due: due, day: today, done: isDone,
                               completedAt: isDone ? record?.changedAt : nil,
-                              overdue: age > 0, retryToday: age % max(1, task.retryDays) == 0)
+                              overdue: age > 0, retryToday: age % max(1, task.retryDays) == 0, skipped: isSkipped)
     }
 
     static func rows(_ snapshot: DayfoldSnapshot, kind: RoutineKind, now: Date, calendar: Calendar = .current) -> [TaskOccurrence] {
@@ -244,6 +282,109 @@ enum ScheduleEngine {
         guard let day = doneDay ?? (restDay ? calendar.startOfDay(for: now) : nil) else { return nil }
         return RoutineTask(id: RoutineTask.absID, title: "Abs · 10 min (rest-day core)", routine: .weekly,
                            weekdays: [calendar.component(.weekday, from: day)], order: -1, createdAt: day)
+    }
+
+    // MARK: MK24 — history, streaks, stats, what's coming up
+
+    /// Every scheduled day of a task in [start, end), oldest first.
+    static func dueDays(_ task: RoutineTask, from start: Date, to end: Date, calendar: Calendar = .current) -> [Date] {
+        var days: [Date] = []
+        var day = calendar.startOfDay(for: max(start, task.createdAt))
+        while day < end {
+            if latestDue(task, onOrBefore: day, calendar: calendar).map({ calendar.isDate($0, inSameDayAs: day) }) == true {
+                days.append(day)
+            }
+            day = calendar.date(byAdding: .day, value: 1, to: day) ?? end
+        }
+        return days
+    }
+
+    enum DayState: Equatable { case done, skipped, missed, paused, due }
+
+    static func state(_ task: RoutineTask, due: Date, completions: [String: DayfoldCompletion], now: Date,
+                      paused: (Date) -> Bool = { _ in false }, calendar: Calendar = .current) -> DayState {
+        let record = completions[key(task.id, due, calendar: calendar)]
+        if record?.skipped == true { return .skipped }
+        if record?.done == true { return .done }
+        if paused(due) { return .paused }
+        // Still inside its retry window (today, or a step that carries forward until done).
+        let today = calendar.startOfDay(for: now)
+        if let current = latestDue(task, onOrBefore: today, calendar: calendar), calendar.isDate(current, inSameDayAs: due) { return .due }
+        return .missed
+    }
+
+    /// Done (or skipped / paused) in a row, counting back from the latest scheduled day; one that's still due doesn't break it.
+    static func streak(_ task: RoutineTask, completions: [String: DayfoldCompletion], now: Date,
+                       paused: (Date) -> Bool = { _ in false }, calendar: Calendar = .current) -> (current: Int, best: Int) {
+        let start = calendar.date(byAdding: .day, value: -400, to: now) ?? now
+        let days = dueDays(task, from: start, to: calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now, calendar: calendar)
+        var best = 0, run = 0
+        var current = 0
+        for day in days {
+            switch state(task, due: day, completions: completions, now: now, paused: paused, calendar: calendar) {
+            case .done: run += 1
+            case .skipped, .paused, .due: break   // keeps the run going, adds nothing
+            case .missed: run = 0
+            }
+            best = max(best, run)
+        }
+        current = run
+        return (current, best)
+    }
+
+    /// Steps due on their scheduled days in [start, end) and how many were done (skipped and paused ones don't count).
+    static func stats(_ snapshot: DayfoldSnapshot, from start: Date, to end: Date, now: Date = Date(),
+                      paused: (Date) -> Bool = { _ in false }, calendar: Calendar = .current) -> (done: Int, due: Int, perTask: [(title: String, done: Int, due: Int)]) {
+        var done = 0, due = 0
+        var perTask: [(title: String, done: Int, due: Int)] = []
+        for task in snapshot.configuration.tasks where task.enabled {
+            var d = 0, n = 0
+            for day in dueDays(task, from: start, to: min(end, now), calendar: calendar) {
+                switch state(task, due: day, completions: snapshot.completions, now: now, paused: paused, calendar: calendar) {
+                case .done: d += 1; n += 1
+                case .missed: n += 1
+                case .due, .skipped, .paused: break
+                }
+            }
+            if n > 0 { perTask.append((task.title, d, n)) }
+            done += d
+            due += n
+        }
+        return (done, due, perTask.sorted { Double($0.done) / Double($0.due) < Double($1.done) / Double($1.due) })
+    }
+
+    /// The next scheduled day after today (monthly and yearly steps on the Routine screen).
+    static func nextDue(_ task: RoutineTask, after now: Date, calendar: Calendar = .current) -> Date? {
+        let today = calendar.startOfDay(for: now)
+        for offset in 1...370 {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
+            if latestDue(task, onOrBefore: day, calendar: calendar).map({ calendar.isDate($0, inSameDayAs: day) }) == true { return day }
+        }
+        return nil
+    }
+
+    /// MK24 (122): ready-made sets of steps.
+    static func readyMade(_ name: String, startOrder: Int, now: Date = Date()) -> [RoutineTask] {
+        func step(_ title: String, _ kind: RoutineKind = .daily, wake: Bool = false, bedtime: Bool = false,
+                  weekdays: Set<Int> = Set(1...7), action: StepAction? = nil, timer: Int? = nil, offset: Int) -> RoutineTask {
+            var task = RoutineTask(title: title, routine: kind, weekdays: weekdays, order: startOrder + offset, createdAt: now, bedtime: bedtime, wake: wake)
+            task.action = action
+            task.timerMinutes = timer
+            return task
+        }
+        switch name {
+        case "morning":
+            return [step("Glass of water", wake: true, action: .water, offset: 0), step("Creatine", wake: true, action: .creatine, offset: 1),
+                    step("10 min of daylight outside", wake: true, timer: 10, offset: 2), step("Make the bed", wake: true, offset: 3)]
+        case "evening":
+            return [step("Phone on the charger, away from bed", bedtime: true, offset: 0), step("Lay out tomorrow's clothes", bedtime: true, offset: 1),
+                    step("Stretch", bedtime: true, timer: 10, offset: 2), step("Skincare", bedtime: true, offset: 3)]
+        case "sunday":
+            return [step("Weigh in", .weekly, weekdays: [1], action: .weighIn, offset: 0), step("Laundry", .weekly, weekdays: [1], offset: 1),
+                    step("Clean the kitchen", .weekly, weekdays: [1], timer: 20, offset: 2), step("Plan the week", .weekly, weekdays: [1], offset: 3)]
+        default:
+            return []
+        }
     }
 
     static func merge(_ local: [String: DayfoldCompletion], _ incoming: [String: DayfoldCompletion]) -> [String: DayfoldCompletion] {

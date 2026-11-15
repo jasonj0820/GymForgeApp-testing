@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 
 /// MK22: routine colours follow the system. The fixed dark palette went with the separate Dayfold half.
 enum DayfoldPalette {
@@ -43,7 +44,7 @@ enum RoutineOrder {
 
     /// A weigh-in step opens the weigh-in sheet until this week's weight is logged; saving it ticks the step.
     @MainActor static func needsWeighIn(_ row: TaskOccurrence, store: PhoneAppStore) -> Bool {
-        !row.done && row.task.title.localizedCaseInsensitiveContains("weigh") && store.thisWeeksWeighIn == nil
+        !row.done && row.task.isWeighIn && store.thisWeeksWeighIn == nil
     }
 }
 
@@ -142,6 +143,10 @@ struct RoutineScreen: View {
     @State private var showWakeUp = false
     @State private var showWindDown = false
     @State private var showLater = false
+    // MK24 (H)
+    @State private var historyTask: RoutineTask?
+    @State private var focusing = false
+    @State private var reordering = false
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
@@ -162,6 +167,21 @@ struct RoutineScreen: View {
                     } else {
                         header(done: done, total: today.count, now: now)
                     }
+                    // MK24 (119): sick and travel days pause the routine.
+                    if dayfold.isPaused(now) {
+                        Label("Paused for today's sick or travel day. Nothing will chase you, and streaks don't break; tick anything you still do.",
+                              systemImage: "pause.circle.fill")
+                            .font(.footnote)
+                            .card()
+                    }
+                    // MK24 (121): one step at a time.
+                    if today.contains(where: { !$0.done }) {
+                        Button { focusing = true } label: {
+                            Label("One step at a time", systemImage: "rectangle.portrait.on.rectangle.portrait")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
                     section("Wake-up", icon: "sun.horizon.fill", color: .orange, rows: wake, open: "Checklist") { showWakeUp = true }
                     section("Today", icon: "sun.max.fill", color: .green, rows: day)
                     section("Before bed", icon: "moon.stars.fill", color: .indigo, rows: bed, open: "Start wind-down") {
@@ -180,6 +200,24 @@ struct RoutineScreen: View {
                         .font(.subheadline)
                         .tint(.secondary)
                     }
+                    // MK24 (125): monthly and yearly steps coming up.
+                    let upcoming = dayfold.snapshot.configuration.tasks
+                        .filter { $0.enabled && ($0.routine == .monthly || $0.routine == .yearly) }
+                        .compactMap { task in ScheduleEngine.nextDue(task, after: now).map { (task, $0) } }
+                        .sorted { $0.1 < $1.1 }
+                    if !upcoming.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Coming up", systemImage: "calendar.badge.clock").font(.headline).foregroundStyle(.purple)
+                            ForEach(upcoming.prefix(5), id: \.0.id) { item in
+                                HStack {
+                                    Text(item.0.title).font(.subheadline)
+                                    Spacer()
+                                    Text(item.1.formatted(.dateTime.day().month(.abbreviated))).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .card()
+                    }
                     if !dayfold.snapshot.configuration.routines.contains(where: \.remindersEnabled) {
                         NavigationLink { DayfoldSettingsView() } label: {
                             Label("Reminders are off, so nothing will chase you. Turn them on.", systemImage: "bell.slash")
@@ -196,8 +234,23 @@ struct RoutineScreen: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 NavigationLink { DayfoldSettingsView() } label: { Label("Reminders", systemImage: "bell") }
+                Button { reordering = true } label: { Label("Reorder", systemImage: "arrow.up.arrow.down") }
                 NavigationLink("Edit") { DayfoldManageView() }
             }
+        }
+        .sheet(item: $historyTask) { task in
+            NavigationStack { StepHistoryView(task: task) }.environmentObject(dayfold)
+        }
+        .fullScreenCover(isPresented: $focusing) {
+            StepFocusView().environmentObject(store).environmentObject(dayfold)
+        }
+        .sheet(isPresented: $reordering) {
+            NavigationStack {
+                DayfoldManageView()
+                    .environment(\.editMode, .constant(.active))
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { reordering = false } } }
+            }
+            .environmentObject(dayfold)
         }
         .sheet(isPresented: $showWeighIn) { WeighInSheet().environmentObject(store) }
         .sheet(isPresented: $showWakeUp) { WakeUpView().environmentObject(store).environmentObject(dayfold) }
@@ -242,7 +295,8 @@ struct RoutineScreen: View {
                 }
                 ForEach(sorted) { row in
                     TaskRow(row: row, color: color,
-                            note: RoutineOrder.needsWeighIn(row, store: store) ? "Opens the weigh-in" : nil) { tap(row) }
+                            note: RoutineOrder.needsWeighIn(row, store: store) ? "Opens the weigh-in" : nil,
+                            onSkip: { dayfold.skip(row) }, onHistory: { historyTask = row.task }) { tap(row) }
                 }
             }
         }
@@ -264,9 +318,46 @@ struct TaskRow: View {
     var compact = false
     /// Replaces the schedule line, e.g. "Opens the weigh-in".
     var note: String? = nil
+    /// MK24: long-press → skip today / history (only where the screen offers them).
+    var onSkip: (() -> Void)? = nil
+    var onHistory: (() -> Void)? = nil
     let action: () -> Void
+    @ObservedObject private var timers = StepTimers.shared
 
     var body: some View {
+        HStack(spacing: 8) {
+            mainButton
+            // MK24 (113, 114): the step's timer and link, next to it.
+            if !row.done, let minutes = row.task.timerMinutes {
+                Button {
+                    timers.toggle(row.task, minutes: minutes)
+                } label: {
+                    if let end = timers.ends[row.task.id], end > .now {
+                        Text(timerInterval: Date.now...end, countsDown: true).font(.caption.monospacedDigit().bold()).frame(width: 48)
+                    } else {
+                        Image(systemName: "timer").font(.body)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Timer, \(minutes) minutes")
+            }
+            if !row.done, let link = row.task.link, let url = StepLinks.url(link) {
+                Button { UIApplication.shared.open(url) } label: { Image(systemName: "arrow.up.forward.app") }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Open")
+            }
+        }
+        .contextMenu {
+            if let onSkip, !row.done {
+                Button { onSkip() } label: { Label("Skip today (keeps the streak)", systemImage: "forward") }
+            }
+            if let onHistory {
+                Button { onHistory() } label: { Label("History and streak", systemImage: "calendar") }
+            }
+        }
+    }
+
+    private var mainButton: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()   // MK22.1: a tick you can feel
             action()
@@ -301,6 +392,7 @@ struct TaskRow: View {
 
     private var subtitle: String? {
         if let note { return note }
+        if row.skipped { return "Skipped today · tap to undo" }
         if row.done, let date = row.completedAt {
             return compact ? nil : "Done \(date.formatted(date: .omitted, time: .shortened)) · tap to undo"
         }
@@ -308,5 +400,186 @@ struct TaskRow: View {
         if row.overdue { return "Carried forward · due \(row.due.formatted(date: .abbreviated, time: .omitted))" }
         // "Every day" on a daily step says nothing; weekly, monthly and yearly steps keep their schedule.
         return row.task.routine == .daily ? nil : row.task.scheduleLabel
+    }
+}
+
+// MARK: - MK24: step timers, links, history, one at a time
+
+/// Running step timers (a notification at the end, in case you've left the app).
+@MainActor
+final class StepTimers: ObservableObject {
+    static let shared = StepTimers()
+    @Published private(set) var ends: [UUID: Date] = [:]
+
+    func toggle(_ task: RoutineTask, minutes: Int) {
+        let id = "dayfold.timer.\(task.id.uuidString)"
+        if let end = ends[task.id], end > .now {
+            ends[task.id] = nil
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+            return
+        }
+        let end = Date.now.addingTimeInterval(Double(minutes) * 60)
+        ends[task.id] = end
+        let content = UNMutableNotificationContent()
+        content.title = "\(task.title): time's up"
+        content.body = "Tap Done to tick it off."
+        content.sound = .default
+        content.categoryIdentifier = "dayfold.step"
+        content.userInfo = ["taskID": task.id.uuidString, "routine": task.routine.rawValue]
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: max(Double(minutes) * 60, 1), repeats: false)))
+    }
+}
+
+enum StepLinks {
+    /// A web or app link as is; anything else is taken as the name of a Shortcut.
+    static func url(_ text: String) -> URL? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if trimmed.contains(":"), let url = URL(string: trimmed) { return url }
+        var parts = URLComponents(string: "shortcuts://run-shortcut")
+        parts?.queryItems = [URLQueryItem(name: "name", value: trimmed)]
+        return parts?.url
+    }
+}
+
+/// MK24 (112): a step's streak and the last two months, day by day.
+struct StepHistoryView: View {
+    @EnvironmentObject private var dayfold: DayfoldStore
+    @Environment(\.dismiss) private var dismiss
+    let task: RoutineTask
+
+    var body: some View {
+        let streak = dayfold.streak(task)
+        let calendar = Calendar.current
+        let thisMonth = calendar.dateInterval(of: .month, for: Date())?.start ?? Date()
+        let months = [calendar.date(byAdding: .month, value: -1, to: thisMonth) ?? thisMonth, thisMonth]
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
+                    stat("\(streak.current)", task.routine == .daily ? "day streak" : "in a row")
+                    stat("\(streak.best)", "best")
+                }
+                ForEach(months, id: \.self) { month in
+                    monthGrid(month)
+                }
+                HStack(spacing: 14) {
+                    legend(.green, "Done")
+                    legend(.yellow, "Skipped")
+                    legend(.gray, "Paused")
+                    legend(.red.opacity(0.7), "Missed")
+                }
+                .font(.caption)
+            }
+            .padding()
+        }
+        .navigationTitle(task.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+    }
+
+    private func stat(_ value: String, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value).font(.largeTitle.bold().monospacedDigit()).foregroundStyle(.green)
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+
+    private func legend(_ color: Color, _ text: String) -> some View {
+        HStack(spacing: 4) { Circle().fill(color).frame(width: 8, height: 8); Text(text) }
+    }
+
+    private func monthGrid(_ month: Date) -> some View {
+        let calendar = Calendar.current
+        let days = calendar.range(of: .day, in: .month, for: month)?.count ?? 30
+        let offset = (calendar.component(.weekday, from: month) - calendar.firstWeekday + 7) % 7
+        let due = Set(ScheduleEngine.dueDays(task, from: month, to: calendar.date(byAdding: .month, value: 1, to: month) ?? month).map { calendar.startOfDay(for: $0) })
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(month.formatted(.dateTime.month(.wide).year())).font(.headline)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
+                ForEach(0..<offset, id: \.self) { _ in Color.clear.frame(height: 30) }
+                ForEach(1...days, id: \.self) { day in
+                    let date = calendar.date(byAdding: .day, value: day - 1, to: month) ?? month
+                    let color: Color = {
+                        guard due.contains(calendar.startOfDay(for: date)), date <= Date() else { return .clear }
+                        switch ScheduleEngine.state(task, due: date, completions: dayfold.snapshot.completions, now: Date(), paused: dayfold.isPaused) {
+                        case .done: return .green
+                        case .skipped: return .yellow
+                        case .paused: return .gray
+                        case .missed: return .red.opacity(0.7)
+                        case .due: return .blue.opacity(0.4)
+                        }
+                    }()
+                    Text("\(day)")
+                        .font(.caption.monospacedDigit())
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                        .background(color.opacity(color == .clear ? 0 : 0.35), in: RoundedRectangle(cornerRadius: 6))
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(due.contains(calendar.startOfDay(for: date)) ? Color.secondary.opacity(0.3) : .clear))
+                }
+            }
+        }
+    }
+}
+
+/// MK24 (121): today's open steps one at a time, big, with Done / Skip / Later.
+struct StepFocusView: View {
+    @EnvironmentObject private var dayfold: DayfoldStore
+    @EnvironmentObject private var store: PhoneAppStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var later: [String] = []
+    @State private var showWeighIn = false
+
+    var body: some View {
+        let open = RoutineOrder.nextUp(dayfold.todayRows(), now: Date())
+        let queue = open.filter { !later.contains($0.id) } + open.filter { later.contains($0.id) }
+        let total = dayfold.todayRows().count
+        VStack(spacing: 24) {
+            HStack {
+                Text("\(total - open.count) of \(total) done").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                Spacer()
+                Button("Close") { dismiss() }
+            }
+            Spacer()
+            if let row = queue.first {
+                VStack(spacing: 14) {
+                    Text(row.task.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
+                    if let minutes = row.task.timerMinutes {
+                        Button { StepTimers.shared.toggle(row.task, minutes: minutes) } label: {
+                            Label("\(minutes) min timer", systemImage: "timer").font(.title3)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    if let link = row.task.link, let url = StepLinks.url(link) {
+                        Button { UIApplication.shared.open(url) } label: { Label("Open", systemImage: "arrow.up.forward.app") }
+                            .buttonStyle(.bordered)
+                    }
+                }
+                .id(row.id)
+                .transition(.push(from: .trailing))
+                Spacer()
+                Button {
+                    if RoutineOrder.needsWeighIn(row, store: store) { showWeighIn = true } else { dayfold.setDone(row, done: true) }
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                } label: {
+                    Label("Done", systemImage: "checkmark").font(.title2.bold()).frame(maxWidth: .infinity, minHeight: 56)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                HStack {
+                    Button("Skip today") { dayfold.skip(row) }.frame(maxWidth: .infinity)
+                    Button("Later") { withAnimation { later.append(row.id) } }.frame(maxWidth: .infinity)
+                        .disabled(queue.count < 2)
+                }
+                .buttonStyle(.bordered)
+            } else {
+                Label("All done", systemImage: "checkmark.seal.fill").font(.largeTitle.bold()).foregroundStyle(.green)
+                Spacer()
+                Button("Close") { dismiss() }.buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .animation(.snappy, value: queue.first?.id)
+        .sheet(isPresented: $showWeighIn) { WeighInSheet().environmentObject(store) }
     }
 }

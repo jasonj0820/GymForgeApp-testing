@@ -24,6 +24,9 @@ struct MonthlyReportView: View {
                 strengthSection(report)
                 muscleSection(report)
                 bodySection(report)
+                // MK24 (123)
+                let monthRange = Calendar.current.dateInterval(of: .month, for: month)
+                RoutineStatsBlock(start: monthRange?.start ?? month, end: monthRange?.end ?? month, title: "Routine this month", carded: true)
                 milestoneSection(report)
             }
             .padding()
