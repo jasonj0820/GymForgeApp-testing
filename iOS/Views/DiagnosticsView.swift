@@ -222,6 +222,14 @@ struct WhatsNewView: View {
              text: "A goal on any lift with the date you'd reach it, busy weeks that ease the goal, accessory rotation each block."),
         Note(icon: "heart.text.square", title: "Health through Shortcuts",
              text: "Settings → Data and devices → Apple Health: two automations bring weight, sleep and heart data in and send workouts out. Plus a 3-tap readiness check-in."),
+        Note(icon: "fork.knife", title: "Food, water and caffeine",
+             text: "Body → Nutrition: a food log by meal, recipes with a shopping list, barcode and label scans, water, a caffeine cut-off and weekly averages."),
+        Note(icon: "checklist", title: "A routine that does more",
+             text: "Tick it from a widget, Siri or the notification. Steps get timers, links, their own times and streaks; sick days pause it."),
+        Note(icon: "bell.badge", title: "Notifications on one page",
+             text: "Every type with its times, quiet hours, and an at-work window. Plus badges and streak freezes."),
+        Note(icon: "basketball.fill", title: "Basketball",
+             text: "Shot chart, drills, a drill timer, vertical jump and game stats (Cardio history → Basketball)."),
         Note(icon: "stethoscope", title: "Data check-up",
              text: "Settings → Data and devices finds typos, double saves and split histories, with a fix for each.")
     ]

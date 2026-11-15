@@ -83,7 +83,7 @@ struct ReadinessCheckInCard: View {
             picker("Energy", $energy, ["Low", "Normal", "High"])
             Button {
                 store.saveCheckIn(ReadinessCheckIn(date: .now, sleepHours: sleep, soreness: soreness, energy: energy))
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                Haptics.tap()
                 onSave?()
             } label: {
                 Text("Save").frame(maxWidth: .infinity)

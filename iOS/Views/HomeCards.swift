@@ -591,7 +591,7 @@ struct HomeQuickStart: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+                .cardSurface()
             }
             CardioStartCard()
         }

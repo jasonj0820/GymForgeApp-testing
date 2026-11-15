@@ -242,7 +242,7 @@ struct YearReviewCard: View {
                 }
                 .foregroundStyle(.secondary)
             }
-            Text("Splitday").font(.caption.bold()).foregroundStyle(.tertiary)
+            Text("Splitday").font(.caption.bold()).foregroundStyle(.secondary)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)

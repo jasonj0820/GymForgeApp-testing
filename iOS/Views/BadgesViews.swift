@@ -53,7 +53,7 @@ struct BadgesView: View {
                         }
                         .padding(10)
                         .frame(maxWidth: .infinity)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                        .cardSurface()
                         .opacity(badge.earned ? 1 : 0.7)
                     }
                 }

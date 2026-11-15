@@ -345,7 +345,7 @@ struct ExerciseProgressView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+            .cardSurface()
         }
     }
 
@@ -478,7 +478,7 @@ struct ExerciseProgressView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .cardSurface()
     }
 
     private func moreRow(_ icon: String, _ title: String, _ detail: String) -> some View {

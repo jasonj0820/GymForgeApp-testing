@@ -1,6 +1,6 @@
 # Splitday MK24 — gym and daily routine in one app (iPhone + Apple Watch)
 
-## MK24 — sections A to E of the list
+## MK24 — everything marked "Do now" on the list (sections A to L)
 Numbers are the ones on the 204-item list.
 
 **A. Fixes and tests**
@@ -37,6 +37,42 @@ Numbers are the ones on the 204-item list.
 - **Accessory rotation (74):** at the start of each block, accessories with a swap option move to the next one (main lifts stay). Or any time from Coach.
 - **Busy weeks (76):** exams or deadlines in your calendar suggest easing the goal; or set it yourself.
 - **Ask the coach (78):** plain-English questions answered on the iPhone by Apple's on-device model (iOS 26, iPhone 15 Pro or later), from a summary of your last 8 weeks.
+
+**F. Progress and history**
+- **Pin lifts (80):** long-press a lift (or the pin on its page) to keep it at the top of Progress.
+- **Sets per muscle over time (82):** weekly hard sets for each muscle over 6 months, against the 10–20 band.
+- **Compare two periods (83):** last 4 weeks vs the 4 before, month vs month, 3 months, or block vs block: sessions, sets, volume, records and every lift's heaviest set.
+- **Body weight on a lift's chart (84)** and **markers (85)** where the weight went up or the rep range changed.
+- **Progress photos (88):** front, side and back, encrypted on the iPhone, with last time's photo as a ghost while you line up, and two dates side by side. Export them before re-installing with another Apple ID.
+- **Year in review (90):** sessions, hours, tonnes, records, longest streak and most-improved lifts, as a picture to share.
+
+**G. Food and body**
+- **Food log by meal (94, 100):** saved meals and recents in one tap; protein per meal against an even split of your target.
+- **Recipe book and meal prep (95, 96):** protein, calories and cost per serve; set this week's batches and get one shopping list (same ingredients added up).
+- **Barcode scan (97)** (Open Food Facts, needs the internet; saved after the first scan) and **nutrition label reader (98)** (on the iPhone).
+- **Type or say what you ate (99):** estimated by Apple's on-device model where available, otherwise from a table of common foods.
+- **Water (101)**, **caffeine with a cut-off from your bedtime (102)**, **weekly averages vs weight change (103)**, **goal weight with a date (104)**, **weigh-in day of your choice or daily with a 7-day average (105)**, and **"Big night out" (110)**: the next session is tagged "Unusually tired".
+
+**H. Routine**
+- **Home Screen widget you can tick (111)**, **history and streak per step (112)** (long-press a step), **timers (113)**, **links, apps or Shortcuts (114)**, **a reminder time per step (115)**, **"when I get home" (116)**, **Done / All done on notifications (117)**, **skip today without breaking the streak (118)**, **sick and travel days pause it (119)**, **reorder (120)**, **one step at a time (121)**, **ready-made sets (122)**, **routine in the weekly review and monthly report (123)**, **linked steps (124)** (weigh-in, creatine, protein, water: they tick themselves; fixes the weigh-in step being found by its title, 15), **coming up (125)** for monthly and yearly steps, and **Siri / Shortcuts (126)**: "Tick a step in Splitday".
+
+**I. Sleep and basketball**
+- **Sleep debt and bedtime consistency (128)**, with a 3-month sleep calendar.
+- **Basketball (137–141):** shot chart by zone (per session or over time), drills with makes and attempts, a work/rest drill timer, vertical jump log, and game stats with averages. Cardio history → Basketball.
+
+**J. Notifications and motivation**
+- **One Notifications page (143):** every type, on/off, previews, and **editable times (144)** for Sergeant Cluck, protein checks, quotes and the weigh-in (Settings → Sounds and reminders).
+- **Quiet hours and at work / in class (145)**, by time or from your calendar: motivation is dropped, the rest waits until it's over.
+- **One budget with priorities (147):** under iOS's 64; quotes and motivation go first when there are too many.
+- **Badges (150)**, **streak freezes you earn (151)** (4 goal weeks = 1, up to 2), **the week as a picture (152)**, and **Sergeant Cluck notices protein and routine streaks (153)**.
+
+**K. More Training**
+- **Your own guided programs (172):** an instruction per preset step, or start from guided PAC. **Edit the built-in instructions (173).** **A summary after each session (174)** next to last time. **Auto-lock delay (175).** **Export reminder with a restore check (177):** the file is reopened with your passcode and counted (fixes 12).
+
+**L. Look and feel**
+- **Contrast (192):** cards are a solid surface with a hairline edge in light and dark. **One set of haptics (193).** **More Training uses the same cards (198).**
+
+Not done, as asked: Discuss (1, 9, 19, 43, 55, 56, 69, 70; 16 waits on 69) and Later (186, 187). Item 9 is covered by 147 and item 19 by 144.
 
 ## MK23 — foundations: pictures of every build, diagnostics, safer data
 The first batch from the 111-item list. The numbers are the ones on that list.

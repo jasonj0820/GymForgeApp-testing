@@ -64,7 +64,7 @@ final class PhoneActivityRecorder: NSObject, ObservableObject {
         request = newRequest
         startDate = Date()
         if usesGPS { startLocation() }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         ticker = Task { [weak self] in
             var tick = 0
             while !Task.isCancelled {
@@ -86,7 +86,7 @@ final class PhoneActivityRecorder: NSObject, ObservableObject {
         isPaused = true
         autoPaused = auto
         showBanner(auto ? "Auto-paused" : "Paused")
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Haptics.heavy()
         sendProgress()
     }
 
@@ -98,7 +98,7 @@ final class PhoneActivityRecorder: NSObject, ObservableObject {
         autoPaused = false
         slowSince = nil
         showBanner("Resumed")
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Haptics.heavy()
         sendProgress()
     }
 
@@ -229,7 +229,7 @@ final class PhoneActivityRecorder: NSObject, ObservableObject {
             lastSplitElapsed = time
             splits.append(split)
             showBanner("Km \(completed) · \(CardioFormat.pace(split))")
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
         }
     }
 
@@ -248,13 +248,13 @@ final class PhoneActivityRecorder: NSObject, ObservableObject {
             if let target = goal.distanceKm, distanceKm >= target, !goalReached {
                 goalReached = true
                 showBanner("Goal reached: \(GFFormat.km(target)) km")
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                Haptics.success()
             }
         case .time:
             if let minutes = goal.minutes, elapsed >= minutes * 60, !goalReached {
                 goalReached = true
                 showBanner("Goal reached: \(Int(minutes)) min")
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                Haptics.success()
             }
         case .pace:
             guard let target = goal.paceSeconds, let pace = currentPace, elapsed > 90,
@@ -262,11 +262,11 @@ final class PhoneActivityRecorder: NSObject, ObservableObject {
             if pace > target + 15 {
                 lastGoalAlert = Date()
                 showBanner("Speed up — \(CardioFormat.pace(pace)) vs \(CardioFormat.pace(target))")
-                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                Haptics.warning()
             } else if pace < target - 15 {
                 lastGoalAlert = Date()
                 showBanner("Ease off — \(CardioFormat.pace(pace)) vs \(CardioFormat.pace(target))")
-                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                Haptics.warning()
             }
         }
     }

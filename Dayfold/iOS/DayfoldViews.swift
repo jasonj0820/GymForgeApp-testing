@@ -359,7 +359,7 @@ struct TaskRow: View {
 
     private var mainButton: some View {
         Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()   // MK22.1: a tick you can feel
+            Haptics.tap()   // MK22.1: a tick you can feel (MK24: the shared haptics)
             action()
         } label: {
             HStack(spacing: compact ? 10 : 14) {
@@ -560,7 +560,7 @@ struct StepFocusView: View {
                 Spacer()
                 Button {
                     if RoutineOrder.needsWeighIn(row, store: store) { showWeighIn = true } else { dayfold.setDone(row, done: true) }
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    Haptics.success()
                 } label: {
                     Label("Done", systemImage: "checkmark").font(.title2.bold()).frame(maxWidth: .infinity, minHeight: 56)
                 }

@@ -791,7 +791,7 @@ struct PhoneActiveWorkoutView: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 4) {
                 Text(title).font(.caption.bold()).foregroundStyle(.secondary)
-                if let note { Text(note).font(.caption2).foregroundStyle(.tertiary) }
+                if let note { Text(note).font(.caption2).foregroundStyle(.secondary) }   // MK24 (192): readable, not tertiary
             }
             .lineLimit(1)
             HStack(alignment: .firstTextBaseline, spacing: 4) {

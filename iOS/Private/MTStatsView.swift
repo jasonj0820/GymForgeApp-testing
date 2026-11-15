@@ -55,7 +55,7 @@ struct MTStatsView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardSurface()   // MK24 (198): the same card as the rest of the app
     }
 
     /// Days trained over the last 4 weeks vs the weekly target.
@@ -133,7 +133,7 @@ struct MTStatsView: View {
             }
         }
         .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardSurface()   // MK24 (198): the same card as the rest of the app
     }
 
     private func shiftMonth(_ value: Int) {
@@ -165,7 +165,7 @@ struct MTStatsView: View {
             .frame(height: 220)
         }
         .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardSurface()   // MK24 (198): the same card as the rest of the app
     }
 
     private struct LevelBar: Identifiable {
@@ -227,7 +227,7 @@ struct MTStatsView: View {
             }
         }
         .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardSurface()   // MK24 (198): the same card as the rest of the app
     }
 
     @ViewBuilder
@@ -255,7 +255,7 @@ struct MTStatsView: View {
                 .frame(height: 180)
             }
             .padding()
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .cardSurface()   // MK24 (198): the same card as the rest of the app
         }
         if !tension.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
@@ -268,7 +268,7 @@ struct MTStatsView: View {
                 .frame(height: 160)
             }
             .padding()
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .cardSurface()   // MK24 (198): the same card as the rest of the app
         }
     }
 
@@ -297,7 +297,7 @@ struct MTStatsView: View {
                 }
             }
             .padding()
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .cardSurface()   // MK24 (198): the same card as the rest of the app
         }
     }
 
@@ -368,7 +368,7 @@ struct MTStatsView: View {
                     .foregroundStyle(.secondary)
             }
             .padding()
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .cardSurface()   // MK24 (198): the same card as the rest of the app
         }
     }
 

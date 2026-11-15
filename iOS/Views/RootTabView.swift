@@ -112,17 +112,39 @@ struct RootTabView: View {
 }
 
 /// Shared card styling.
+/// MK24 (192): a solid, adaptive card with a hairline edge. The old thin material nearly vanished on a white
+/// background in light mode and flattened in dark mode; this keeps the card clearly apart in both, and
+/// secondary text on it stays above 4.5:1.
 struct CardBackground: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
     func body(content: Content) -> some View {
         content
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(.secondarySystemBackground)))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.primary.opacity(scheme == .dark ? 0.12 : 0.07), lineWidth: 0.75))
+            .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.04), radius: 6, y: 2)
+    }
+}
+
+/// Just the card's surface (no padding), for views that already lay out their own padding.
+struct CardSurface: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        content
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(.secondarySystemBackground)))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.primary.opacity(scheme == .dark ? 0.12 : 0.07), lineWidth: 0.75))
     }
 }
 
 extension View {
     func card() -> some View { modifier(CardBackground()) }
+    /// MK24 (192, 198): the card surface for views that pad themselves (More Training's cards too).
+    func cardSurface() -> some View { modifier(CardSurface()) }
 }
 
 struct InsightRow: View {

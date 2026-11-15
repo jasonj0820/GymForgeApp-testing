@@ -32,7 +32,7 @@ struct BodyView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+                .cardSurface()
 
                 Picker("Range", selection: $range) {
                     ForEach(ChartRange.allCases) { Text($0.rawValue).tag($0) }
