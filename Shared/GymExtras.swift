@@ -30,6 +30,14 @@ public struct GymExtras: Codable, Equatable {
     /// MK21: nights logged with "Going to sleep" / "I'm awake" that Apple Health couldn't take (no Health
     /// access on this install), kept here so sleep and the recovery score still work.
     public var manualSleep: [DateInterval]
+    /// MK24: the 10-second "how do you feel" check-in (one per day).
+    public var checkIns: [ReadinessCheckIn]
+    /// MK24: quick notes from Today's + button.
+    public var dayNotes: [DayNote]
+    /// MK24: lift goals, exercise history key → target estimated one-rep max (kg).
+    public var liftGoals: [String: Double]
+    /// MK24: weeks marked busy (exams, a heavy work week): Monday of the week → sessions taken off the goal.
+    public var busyWeeks: [BusyWeek]
 
     public init(restDays: [Date] = [], painFlags: [PainFlag] = [], nutrition: [NutritionDay] = [],
                 tape: [TapeEntry] = [], nutritionPhase: NutritionPhase? = nil, phases: [PhaseRecord] = [],
@@ -49,11 +57,16 @@ public struct GymExtras: Codable, Equatable {
         self.breaks = []
         self.weighIns = []
         self.manualSleep = []
+        self.checkIns = []
+        self.dayNotes = []
+        self.liftGoals = [:]
+        self.busyWeeks = []
     }
 
     enum CodingKeys: String, CodingKey {
         case restDays, painFlags, nutrition, tape, nutritionPhase, phases, miniCutThreshold
         case dayPlans, suggestions, priorityMuscles, declinedProposals, plannedRestDays, breaks, weighIns, manualSleep
+        case checkIns, dayNotes, liftGoals, busyWeeks
     }
 
     public init(from decoder: Decoder) throws {
@@ -73,6 +86,10 @@ public struct GymExtras: Codable, Equatable {
         breaks = try c.decodeIfPresent([GymBreak].self, forKey: .breaks) ?? []
         weighIns = try c.decodeIfPresent([WeighIn].self, forKey: .weighIns) ?? []
         manualSleep = try c.decodeIfPresent([DateInterval].self, forKey: .manualSleep) ?? []
+        checkIns = try c.decodeIfPresent([ReadinessCheckIn].self, forKey: .checkIns) ?? []
+        dayNotes = try c.decodeIfPresent([DayNote].self, forKey: .dayNotes) ?? []
+        liftGoals = try c.decodeIfPresent([String: Double].self, forKey: .liftGoals) ?? [:]
+        busyWeeks = try c.decodeIfPresent([BusyWeek].self, forKey: .busyWeeks) ?? []
     }
 
     /// MK20.2: the weigh-in logged on the same day as `date`, if any.
@@ -397,5 +414,73 @@ public enum MealPrep {
         guard let target, target > 0 else { return "Meal prep · \(lunches) protein lunches" }
         let grams = Int((target * 0.3 / 5).rounded()) * 5
         return "Meal prep · \(lunches) lunches × \(grams) g protein"
+    }
+}
+
+
+// MARK: - MK24
+
+/// "How do you feel?" in three taps, for days without sleep or heart-rate data.
+public struct ReadinessCheckIn: Codable, Equatable {
+    public var date: Date
+    public var sleepHours: Double
+    /// 1 = fresh, 2 = a bit sore, 3 = very sore.
+    public var soreness: Int
+    /// 1 = low, 2 = normal, 3 = high.
+    public var energy: Int
+
+    public init(date: Date, sleepHours: Double, soreness: Int, energy: Int) {
+        self.date = date
+        self.sleepHours = sleepHours
+        self.soreness = soreness
+        self.energy = energy
+    }
+
+    /// Same scale as the Health-based score: 75+ ready, 55+ moderate, below that take it easier.
+    public var readiness: Readiness {
+        var score = 100
+        var reasons: [String] = []
+        let text = String(format: "%.1f h", sleepHours)
+        if sleepHours < 5 { score -= 35; reasons.append("Only \(text) sleep") }
+        else if sleepHours < 6 { score -= 20; reasons.append("Short sleep (\(text))") }
+        else if sleepHours < 7 { score -= 8; reasons.append("Slightly short sleep (\(text))") }
+        else { reasons.append("Good sleep (\(text))") }
+        switch soreness {
+        case 3: score -= 25; reasons.append("Very sore")
+        case 2: score -= 10; reasons.append("A bit sore")
+        default: reasons.append("Not sore")
+        }
+        switch energy {
+        case 1: score -= 25; reasons.append("Low energy")
+        case 3: score = min(100, score + 5); reasons.append("High energy")
+        default: reasons.append("Normal energy")
+        }
+        score = max(0, min(100, score))
+        let level: Readiness.Level = score >= 75 ? .ready : (score >= 55 ? .moderate : .low)
+        return Readiness(level: level, score: score, reasons: reasons + ["from your check-in"], sleepHours: sleepHours)
+    }
+}
+
+public struct DayNote: Codable, Equatable, Identifiable {
+    public var id: UUID
+    public var date: Date
+    public var text: String
+    public init(id: UUID = UUID(), date: Date, text: String) {
+        self.id = id
+        self.date = date
+        self.text = text
+    }
+}
+
+public struct BusyWeek: Codable, Equatable {
+    /// Start of the week (as the app's calendar has it).
+    public var weekStart: Date
+    /// Sessions taken off the weekly goal.
+    public var fewer: Int
+    public var reason: String?
+    public init(weekStart: Date, fewer: Int, reason: String? = nil) {
+        self.weekStart = weekStart
+        self.fewer = fewer
+        self.reason = reason
     }
 }

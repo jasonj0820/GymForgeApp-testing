@@ -42,6 +42,7 @@
 		68C93B9D500FA8135DA7AB00 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA1B043C3E83234A9114A72 /* TodayView.swift */; };
 		297C671665EDD7C19949E123 /* HomeCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F235556C86D0809ACEBABE1 /* HomeCards.swift */; };
 		062EC3D2DEA88B44D60FB4B8 /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C63F43AD1DA890E36644EDC /* DiagnosticsView.swift */; };
+		ADE9B496A659DF5CCFC3AB96 /* HealthShortcutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2327257F4D61D77C2B88895B /* HealthShortcutsView.swift */; };
 		4BB4C308DB1485C0435149B8 /* DataCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A96C88D86D587B3F5AFE30D7 /* DataCheckView.swift */; };
 		758D137768EDF001897C1785 /* ProgressionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F8B50592672C14F4713931 /* ProgressionEngine.swift */; };
 		7B131E5F2D0B770E460F2137 /* SeedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7ADC1148502A3C68C28DE17 /* SeedData.swift */; };
@@ -128,6 +129,7 @@
 		5CFABBBD4806880B7E6A44CC /* Cluck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D4FF496F112E034D2523B3 /* Cluck.swift */; };
 		2116A98B7958672EE7083416 /* GymForgeWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA0754C6DEA6F6C46371E0BE /* GymForgeWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		66E8285EA55450521C1BA320 /* AutoBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E19773868498CFC7A7CDEA /* AutoBackup.swift */; };
+		C2B89BCF5615E52251C29554 /* HealthBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3145E99D8EC01E2796D4109E /* HealthBridge.swift */; };
 		CBB83AFCF09FBB65CB7484A0 /* BackupStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A18DC6F0CB840DA375EDD19 /* BackupStatus.swift */; };
 		2BB98D919FB35E53853A3816 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05A17C87257DAE4ED97EE5B0 /* DemoData.swift */; };
 		6C61807D296C80B2B8C19D78 /* AppLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85C45FA7A2BD55A5B0DB2CB /* AppLog.swift */; };
@@ -302,6 +304,7 @@
 		ECA1B043C3E83234A9114A72 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		6F235556C86D0809ACEBABE1 /* HomeCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeCards.swift; sourceTree = "<group>"; };
 		7C63F43AD1DA890E36644EDC /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
+		2327257F4D61D77C2B88895B /* HealthShortcutsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthShortcutsView.swift; sourceTree = "<group>"; };
 		A96C88D86D587B3F5AFE30D7 /* DataCheckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataCheckView.swift; sourceTree = "<group>"; };
 		FC29F8D7E0607462DE06D79A /* CoachView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachView.swift; sourceTree = "<group>"; };
 		07D774BC4F52614416C278AC /* Analytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analytics.swift; sourceTree = "<group>"; };
@@ -355,6 +358,7 @@
 		DA0754C6DEA6F6C46371E0BE /* GymForgeWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GymForgeWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6991D52489E3408EC2DE7FA5 /* CluckWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CluckWatchWidget.swift; sourceTree = "<group>"; };
 		81E19773868498CFC7A7CDEA /* AutoBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoBackup.swift; sourceTree = "<group>"; };
+		3145E99D8EC01E2796D4109E /* HealthBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthBridge.swift; sourceTree = "<group>"; };
 		9A18DC6F0CB840DA375EDD19 /* BackupStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupStatus.swift; sourceTree = "<group>"; };
 		05A17C87257DAE4ED97EE5B0 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
 		C85C45FA7A2BD55A5B0DB2CB /* AppLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLog.swift; sourceTree = "<group>"; };
@@ -514,6 +518,7 @@
 				C5B0A83AB94415A788F15170 /* SessionCoach.swift */,
 				418A8303F616AF04ACD4AEF4 /* CluckNotifier.swift */,
 				81E19773868498CFC7A7CDEA /* AutoBackup.swift */,
+				3145E99D8EC01E2796D4109E /* HealthBridge.swift */,
 				9A18DC6F0CB840DA375EDD19 /* BackupStatus.swift */,
 				05A17C87257DAE4ED97EE5B0 /* DemoData.swift */,
 				C85C45FA7A2BD55A5B0DB2CB /* AppLog.swift */,
@@ -590,6 +595,7 @@
 				ECA1B043C3E83234A9114A72 /* TodayView.swift */,
 				6F235556C86D0809ACEBABE1 /* HomeCards.swift */,
 				7C63F43AD1DA890E36644EDC /* DiagnosticsView.swift */,
+				2327257F4D61D77C2B88895B /* HealthShortcutsView.swift */,
 				A96C88D86D587B3F5AFE30D7 /* DataCheckView.swift */,
 				9F979A2A880A4B157BA39D3E /* WorkoutSummaryView.swift */,
 				CE2667E3750683BA26F268C3 /* MonthlyReportView.swift */,
@@ -928,6 +934,7 @@
 				68C93B9D500FA8135DA7AB00 /* TodayView.swift in Sources */,
 				297C671665EDD7C19949E123 /* HomeCards.swift in Sources */,
 				062EC3D2DEA88B44D60FB4B8 /* DiagnosticsView.swift in Sources */,
+				ADE9B496A659DF5CCFC3AB96 /* HealthShortcutsView.swift in Sources */,
 				4BB4C308DB1485C0435149B8 /* DataCheckView.swift in Sources */,
 				14DA1B7AAE95D4EF782AFFAF /* Training.swift in Sources */,
 				A056DDA7636B4A6F321D50AA /* StrongImporter.swift in Sources */,
@@ -970,6 +977,7 @@
 				1FB26823F2D4DAFFF03FB731 /* YearHeatmapView.swift in Sources */,
 				B17870E11275205A035C1E8D /* TapeMeasurementsView.swift in Sources */,
 				66E8285EA55450521C1BA320 /* AutoBackup.swift in Sources */,
+				C2B89BCF5615E52251C29554 /* HealthBridge.swift in Sources */,
 				CBB83AFCF09FBB65CB7484A0 /* BackupStatus.swift in Sources */,
 				2BB98D919FB35E53853A3816 /* DemoData.swift in Sources */,
 				6C61807D296C80B2B8C19D78 /* AppLog.swift in Sources */,

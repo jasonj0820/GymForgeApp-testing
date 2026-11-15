@@ -43,6 +43,8 @@ final class PhoneAppStore: ObservableObject {
     @Published var extras = GymExtras()
     /// MK23: why the last save failed (nil = saving normally). Shown on Today and in Diagnostics.
     @Published private(set) var saveProblem: String?
+    /// MK24: how many readings the last Apple Health export import added.
+    var lastImportAdded = 0
 
     let healthKit = HealthKitClient()
     let watchBridge = PhoneWatchBridge()
@@ -91,6 +93,9 @@ final class PhoneAppStore: ObservableObject {
         SafetyCopy.makeIfNewBuild(from: snapshotURL)   // MK23: before this build reads or changes anything
         load()
         _ = writer   // made now, so it sees the app come on screen
+        NotificationCenter.default.addObserver(forName: .healthBridgeChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.healthBridgeChanged() }
+        }
         healthKit.setManual(extras.weighIns)
         healthKit.setLocalSleep(extras.manualSleep)
         ensurePhaseRecord()
@@ -174,12 +179,26 @@ final class PhoneAppStore: ObservableObject {
         return stats
     }
 
+    /// MK24: today's check-in counts when it's there (it's what you said this morning); otherwise
+    /// sleep and heart rate from Health, an export or Shortcuts.
     var readiness: Readiness? {
-        ReadinessEngine.evaluate(
+        if let checkIn = todaysCheckIn { return checkIn.readiness }
+        return ReadinessEngine.evaluate(
             sleep: healthKit.sleep,
             restingHR: healthKit.restingHeartRate,
             hrv: healthKit.heartRateVariability
         )
+    }
+
+    var todaysCheckIn: ReadinessCheckIn? {
+        extras.checkIns.last { Calendar.current.isDateInToday($0.date) }
+    }
+
+    func saveCheckIn(_ checkIn: ReadinessCheckIn) {
+        extras.checkIns.removeAll { Calendar.current.isDate($0.date, inSameDayAs: checkIn.date) }
+        extras.checkIns.append(checkIn)
+        extras.checkIns = Array(extras.checkIns.suffix(120))
+        saveExtras()
     }
 
     var coachInsights: [CoachInsight] {
@@ -718,8 +737,13 @@ final class PhoneAppStore: ObservableObject {
         let result = try await Task.detached(priority: .userInitiated) {
             try HealthExportImporter.run(url: url, progress: progress)
         }.value
-        try result.save()
-        healthKit.setImported(result)
+        // MK24: adds to what's there instead of replacing it, so readings that came in through Shortcuts
+        // since the last export (or older exports) are kept. `newReadings` says how much was really new.
+        let (merged, added) = (HealthImportData.load() ?? HealthImportData(importedAt: .distantPast)).merging(result)
+        try merged.save()
+        lastImportAdded = added
+        healthKit.setImported(merged)
+        HealthImportReminder.schedule()
         var updated = profile
         if let height = result.heightCm { updated.heightCm = (height * 10).rounded() / 10 }
         if let birth = result.birthDate { updated.birthDate = birth }
@@ -734,6 +758,15 @@ final class PhoneAppStore: ObservableObject {
     func removeHealthImport() {
         HealthImportData.delete()
         healthKit.setImported(nil)
+        HealthImportReminder.schedule()
+    }
+
+    /// MK24: readings sent from a Shortcuts automation (see HealthBridge) — pick them up straight away.
+    func healthBridgeChanged() {
+        healthKit.setImported(HealthImportData.load())
+        checkBodyAlerts()
+        dayfold?.autoTickWeighIn(weightDates: healthKit.bodyWeight.map(\.date))
+        objectWillChange.send()
     }
 
     // MARK: Sleep kept in the app (MK21)

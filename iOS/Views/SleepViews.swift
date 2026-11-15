@@ -85,15 +85,9 @@ struct RecoveryView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let readiness = store.readiness {
                     ReadinessCard(readiness: readiness)
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label("No recovery score yet", systemImage: "bed.double").font(.headline)
-                        Text("It's worked out from last night's sleep. Tap Going to sleep at night and I'm awake in the morning, and the score shows here and on the Coach tab.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .card()
                 }
+                // MK24: the score from three taps, when there's no sleep or heart-rate data (or to correct it).
+                ReadinessCheckInCard()
                 SleepCard()
                 if !recent.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {

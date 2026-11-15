@@ -649,6 +649,7 @@ struct HealthImportSection: View {
     @State private var message: String?
     @State private var failed = false
     @State private var confirmRemove = false
+    @State private var reminderTick = 0
 
     var body: some View {
         let imported = store.healthKit.imported
@@ -672,12 +673,23 @@ struct HealthImportSection: View {
             if let imported, progress == nil {
                 LabeledContent("Last import", value: imported.importedAt.formatted(date: .abbreviated, time: .omitted))
                 Text(imported.summary).font(.footnote).foregroundStyle(.secondary)
+                Toggle("Remind me monthly", isOn: Binding(get: { HealthImportReminder.enabled },
+                                                          set: { HealthImportReminder.enabled = $0; reminderTick += 1 }))
+                    .id(reminderTick)
+                NavigationLink { HealthShortcutsView() } label: {
+                    Label("Daily, through Shortcuts", systemImage: "arrow.triangle.branch")
+                }
                 Button("Remove imported data", role: .destructive) { confirmRemove = true }
+            }
+            if imported == nil {
+                NavigationLink { HealthShortcutsView() } label: {
+                    Label("Daily, through Shortcuts", systemImage: "arrow.triangle.branch")
+                }
             }
         } header: {
             Text("Apple Health export")
         } footer: {
-            Text("In the Health app: tap your picture → Export All Health Data → Save to Files. Then pick export.zip here (no need to unzip). Brings in weight, body fat, height, birthday, sex, and the last \(HealthExportImporter.recoveryYears) years of sleep, resting heart rate and HRV. A newer import replaces the older one; your typed-in weigh-ins stay.")
+            Text("In the Health app: tap your picture → Export All Health Data → Save to Files. Then pick export.zip here (no need to unzip). Brings in weight, body fat, height, birthday, sex, and the last \(HealthExportImporter.recoveryYears) years of sleep, resting heart rate and HRV. A newer export only adds what's new; your typed-in weigh-ins stay. For every day without exporting, set up the Shortcuts automation.")
         }
         // Its own document picker: a second .fileImporter on this screen would clash with the backup restore one.
         .sheet(isPresented: $picking) {
@@ -705,7 +717,9 @@ struct HealthImportSection: View {
                 let data = try await store.importHealthExport(from: url) { value in
                     Task { @MainActor in if progress != nil { progress = value } }
                 }
-                message = "Imported: " + data.summary
+                message = store.lastImportAdded == 0
+                    ? "Nothing new in this export: everything in it was already here."
+                    : "Added \(store.lastImportAdded) new reading\(store.lastImportAdded == 1 ? "" : "s"). In total: " + data.summary
             } catch {
                 failed = true
                 message = error.localizedDescription

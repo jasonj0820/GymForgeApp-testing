@@ -83,6 +83,11 @@ struct TodayView: View {
     @State private var askMoreTraining = false
     @State private var showMoreTraining = false
     @State private var showWeighIn = false
+    @AppStorage("checkin.dismissedDay") private var dismissedDay = ""
+    private var checkInDismissed: Bool {
+        get { dismissedDay == Date.now.formatted(.iso8601.year().month().day()) }
+        nonmutating set { dismissedDay = newValue ? Date.now.formatted(.iso8601.year().month().day()) : "" }
+    }
 
     var body: some View {
         let today = store.homeToday
@@ -123,6 +128,14 @@ struct TodayView: View {
                 }
 
                 HomeHeroCard(today: today)
+                // MK24: no sleep or heart-rate data for today, and no check-in yet: ask in three taps.
+                if store.readiness == nil, Calendar.current.component(.hour, from: .now) < 15, !checkInDismissed {
+                    ReadinessCheckInCard()
+                        .overlay(alignment: .topTrailing) {
+                            Button { checkInDismissed = true } label: { Image(systemName: "xmark").font(.caption.bold()) }
+                                .buttonStyle(.borderless).padding(14).accessibilityLabel("Not today")
+                        }
+                }
                 HomeRoutineCard(showWeighIn: $showWeighIn)
                 HomeWeekCard()
                 HomeHeadsUpCard(showWeighIn: $showWeighIn)

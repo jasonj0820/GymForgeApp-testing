@@ -42,6 +42,9 @@ struct DiagnosticsView: View {
                 row("Apple Health", Capabilities.healthLine(store), ok: Capabilities.healthWorks(store))
                 row("iCloud backup", Capabilities.cloudLine(store), ok: store.cloud.isSignedIn && store.cloud.statusMessage == nil)
                 row("Apple Watch", store.watchBridge.statusText, ok: store.watchBridge.lastError == nil)
+                row("Heart rate from the Watch", Capabilities.watchHeartRateLine(store), ok: Capabilities.watchHeartRateWorks(store))
+                row("Health through Shortcuts", HealthBridge.last.map { "Last " + $0.date.formatted(.relative(presentation: .named)) } ?? "Not set up",
+                    ok: HealthBridge.last.map { Date().timeIntervalSince($0.date) < 3 * 86_400 } ?? false)
             } header: {
                 Text("What this install can do")
             } footer: {
@@ -161,6 +164,19 @@ enum Capabilities {
     static func healthLine(_ store: PhoneAppStore) -> String {
         if let error = store.healthKit.authorizationError { return "Not available (\(error))" }
         return store.healthKit.hasRequestedAuthorization ? "Connected" : "Not asked yet"
+    }
+
+    /// MK24: the Watch app has its own Health access. If workouts it ran came back with a heart rate,
+    /// that access works on this install even when the iPhone's doesn't.
+    static func watchHeartRateWorks(_ store: PhoneAppStore) -> Bool {
+        store.workoutLogs.contains { ($0.averageHeartRateBPM ?? 0) > 0 && Date().timeIntervalSince($0.startedAt) < 30 * 86_400 }
+    }
+
+    static func watchHeartRateLine(_ store: PhoneAppStore) -> String {
+        guard let last = store.workoutLogs.filter({ ($0.averageHeartRateBPM ?? 0) > 0 }).max(by: { $0.startedAt < $1.startedAt }) else {
+            return "Never seen: start a workout from the Watch to test"
+        }
+        return "Working · last " + last.startedAt.formatted(.relative(presentation: .named))
     }
 
     static func cloudLine(_ store: PhoneAppStore) -> String {

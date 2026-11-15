@@ -1,4 +1,13 @@
-# Splitday MK23 — gym and daily routine in one app (iPhone + Apple Watch)
+# Splitday MK24 — gym and daily routine in one app (iPhone + Apple Watch)
+
+## MK24 — sections A to E of the list
+Numbers are the ones on the 204-item list.
+
+**A. Fixes and tests**
+- **Data check-up (189):** Settings → Data and devices → Data check-up finds sets that look like typos (over 500 kg, or 2.5× your usual top weight on that exercise, or 100+ reps), workouts saved twice, empty workouts, planned days for deleted routines, and exercise names that differ only in spelling (so their history is split). Each has a one-tap fix, which asks first.
+- **Plans follow your routines (17):** deleting a routine clears the days planned for it from today on; renaming one renames its planned days.
+- **More checks (20, 33):** the fixed split day by day (Thursday buffer, Friday's three court answers, Saturday's catch-up and lower-back swap, a new week), and late sessions across time zones (11:30 pm Wednesday stays Wednesday flying to Perth; flying to Auckland it lands on Thursday and shows as done).
+- **Warnings fixed (35)**, and the home screen's cards moved out of TodayView.swift into HomeCards.swift (34).
 
 ## MK23 — foundations: pictures of every build, diagnostics, safer data
 The first batch from the 111-item list. The numbers are the ones on that list.
