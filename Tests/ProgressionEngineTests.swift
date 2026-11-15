@@ -877,25 +877,43 @@ struct GymForgeChecks {
         var gregorian = Calendar(identifier: .gregorian)
         gregorian.timeZone = TimeZone(identifier: "Australia/Brisbane")!
         gregorian.firstWeekday = 2
-        func session(_ d: Date, _ w: Double) -> WorkoutLog {
+        func yearSession(_ d: Date, _ w: Double) -> WorkoutLog {
             WorkoutLog(routineID: routine.id, routineName: "Test", startedAt: d, endedAt: d.addingTimeInterval(3600), exercises: [log(press, [(w, 10), (w, 9)])])
         }
         let jan5 = gregorian.date(from: DateComponents(year: 2026, month: 1, day: 5, hour: 17))!   // a Monday
-        let yearLogs = (0..<10).map { session(jan5.addingTimeInterval(Double($0) * 7 * 86_400), 80 + Double($0)) }
-            + [session(jan5.addingTimeInterval(2 * 86_400), 80)]   // two sessions in week 1
+        let yearLogs = (0..<10).map { yearSession(jan5.addingTimeInterval(Double($0) * 7 * 86_400), 80 + Double($0)) }
+            + [yearSession(jan5.addingTimeInterval(2 * 86_400), 80)]   // two sessions in week 1
         let periodA = PeriodStats.make(yearLogs, from: jan5, to: jan5.addingTimeInterval(28 * 86_400))
         let periodB = PeriodStats.make(yearLogs, from: jan5.addingTimeInterval(28 * 86_400), to: jan5.addingTimeInterval(56 * 86_400))
         check(periodA.sessions == 5 && periodB.sessions == 4 && periodA.sets == 10, "period counts")
         let change = PeriodStats.liftChanges(periodA, periodB).first
         check(change?.from == 83 && change?.to == 87, "heaviest set 83 → 87 kg between periods")
-        let review = YearReview.make(yearLogs, year: 2026, calendar: gregorian)
-        check(review.sessions == 11 && review.bestWeek == 2 && review.longestStreakWeeks == 10, "year: sessions, best week, 10-week streak")
-        check(review.mostImproved.first?.to == 89 && review.busiestMonth == 1, "year: most improved lift and busiest month")
+        let yearReview = YearReview.make(yearLogs, year: 2026, calendar: gregorian)
+        check(yearReview.sessions == 11 && yearReview.bestWeek == 2 && yearReview.longestStreakWeeks == 10, "year: sessions, best week, 10-week streak")
+        check(yearReview.mostImproved.first?.to == 89 && yearReview.busiestMonth == 1, "year: most improved lift and busiest month")
         check(YearReview.make(yearLogs, year: 2026, weekGoal: 2, calendar: gregorian).longestStreakWeeks == 1, "streak with a 2-a-week bar")
         let pts = [(date: jan5, value: 80.0), (date: jan5.addingTimeInterval(86_400), value: 82.5), (date: jan5.addingTimeInterval(2 * 86_400), value: 82.5)]
         check(LiftMarkers.weightIncreases(pts) == [jan5.addingTimeInterval(86_400)], "marker where the weight went up")
         let ranges = [(date: jan5, low: 8, high: 12), (date: jan5.addingTimeInterval(86_400), low: 6, high: 10)]
         check(LiftMarkers.repRangeChanges(ranges).map(\.text) == ["6–10"], "marker where the rep range changed")
+
+        // MK24 G1: meals, recipes, shopping list, labels, food guesses.
+        check(Meal.at(gregorian.date(bySettingHour: 7, minute: 30, second: 0, of: jan5)!, calendar: gregorian) == .breakfast
+              && Meal.at(gregorian.date(bySettingHour: 18, minute: 0, second: 0, of: jan5)!, calendar: gregorian) == .dinner, "meal from the time")
+        let chilli = Recipe(name: "Chilli", servings: 4, ingredients: [
+            Ingredient(name: "Beef mince", amount: "500 g", proteinG: 100, calories: 1250, cost: 9),
+            Ingredient(name: "Beans", amount: "1 tin", proteinG: 20, calories: 350, cost: 1)])
+        check(chilli.proteinPerServe == 30 && chilli.costPerServe == 2.5, "per serve: 30 g protein, $2.50")
+        let bowl = Recipe(name: "Bowl", servings: 2, ingredients: [Ingredient(name: "beef mince", amount: "250 g")])
+        let shop = ShoppingList.make([PrepItem(recipeID: chilli.id, batches: 2), PrepItem(recipeID: bowl.id)], recipes: [chilli, bowl])
+        check(shop.count == 2 && ShoppingList.total(shop.first { $0.id == "beef mince" }?.amounts ?? []) == "1250 g",
+              "shopping list merges the same ingredient across recipes and batches")
+        let label = LabelParser.parse(["Servings per package: 8", "Serving size: 30g", "Energy 485kJ 1620kJ", "Protein 4.2g 14.0g", "Fat, total 2.1g 7.0g"])
+        check(label.proteinPerServe == 4.2 && label.proteinPer100 == 14 && label.kcalPerServe == 116 && label.servingGrams == 30, "nutrition panel")
+        check(LabelParser.parse(["Energy 1,250kJ (299 Cal) 1,560kJ (373 Cal)"]).kcalPerServe == 299, "kJ with Cal in brackets")
+        check(FoodEstimate.parse("Chicken breast | 31 g | 165 kcal\nnonsense\n- Rice | 4 | 205").map(\.name) == ["Chicken breast", "Rice"], "model answer lines")
+        let guessed = FoodEstimate.guess("200g chicken and rice, 3 eggs")
+        check(guessed.count == 3 && guessed[0].proteinG == 62 && guessed[2].proteinG == 19, "table guess with grams and counts")
 
         print("PASS: all GymForge checks")
     }

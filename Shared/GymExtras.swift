@@ -38,6 +38,16 @@ public struct GymExtras: Codable, Equatable {
     public var liftGoals: [String: Double]
     /// MK24: weeks marked busy (exams, a heavy work week): Monday of the week → sessions taken off the goal.
     public var busyWeeks: [BusyWeek]
+    /// MK24 (G): what you ate, saved meals, the recipe book and this week's meal prep.
+    public var foodLog: [FoodEntry]
+    public var savedMeals: [SavedMeal]
+    public var recipes: [Recipe]
+    public var prepPlan: [PrepItem]
+    /// Day ("yyyy-MM-dd") → millilitres of water.
+    public var water: [String: Int]
+    public var caffeine: [CaffeineEntry]
+    public var dayTags: [DayTag]
+    public var goalWeight: GoalWeight?
 
     public init(restDays: [Date] = [], painFlags: [PainFlag] = [], nutrition: [NutritionDay] = [],
                 tape: [TapeEntry] = [], nutritionPhase: NutritionPhase? = nil, phases: [PhaseRecord] = [],
@@ -61,12 +71,21 @@ public struct GymExtras: Codable, Equatable {
         self.dayNotes = []
         self.liftGoals = [:]
         self.busyWeeks = []
+        self.foodLog = []
+        self.savedMeals = []
+        self.recipes = []
+        self.prepPlan = []
+        self.water = [:]
+        self.caffeine = []
+        self.dayTags = []
+        self.goalWeight = nil
     }
 
     enum CodingKeys: String, CodingKey {
         case restDays, painFlags, nutrition, tape, nutritionPhase, phases, miniCutThreshold
         case dayPlans, suggestions, priorityMuscles, declinedProposals, plannedRestDays, breaks, weighIns, manualSleep
         case checkIns, dayNotes, liftGoals, busyWeeks
+        case foodLog, savedMeals, recipes, prepPlan, water, caffeine, dayTags, goalWeight
     }
 
     public init(from decoder: Decoder) throws {
@@ -90,6 +109,14 @@ public struct GymExtras: Codable, Equatable {
         dayNotes = try c.decodeIfPresent([DayNote].self, forKey: .dayNotes) ?? []
         liftGoals = try c.decodeIfPresent([String: Double].self, forKey: .liftGoals) ?? [:]
         busyWeeks = try c.decodeIfPresent([BusyWeek].self, forKey: .busyWeeks) ?? []
+        foodLog = try c.decodeIfPresent([FoodEntry].self, forKey: .foodLog) ?? []
+        savedMeals = try c.decodeIfPresent([SavedMeal].self, forKey: .savedMeals) ?? []
+        recipes = try c.decodeIfPresent([Recipe].self, forKey: .recipes) ?? []
+        prepPlan = try c.decodeIfPresent([PrepItem].self, forKey: .prepPlan) ?? []
+        water = try c.decodeIfPresent([String: Int].self, forKey: .water) ?? [:]
+        caffeine = try c.decodeIfPresent([CaffeineEntry].self, forKey: .caffeine) ?? []
+        dayTags = try c.decodeIfPresent([DayTag].self, forKey: .dayTags) ?? []
+        goalWeight = try c.decodeIfPresent(GoalWeight.self, forKey: .goalWeight)
     }
 
     /// MK20.2: the weigh-in logged on the same day as `date`, if any.

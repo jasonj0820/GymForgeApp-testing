@@ -115,6 +115,7 @@ struct NutritionView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 NutritionCard()
+                FoodTodayCard()   // MK24 (G1)
                 CalorieCard()
                 PhaseCard()
             }
