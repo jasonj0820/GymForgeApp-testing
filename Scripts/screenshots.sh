@@ -18,7 +18,7 @@ SCREENS=(today today-end workout workouts progress progress-end lift body body-e
 
 echo "Building for the simulator…"
 xcodebuild -project GymForge.xcodeproj -scheme GymForge -configuration Debug \
-  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+  -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath "$DERIVED" CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES ARCHS=arm64 \
   build > build/sim-build.log 2>&1
 APP="$DERIVED/Build/Products/Debug-iphonesimulator/GymForge.app"

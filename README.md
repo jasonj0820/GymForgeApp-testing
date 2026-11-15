@@ -1,4 +1,37 @@
-# Splitday MK22.1 — gym and daily routine in one app (iPhone + Apple Watch)
+# Splitday MK23 — gym and daily routine in one app (iPhone + Apple Watch)
+
+## MK23 — foundations: pictures of every build, diagnostics, safer data
+The first batch from the 111-item list. The numbers are the ones on that list.
+
+**Seeing a build before installing it**
+- **Pictures of every screen (25, 26).** Each push, GitHub runs the app in the iOS Simulator in *demo mode* (made-up data, no permission prompts, its own data file) and takes a picture of 25 screens, plus four in dark mode. They're pushed to the **`ci-screens`** branch (one commit, replaced each build) with a README that shows them all. Locally: `zsh Scripts/screenshots.sh`. Demo mode is `-demo YES -screen <name>`; the names are in `DemoRoot`.
+- **Direct download (29).** Each build is also published as a **Release** (`Splitday build N`), so the IPA is one tap from the repo's Releases page.
+- **Adding files (34).** `python3 Scripts/add_file.py iOS/Views/New.swift iOS/Views/TodayView.swift` puts a new Swift file in the Xcode project next to an existing one, in the same targets. New code no longer has to be stuffed into existing files.
+
+**Your data**
+- **Saving in the background (7).** Every tick of a box used to encode and rewrite the whole history on the main thread, then send all of it to the Watch. Changes are now written off the main thread, once per burst (0.4 s), and the Watch gets one send per burst. Nothing waits when it matters: the pending write is flushed the moment the app leaves the screen, and anything saved while it isn't on screen (a notification button, a Watch message) is written immediately, as before.
+- **A failed save is no longer silent (8).** It's logged, and Today shows a red warning until a save works again.
+- **Backups you can see (183).** The top of Settings says when the last backup that holds *everything* was made. After two weeks without one, Today's "For you" card says so.
+- **Daily automatic backup (184).** Settings → Data and devices → Automatic backup to Files: Daily (keeps 7) or Weekly (keeps 4). Pick a folder in iCloud Drive and the copies leave the phone, which works on sideloaded installs.
+- **A safety copy before each new build (185).** The first time a new build opens, the data file is copied aside before the build reads it (newest 5, in Data and devices → Safety copies; tap one to go back to it). If the automatic backup is set up, it runs then too.
+- **Imported Health data is in backups (6).** Weight, body fat, sleep and heart-rate history from an Apple Health export now travel inside "Export everything" and the automatic backup.
+- **Why it matters (12, 177).** More Training's key lives in the iPhone's Keychain and doesn't follow the app to a different Apple ID or signing tool. Only the full export survives that; the backup page says so and shows its age.
+
+**Settings (2, 11, 13, 27, 28, 37)**
+- **Four pages** instead of one list of 18 sections: *You and your goals*, *Training and coach*, *Sounds and reminders*, *Data and devices*.
+- **Diagnostics**: build number, whether the data file is saving, backup state, widget storage, notification count against iOS's 64, Apple Health, iCloud, Watch, recent problems, and **Copy report**.
+- **Honest about what the install can't do.** When iCloud isn't available, or Apple Health has answered with an error, the page says "Not available in this install" and points to what works instead of showing buttons that do nothing.
+- **What's new** opens once per build.
+- **Screens you open** are counted on the phone only (Diagnostics), to help decide what to cut.
+
+**Workout and Today (3, 4, 5, 18, 22, 23, 24)**
+- **Complete with empty boxes logs the plan.** The button says what it will log ("as planned: 80 kg × 10"). Type in a box to change either number.
+- **The screen stays on** while the workout screen is open.
+- **The speeches row is hidden** until you've imported audio.
+- **Start button** on every routine in the Workouts tab.
+- **Undo** for a routine step ticked on Today (8 seconds).
+- **One Sunday weigh-in prompt.** If your routine has a weigh-in step, Today doesn't also list it under "For you", and the separate 9:00 notification is skipped when the routine's weekly reminder is on.
+- **The coach adds one set at a time.** A volume suggestion used to be able to take an exercise from 3 to 5 sets in one go.
 
 ## MK22.1 — More Training: what to do on the widget, sideways timers, pause from the island
 - **The widget says what to do.** While a timer runs, the More Training widget shows the step's instruction under a smaller clock: the guided PAC cue ("Clamp set 1 · Vacuum −8 inHg (−27 kPa) · clamp +8 inHg…"), or the step's setting ("Extender on, NIR on · Tension 1.8 kg", "Vacuum 5.0 inHg (17 kPa)"). During a rest it says what to get ready for ("Switch to PAC · Fill up…", "Next: round 3 of 4"). The headline comes first; if it doesn't all fit on the small widget, the tip at the end is what's cut. Stamina shows "Feel close? Pause to cool down." The Lock Screen card and the Dynamic Island still only say Timer / Work / Rest.
