@@ -69,8 +69,8 @@ enum Demo {
         profile.sex = "male"
 
         var extras = GymExtras()
-        extras.nutritionPhase = .bulk
-        extras.phases = [PhaseRecord(phase: .bulk, start: calendar.date(byAdding: .day, value: -70, to: today) ?? today)]
+        extras.nutritionPhase = .bulking
+        extras.phases = [PhaseRecord(phase: .bulking, start: calendar.date(byAdding: .day, value: -70, to: today) ?? today)]
         // A weigh-in every Sunday for 26 weeks: slow bulk.
         for week in 0..<26 {
             guard let date = calendar.date(byAdding: .day, value: -7 * week - (calendar.component(.weekday, from: today) - 1), to: today),
