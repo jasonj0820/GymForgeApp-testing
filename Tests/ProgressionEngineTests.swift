@@ -851,6 +851,28 @@ struct GymForgeChecks {
         check(SpokenSet.parse("twenty five for twelve") == .init(weightKg: 25, reps: 12), "twenty five")
         check(SpokenSet.parse("hello") == nil, "no numbers → nothing")
 
+        // MK24 E: goal dates and accessory rotation.
+        let day0 = Date(timeIntervalSince1970: 1_790_000_000)
+        let climbing = (0..<6).map { (date: day0.addingTimeInterval(Double($0) * 7 * 86_400), value: 80 + Double($0) * 2.5) }
+        let nowE = day0.addingTimeInterval(5 * 7 * 86_400)
+        if case .onTrack(let when, let rate) = GoalProjection.project(climbing, target: 100, now: nowE) {
+            let weeks = when.timeIntervalSince(nowE) / (7 * 86_400)
+            check(abs(rate - 2.5) < 0.01 && abs(weeks - 3) < 0.05, "2.5 kg a week from 92.5 → 100 kg in 3 weeks")
+        } else { check(false, "climbing lift should be on track") }
+        check(GoalProjection.project(climbing, target: 85, now: nowE) == .reached(climbing[2].date), "already lifted it")
+        let stuck = (0..<6).map { (date: day0.addingTimeInterval(Double($0) * 7 * 86_400), value: 80.0) }
+        check(GoalProjection.project(stuck, target: 100, now: nowE) == .flat(perWeek: 0), "flat lift has no date")
+        check(GoalProjection.project(Array(climbing.prefix(2)), target: 100, now: nowE) == .tooFew, "two sessions is too few")
+        let lateral = ExerciseDefinition(name: "Lateral Raise", category: .shoulders, repMin: 12, repMax: 20, defaultSets: 3, restSeconds: 60,
+                                         weightIncrementKg: 1, alternatives: [
+            ExerciseDefinition(name: "Cable Lateral", category: .shoulders, repMin: 12, repMax: 20, defaultSets: 3, restSeconds: 60, weightIncrementKg: 1),
+            ExerciseDefinition(name: "Machine Lateral", category: .shoulders, repMin: 12, repMax: 20, defaultSets: 3, restSeconds: 60, weightIncrementKg: 1)])
+        let benchWithSwap = ExerciseDefinition(name: "Bench", category: .chest, repMin: 6, repMax: 10, defaultSets: 3, restSeconds: 120,
+                                               weightIncrementKg: 2.5, alternatives: [chestPress])
+        let pushDay = WorkoutRoutine(name: "Push", exercises: [RoutineExercise(exercise: benchWithSwap, order: 0), RoutineExercise(exercise: lateral, order: 1)])
+        let rotation = AccessoryRotation.plan([pushDay])
+        check(rotation.count == 1 && rotation[0].to.name == "Machine Lateral", "rotation moves the raise to its last option, not the bench")
+
         print("PASS: all GymForge checks")
     }
 }

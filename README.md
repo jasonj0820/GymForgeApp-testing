@@ -9,6 +9,35 @@ Numbers are the ones on the 204-item list.
 - **More checks (20, 33):** the fixed split day by day (Thursday buffer, Friday's three court answers, Saturday's catch-up and lower-back swap, a new week), and late sessions across time zones (11:30 pm Wednesday stays Wednesday flying to Perth; flying to Auckland it lands on Thursday and shows as done).
 - **Warnings fixed (35)**, and the home screen's cards moved out of TodayView.swift into HomeCards.swift (34).
 
+**B. Health without HealthKit**
+- **Shortcuts bridge (37, 38):** Settings → Data and devices → Apple Health → Health through Shortcuts walks you through two personal automations: one reads weight, body fat, sleep, resting HR and HRV from Health each morning and hands them to Splitday ("Log health readings"), the other reads your recent Splitday workouts ("Recent Splitday workouts") and saves them to Health.
+- **Export import adds only what's new (39)**, says how many readings it added, and can remind you on the 1st of each month.
+- **Watch heart rate check (40)** in Diagnostics.
+- **Readiness check-in (41):** with no sleep or heart data for today, Today asks three questions (sleep, soreness, energy) before 3 pm.
+
+**C. Today**
+- **+ button (44):** protein, calories, weight or a note. Today's notes show on Today (long-press to delete).
+- **Morning brief (45):** session, protein target, routine steps and bedtime, at 7:00 or your time.
+- **Your day (46):** turn on "Show my calendar on Today" and Today lists your events with the gym (at your usual time) and bedtime. Read-only.
+- **Leave for the gym (47):** at your usual start time minus travel, only on days with a session to do, and not when your calendar has something on.
+- **Sunday reset (48):** weigh-in, last week's review, next week's plan and meal prep on one card that ticks itself.
+- **Tabs (49):** Today · Workouts · Routine · Progress · Body. Coach is at the top of Workouts; routine reminders open the Routine tab.
+
+**D. Live workout**
+- **✓ on the Lock Screen and Dynamic Island (50):** logs the planned set (the grey numbers) without opening the app.
+- **In use (58):** the machine's taken, so the next exercise comes up and this one waits until after it (supersets move together).
+- **Reorder (59):** drag what's left into any order.
+- **Finish time (60)** on the workout screen and the Lock Screen, at today's pace.
+- **Music (63):** run a Shortcut or open a playlist when a workout starts (Settings → Sounds and reminders → Music); ♪ on the workout screen runs it again.
+- **Say the set (64):** tap the mic next to Complete and say "80 for 10", "eighty kilos ten reps" or "12" (reps, at the planned weight). Shows what it heard, with Undo.
+
+**E. Coach**
+- **Lift goals (72):** set a target on any lift's page; it shows the date you'd reach it at your rate over the last 12 weeks. Coach lists them all.
+- **This week's changes and why (73):** every lift going up, holding or coming down, and why this week's goal is what it is.
+- **Accessory rotation (74):** at the start of each block, accessories with a swap option move to the next one (main lifts stay). Or any time from Coach.
+- **Busy weeks (76):** exams or deadlines in your calendar suggest easing the goal; or set it yourself.
+- **Ask the coach (78):** plain-English questions answered on the iPhone by Apple's on-device model (iOS 26, iPhone 15 Pro or later), from a summary of your last 8 weeks.
+
 ## MK23 — foundations: pictures of every build, diagnostics, safer data
 The first batch from the 111-item list. The numbers are the ones on that list.
 

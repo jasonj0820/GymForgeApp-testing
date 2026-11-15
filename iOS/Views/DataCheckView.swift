@@ -150,7 +150,7 @@ enum DataCheck {
         let sorted = logs.sorted { $0.startedAt < $1.startedAt }
         for (a, b) in zip(sorted, sorted.dropFirst())
         where a.routineID == b.routineID && b.startedAt.timeIntervalSince(a.startedAt) < 120
-            && a.exercises.flatMap(\.sets).map { "\($0.weightKg)x\($0.reps)" } == b.exercises.flatMap(\.sets).map { "\($0.weightKg)x\($0.reps)" } {
+            && a.exercises.flatMap(\.sets).map({ "\($0.weightKg)x\($0.reps)" }) == b.exercises.flatMap(\.sets).map({ "\($0.weightKg)x\($0.reps)" }) {
             issues.append(DataIssue(id: "dup-\(b.id)", kind: .duplicate, title: "\(b.routineName), \(date(b.startedAt))",
                                     detail: "\(b.exercises.reduce(0) { $0 + $1.sets.count }) sets, saved twice", fix: .deleteWorkout(b.id)))
         }

@@ -6,7 +6,7 @@ enum BuildInfo {
     static var version: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?" }
     static var build: String { Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?" }
     /// The name on the branch and in the README ("MK23"). Bump with each version.
-    static let name = "MK23"
+    static let name = "MK24"
     static var summary: String { "\(name) · build \(build)" }
 }
 

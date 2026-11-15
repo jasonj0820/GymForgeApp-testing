@@ -6,6 +6,23 @@ struct CoachView: View {
     var body: some View {
         let proposals = store.coachProposals
         List {
+            // MK24: plain-English questions, and why this week looks the way it does.
+            Section {
+                NavigationLink { AskCoachView() } label: { Label("Ask the coach", systemImage: "bubble.left.and.text.bubble.right") }
+                NavigationLink { WeekChangesView() } label: { Label("This week's changes and why", systemImage: "arrow.up.arrow.down") }
+            }
+            if store.rotationDue {
+                Section {
+                    NavigationLink { AccessoryRotationView() } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("New block: rotate accessories?", systemImage: "arrow.triangle.2.circlepath").font(.headline)
+                            Text("\(store.accessoryRotationPlan.count) accessor\(store.accessoryRotationPlan.count == 1 ? "y has" : "ies have") a swap option ready.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            BusyWeekSection()
             Section {
                 FocusPicker()
                 ForEach(proposals.prefix(3)) { ProposalRow(proposal: $0) }
@@ -23,6 +40,7 @@ struct CoachView: View {
             }
 
             TrainingBlockSection()
+            LiftGoalsSection()
 
             Section {
                 NavigationLink {
@@ -39,6 +57,11 @@ struct CoachView: View {
                     MonthlyReportView()
                 } label: {
                     Label("Monthly report", systemImage: "doc.text.magnifyingglass")
+                }
+                NavigationLink {
+                    AccessoryRotationView()
+                } label: {
+                    Label("Rotate accessories", systemImage: "arrow.triangle.2.circlepath")
                 }
             }
 

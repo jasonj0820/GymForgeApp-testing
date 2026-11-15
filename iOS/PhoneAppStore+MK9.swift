@@ -8,7 +8,8 @@ extension PhoneAppStore {
     /// This week's goal after sick / travel days (each one takes a session off), or a break's goal (MK11.3).
     var thisWeekGoal: Int {
         let goal = GymBreakRules.breakInWeek(of: .now, breaks: extras.breaks)?.weekGoal(normal: weeklyGoal) ?? weeklyGoal
-        return max(goal - extras.excusedDays(inWeekOf: .now), 0)
+        // MK24: a busy week (exams, deadlines) takes sessions off too.
+        return max(goal - extras.excusedDays(inWeekOf: .now) - (busyWeek(of: .now)?.fewer ?? 0), 0)
     }
 
     enum DayChoice: Hashable {

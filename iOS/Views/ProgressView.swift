@@ -540,6 +540,7 @@ struct LiftDetailView: View {
                 chart(all.filter { range.includes($0.date) }, metric: shown,
                       records: records(all, unit: unit))
                 nextStep
+                LiftGoalCard(exercise: exercise)   // MK24
                 recent(all)
             }
             .padding()

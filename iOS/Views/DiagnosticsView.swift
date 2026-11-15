@@ -212,18 +212,18 @@ struct WhatsNewView: View {
     }
 
     static let notes: [Note] = [
-        Note(icon: "square.grid.2x2", title: "Settings in four pages",
-             text: "You and your goals, Training and coach, Sounds and reminders, Data and devices."),
-        Note(icon: "externaldrive.badge.checkmark", title: "Backups you can see",
-             text: "Settings shows when you last backed up. Automatic backups can run daily, and a safety copy is kept each time a new build opens."),
-        Note(icon: "stethoscope", title: "Diagnostics",
-             text: "Settings → Diagnostics: what this install can do, recent problems, and a report you can copy."),
-        Note(icon: "bolt", title: "Faster saving",
-             text: "Changes are written in the background instead of on every tap, and a failed save now shows a warning on Today."),
-        Note(icon: "checkmark.circle", title: "Workout screen",
-             text: "Complete with empty boxes logs the planned numbers. The screen stays awake. The speeches row hides until you import audio."),
-        Note(icon: "play.fill", title: "Small fixes",
-             text: "A Start button on each routine in Workouts, undo for a routine step ticked on Today, and one weigh-in prompt on Sundays instead of two.")
+        Note(icon: "checklist", title: "Routine has its own tab",
+             text: "Today · Workouts · Routine · Progress · Body. Coach is at the top of Workouts, with Ask the coach and this week's changes."),
+        Note(icon: "plus.circle", title: "The + on Today",
+             text: "Protein, calories, weight or a note in two taps. A morning brief, your calendar next to the gym and bedtime, and a leave-for-the-gym nudge (Settings → Sounds and reminders → Your day)."),
+        Note(icon: "lock.iphone", title: "Log a set from the Lock Screen",
+             text: "The workout card has a ✓ button with the planned set. Also: In use (machine taken), Reorder, a finish time, and the mic: say \"80 for 10\"."),
+        Note(icon: "flag.checkered", title: "Goals and coaching",
+             text: "A goal on any lift with the date you'd reach it, busy weeks that ease the goal, accessory rotation each block."),
+        Note(icon: "heart.text.square", title: "Health through Shortcuts",
+             text: "Settings → Data and devices → Apple Health: two automations bring weight, sleep and heart data in and send workouts out. Plus a 3-tap readiness check-in."),
+        Note(icon: "stethoscope", title: "Data check-up",
+             text: "Settings → Data and devices finds typos, double saves and split histories, with a fix for each.")
     ]
 
     var body: some View {
