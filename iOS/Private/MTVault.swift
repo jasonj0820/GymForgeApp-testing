@@ -60,6 +60,7 @@ final class MTVault: ObservableObject {
             }
             loadThumbnails()
             isUnlocked = true
+            MTPlan.cueOverrides = data.settings.cueOverrides ?? [:]   // MK24 (173)
             advanceInterval()
             MTLiveTimer.sync(data)   // a timer that kept running while locked gets its card back
             rescheduleMeasureReminder()
@@ -110,15 +111,18 @@ final class MTVault: ObservableObject {
     // MARK: MK17 — stay open while a timer runs
 
     private var backgroundedAt: Date?
+    private var leftWithTimer = false
     /// When the running interval program was due to finish (nil = open timer), noted on leaving the app.
     private var timerEndsAt: Date?
 
     /// Leaving the app: stays unlocked while a timer runs (so it's still open when you come back and the
     /// screen locking doesn't end it); otherwise locks as before. Returns false if it locked.
     func stayOpenForTimer(now: Date = .now) -> Bool {
-        guard isUnlocked, data.timerRunning else { return false }
+        // MK24 (175): or for the auto-lock delay you chose.
+        guard isUnlocked, data.timerRunning || (data.settings.autoLockMinutes ?? 0) > 0 else { return false }
         save()
         backgroundedAt = now
+        leftWithTimer = data.timerRunning
         timerEndsAt = MTLiveTimer.content(for: data, now: now)?.state.endsAt
         return true
     }
@@ -131,7 +135,9 @@ final class MTVault: ObservableObject {
         advanceInterval(now: now)
         tickStamina(now: now)
         let free = max(away, timerEndsAt ?? away)
-        if !data.timerRunning, now.timeIntervalSince(free) > 10 * 60 { lock() }
+        // After a timer: 10 minutes' grace. Otherwise your auto-lock delay (MK24).
+        let grace = leftWithTimer ? 10 * 60 : Double(data.settings.autoLockMinutes ?? 0) * 60
+        if !data.timerRunning, now.timeIntervalSince(free) > grace { lock() }
     }
 
     // MARK: All Day Stretcher (Phallosan Forte)
@@ -639,8 +645,61 @@ final class MTVault: ObservableObject {
 
     func updateSettings(_ settings: MTSettings) {
         data.settings = settings
+        MTPlan.cueOverrides = settings.cueOverrides ?? [:]
         save()
         rescheduleMeasureReminder()
+        rescheduleExportReminder()
+    }
+
+    // MARK: MK24 (177) — full exports, checked, and a reminder to make one
+
+    /// Exports, then opens the file again with the same passcode and counts what's in it, so you know it restores.
+    func exportChecked(passcode: String) throws -> (file: Data, check: String) {
+        let file = try exportData(passcode: passcode)
+        let json = try Self.open(file, passcode: passcode, magic: "GFMT1")
+        guard let summary = Self.summary(ofPayload: json) else { throw MTVaultError.badFile }
+        let complete = summary.sessions == data.sessions.count && summary.measurements == data.measurements.count
+            && summary.photos == data.photos.count && summary.stamina == data.staminaList.count
+        var settings = data.settings
+        settings.lastExport = .now
+        data.settings = settings
+        save()
+        rescheduleExportReminder()
+        let counts = "\(summary.sessions) sessions, \(summary.measurements) measurements, \(summary.photos) photos, \(summary.stamina) stamina runs"
+        return (file, complete
+                ? "Restore check passed: the file opens with your passcode and holds everything (\(counts))."
+                : "The file opens, but it holds \(counts) — not everything. Export again before relying on it.")
+    }
+
+    var exportReminderDays: Int { data.settings.exportReminderDays ?? 30 }
+
+    /// Days since the last full export (nil = never).
+    var daysSinceExport: Int? {
+        data.settings.lastExport.map { Calendar.current.dateComponents([.day], from: $0, to: .now).day ?? 0 }
+    }
+
+    var exportDue: Bool {
+        guard exportReminderDays > 0, !(data.sessions.isEmpty && data.measurements.isEmpty && data.photos.isEmpty) else { return false }
+        return (daysSinceExport ?? Int.max) >= exportReminderDays
+    }
+
+    /// A plain "Backup reminder" (no mention of this section) when the next export is due.
+    func rescheduleExportReminder() {
+        let id = "gymforge.mt.export"
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [id])
+        guard exportReminderDays > 0 else { return }
+        let base = data.settings.lastExport ?? .now
+        guard var fire = Calendar.current.date(byAdding: .day, value: exportReminderDays, to: base) else { return }
+        if fire < .now.addingTimeInterval(3600) { fire = Calendar.current.date(byAdding: .day, value: 1, to: .now) ?? fire }
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: fire)
+        var at = parts
+        at.hour = 19
+        at.minute = 0
+        let content = UNMutableNotificationContent()
+        content.title = "Backup reminder"
+        content.body = "Time for an encrypted export."
+        center.add(UNNotificationRequest(identifier: id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: at, repeats: false)))
     }
 
     // MARK: Photos (never touch the photo library)

@@ -316,6 +316,13 @@ struct MTSettings: Codable, Hashable {
     var averageReference: String?
     /// MK10.2: quiet "⏱" after 3 days without training (nil = on).
     var trainingNudge: Bool?
+    /// MK24 (173): your own wording for the built-in steps' instructions (MTPlan.builtInCues keys).
+    var cueOverrides: [String: String]?
+    /// MK24 (175): minutes to stay unlocked after leaving the app (nil / 0 = lock straight away).
+    var autoLockMinutes: Int?
+    /// MK24 (177): the last full export, and how often to be reminded (days; nil = 30, 0 = off).
+    var lastExport: Date?
+    var exportReminderDays: Int?
 
     /// MK11.3: daily routine (HTE 3×20 min + pump 2×5 min every day) instead of the PAC every-other-day plan.
     var dailyRoutine: Bool?
@@ -323,6 +330,16 @@ struct MTSettings: Codable, Hashable {
     var targetDaysBeforeRoutine: Int?
 
     var dailyRoutineOn: Bool { dailyRoutine ?? false }
+
+    var autoLock: Int {
+        get { autoLockMinutes ?? 0 }
+        set { autoLockMinutes = newValue > 0 ? newValue : nil }
+    }
+
+    var exportEvery: Int {
+        get { exportReminderDays ?? 30 }
+        set { exportReminderDays = newValue }
+    }
 
     var trainingNudgeOn: Bool {
         get { trainingNudge ?? true }

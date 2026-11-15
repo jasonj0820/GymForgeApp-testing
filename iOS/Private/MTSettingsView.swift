@@ -12,6 +12,7 @@ struct MTSettingsView: View {
     @State private var importPasscode = ""
     @State private var confirmDelete = false
     @State private var message: String?
+    @State private var exportCheck: String?
 
     var body: some View {
         Form {
@@ -116,7 +117,10 @@ struct MTSettingsView: View {
                 SecureField("Confirm passcode", text: $exportConfirm)
                 Button("Export encrypted file") {
                     do {
-                        exportDocument = MTExportDocument(bytes: try vault.exportData(passcode: exportPasscode))
+                        // MK24 (177): checked straight away — reopened with the passcode and counted.
+                        let result = try vault.exportChecked(passcode: exportPasscode)
+                        exportDocument = MTExportDocument(bytes: result.file)
+                        exportCheck = result.check
                         showingExporter = true
                     } catch {
                         message = error.localizedDescription
@@ -124,10 +128,32 @@ struct MTSettingsView: View {
                 }
                 .disabled(exportPasscode.count < 6 || exportPasscode != exportConfirm)
                 Button("Import encrypted file…") { importing = true }
+                LabeledContent("Last export", value: vault.data.settings.lastExport.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "Never")
+                Picker("Remind me to export", selection: settingsBinding(\.exportEvery)) {
+                    Text("Off").tag(0)
+                    Text("Every 2 weeks").tag(14)
+                    Text("Every month").tag(30)
+                    Text("Every 3 months").tag(90)
+                }
             } header: {
                 Text("Backup")
             } footer: {
                 Text("This section is never included in Splitday's normal backups, iCloud or the Watch. An export includes everything (photos too), encrypted with the passcode you choose — at least 6 characters. If you forget it, the file can't be opened.")
+            }
+
+            // MK24 (173, 175)
+            Section {
+                Picker("Lock after leaving", selection: settingsBinding(\.autoLock)) {
+                    Text("Straight away").tag(0)
+                    Text("After 1 minute").tag(1)
+                    Text("After 5 minutes").tag(5)
+                    Text("After 15 minutes").tag(15)
+                }
+                NavigationLink("Instructions for the built-in steps") { MTCueEditorView() }
+            } header: {
+                Text("Privacy and wording")
+            } footer: {
+                Text("With a delay, nothing shows in the app switcher (it's covered) and switching apps briefly doesn't ask for Face ID again. While a timer runs it always stays open.")
             }
 
             Section {
@@ -138,7 +164,7 @@ struct MTSettingsView: View {
         .fileExporter(isPresented: $showingExporter, document: exportDocument, contentType: .data,
                       defaultFilename: "MoreTraining-\(Date().formatted(.iso8601.year().month().day())).gfvault") { result in
             switch result {
-            case .success: message = "Exported."
+            case .success: message = "Exported. " + (exportCheck ?? "")
             case .failure(let error): message = error.localizedDescription
             }
             exportPasscode = ""

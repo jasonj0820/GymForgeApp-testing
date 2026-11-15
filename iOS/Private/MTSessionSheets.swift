@@ -160,6 +160,7 @@ struct MTReviewSheet: View {
     var body: some View {
         Form {
             let unit = vault.data.settings.unit.label
+            MTSessionSummary(ids: vault.pendingReview)   // MK24 (174)
             if vault.skipUndo != nil {
                 Section {
                     Button { vault.undoSkip() } label: {
@@ -257,6 +258,12 @@ struct MTPresetEditor: View {
                             set: { step.tensionKg = $0.map { unit.toKg($0) } }
                         ), suffix: unit.rawValue)
                     }
+                    // MK24 (172): an instruction makes it a guided program, shown on the timer for this step.
+                    TextField("Instruction (optional): what to do in this step", text: Binding(
+                        get: { step.cue ?? "" },
+                        set: { step.cue = $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+                    ), axis: .vertical)
+                    .lineLimit(1...5)
                     Button("Remove step", role: .destructive) {
                         preset.steps.removeAll { $0.id == step.id }
                     }
@@ -271,7 +278,7 @@ struct MTPresetEditor: View {
                                                      pressureInHg: vault.data.lastPressure(for: type)))
                 }
             } footer: {
-                Text("Total about \(MTStats.minutesText(preset.totalMinutes)). Steps run in order.")
+                Text("Total about \(MTStats.minutesText(preset.totalMinutes)). Steps run in order. A step's instruction shows big on the timer (first line as the headline), never on the Lock Screen.")
             }
         }
         .navigationTitle(preset.name.isEmpty ? "New preset" : preset.name)
@@ -342,5 +349,107 @@ struct MTAddSessionView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - MK24 (174): what you just did, next to last time
+
+struct MTSessionSummary: View {
+    @EnvironmentObject private var vault: MTVault
+    let ids: [UUID]
+
+    var body: some View {
+        let set = Set(ids)
+        let done = vault.data.sessions.filter { set.contains($0.id) }.sorted { $0.start < $1.start }
+        if !done.isEmpty {
+            Section {
+                ForEach(done) { session in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            Text(session.type.title + (session.nir == true ? " + NIR" : "")).font(.headline)
+                            Spacer()
+                            Text(MTStats.formatDuration(session.duration)).font(.subheadline.monospacedDigit())
+                        }
+                        if let line = compare(session) {
+                            Text(line).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                let week = Calendar.current.dateInterval(of: .weekOfYear, for: .now)
+                let days = Set(vault.data.sessions.filter { s in week.map { $0.contains(s.start) } ?? false }
+                    .map { Calendar.current.startOfDay(for: $0.start) }).count
+                LabeledContent("Total", value: MTStats.formatDuration(done.reduce(0) { $0 + $1.duration }))
+                LabeledContent("This week", value: "\(days) of \(vault.data.settings.targetDaysPerWeek) days")
+            } header: {
+                Text("Summary")
+            }
+        }
+    }
+
+    private func compare(_ session: MTSession) -> String? {
+        guard let last = vault.data.sessions.filter({ $0.type == session.type && $0.start < session.start && !ids.contains($0.id) })
+            .max(by: { $0.start < $1.start }) else { return "First one logged." }
+        var parts = ["Last time " + MTStats.formatDuration(last.duration)]
+        if let now = session.pressureInHg, let before = last.pressureInHg, now != before {
+            parts.append(String(format: "pressure %g → %g inHg", before, now))
+        }
+        if let now = session.tensionKg, let before = last.tensionKg, now != before {
+            let unit = vault.data.settings.weightUnit
+            parts.append("tension \(GFNumber.text(unit.display(before))) → \(GFNumber.text(unit.display(now))) \(unit.rawValue)")
+        }
+        parts.append(last.start.formatted(.relative(presentation: .named)))
+        return parts.joined(separator: " · ")
+    }
+}
+
+// MARK: - MK24 (173): your own wording for the built-in instructions
+
+struct MTCueEditorView: View {
+    @EnvironmentObject private var vault: MTVault
+    @State private var drafts: [String: String] = [:]
+
+    var body: some View {
+        Form {
+            ForEach(MTPlan.builtInCues, id: \.key) { cue in
+                Section {
+                    TextField(cue.text.isEmpty ? "Add an instruction" : "Instruction", text: Binding(
+                        get: { drafts[cue.key] ?? cue.text },
+                        set: { drafts[cue.key] = $0 }
+                    ), axis: .vertical)
+                    .lineLimit(2...8)
+                    if let own = vault.data.settings.cueOverrides?[cue.key], own != cue.text {
+                        Button("Back to the original") {
+                            drafts[cue.key] = cue.text
+                            save(cue.key, nil)
+                        }
+                    }
+                } header: {
+                    Text(cue.title)
+                } footer: {
+                    if cue.key == MTPlan.builtInCues.first?.key {
+                        Text("First line is the headline on the timer. Pressures in the steps themselves don't change here; this is only the wording.")
+                    }
+                }
+            }
+        }
+        .navigationTitle("Instructions")
+        .toolbar {
+            Button("Save") {
+                for cue in MTPlan.builtInCues {
+                    guard let draft = drafts[cue.key] else { continue }
+                    save(cue.key, draft.trimmingCharacters(in: .whitespacesAndNewlines) == cue.text ? nil : draft)
+                }
+                drafts = [:]
+            }
+            .disabled(drafts.isEmpty)
+        }
+    }
+
+    private func save(_ key: String, _ text: String?) {
+        var settings = vault.data.settings
+        var overrides = settings.cueOverrides ?? [:]
+        overrides[key] = text.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+        settings.cueOverrides = overrides.isEmpty ? nil : overrides
+        vault.updateSettings(settings)
     }
 }

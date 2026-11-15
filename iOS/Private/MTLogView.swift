@@ -23,6 +23,18 @@ struct MTLogView: View {
             if vault.data.activeStamina != nil {
                 staminaSection
             }
+            // MK24 (177): no full export for a while.
+            if vault.exportDue {
+                Section {
+                    Label(vault.daysSinceExport.map { "No encrypted export for \($0) days." } ?? "Never exported.",
+                          systemImage: "externaldrive.badge.exclamationmark")
+                        .font(.headline)
+                        .foregroundStyle(.orange)
+                    Text("If Splitday is ever re-installed with another Apple ID, the key for this section is gone and only an export brings it back. Settings → Backup; it checks the file opens before you rely on it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Section {
                 MTCluckCard()
                 MTWeekRow(selectedDay: $selectedDay)
@@ -636,6 +648,12 @@ struct MTLogView: View {
                 ])
             } label: {
                 Label("New preset", systemImage: "plus")
+            }
+            // MK24 (172): start your own guided program from the built-in PAC (its steps and instructions).
+            Button {
+                editingPreset = MTPreset(name: "My guided PAC", steps: MTPlan.pacSteps.map { var step = $0; step.id = UUID(); return step })
+            } label: {
+                Label("New guided program from PAC", systemImage: "list.bullet.rectangle.portrait")
             }
         } header: {
             Text("Presets")

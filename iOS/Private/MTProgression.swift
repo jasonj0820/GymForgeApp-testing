@@ -61,20 +61,24 @@ enum MTPlan {
         var steps: [MTPresetStep] = []
         if day.nir {
             if let minutes = left(nirMinutes, done.nir) {
-                steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: minutes, restMinutes: 0, tensionKg: tension, nir: true))
+                steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: minutes, restMinutes: 0, tensionKg: tension, nir: true,
+                                          cue: cue("extender.nir", default: nil)))
             }
             if let minutes = left(afterNIRMinutes, max(0, done.extender - min(done.nir, nirMinutes))) {
-                steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: minutes, restMinutes: 0, tensionKg: tension))
+                steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: minutes, restMinutes: 0, tensionKg: tension,
+                                          cue: cue("extender", default: nil)))
             }
         } else if let minutes = left(plainMinutes, done.extender) {
-            steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: minutes, restMinutes: 0, tensionKg: tension))
+            steps.append(MTPresetStep(type: .highTensionExtender, rounds: 1, workMinutes: minutes, restMinutes: 0, tensionKg: tension,
+                                      cue: cue("extender", default: nil)))
         }
         var pump: [MTPresetStep] = []
         if day.pumpType == .pac {
             if done.pump < day.pumpMinutes - 0.5 { pump = pacSteps }
         } else if done.pump < day.pumpMinutes - 0.5 {
             let rounds = Int(((day.pumpMinutes - done.pump) / pumpRoundMinutes).rounded(.up))
-            pump = [MTPresetStep(type: .pump, rounds: min(max(rounds, 1), pumpRounds), workMinutes: pumpRoundMinutes, restMinutes: 1, pressureInHg: pressure)]
+            pump = [MTPresetStep(type: .pump, rounds: min(max(rounds, 1), pumpRounds), workMinutes: pumpRoundMinutes, restMinutes: 1, pressureInHg: pressure,
+                                 cue: cue("pump", default: nil))]
         }
         // 2 minutes to switch from the extender to the pump.
         if !steps.isEmpty, !pump.isEmpty { steps[steps.count - 1].restMinutes = 2 }
@@ -99,8 +103,33 @@ enum MTPlan {
         }
     }
 
+    /// MK24 (173): your own wording for the built-in steps (key → text), set by the vault from your settings.
+    static var cueOverrides: [String: String] = [:]
+
+    /// Every built-in instruction you can rewrite: key, what it's for, the original text.
+    static var builtInCues: [(key: String, title: String, text: String)] {
+        basePACSteps.enumerated().map { index, step in
+            let text = step.cue ?? ""
+            return ("pac.\(index)", "Guided PAC · " + (text.split(separator: "\n").first.map(String.init) ?? "Step \(index + 1)"), text)
+        } + [("extender.nir", "Extender with NIR", ""), ("extender", "Extender", ""), ("pump", "Static pump", "")]
+    }
+
+    static func cue(_ key: String, default text: String?) -> String? {
+        if let own = cueOverrides[key], !own.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return own }
+        return text
+    }
+
+    /// Guided PAC with any of your own instructions in place of the built-in ones.
+    static var pacSteps: [MTPresetStep] {
+        basePACSteps.enumerated().map { index, step in
+            var step = step
+            step.cue = cue("pac.\(index)", default: step.cue)
+            return step
+        }
+    }
+
     /// MK18.2 / MK19: guided PAC (Karl's routine, 25 min under pressure). pressureInHg is the vacuum; the clamp is in the cue.
-    static let pacSteps: [MTPresetStep] = [
+    static let basePACSteps: [MTPresetStep] = [
         MTPresetStep(type: .pac, rounds: 1, workMinutes: 2, restMinutes: 0, pressureInHg: 7.5,
                      cue: "Fill up\nVacuum −7 to −8 inHg (−24 to −27 kPa) · clamp off\nStart semi-erect, not fully hard."),
         MTPresetStep(type: .pac, rounds: 1, workMinutes: 5, restMinutes: 0, pressureInHg: 8,

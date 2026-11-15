@@ -177,6 +177,14 @@ struct MTChecks {
         let earlier = (125...175).filter { $0 % 2 == 0 }.map { session(.pump, Double($0), minutes: 10, pressure: 7.5, expansion: 8) }
         let stuck = earlier + restedLong
         check(girth(stuck, [measure(100, mg: 12.0), measure(2, mg: 12.05)])?.kind == .takeBreak, "flat after adding time and intensity → take a proper break")
+        // MK24 (173): your own wording replaces the built-in instruction; blank keeps the original.
+        MTPlan.cueOverrides = ["pac.0": "My own first step", "pac.1": "   ", "pump": "Slow and steady"]
+        check(MTPlan.pacSteps[0].cue == "My own first step" && MTPlan.pacSteps[1].cue == MTPlan.basePACSteps[1].cue, "PAC instruction overrides")
+        check(MTPlan.steps(MTPlan.pumpOnly, pressure: 6, tension: 2).last?.cue == "Slow and steady", "static pump instruction override")
+        check(MTPlan.builtInCues.count == MTPlan.basePACSteps.count + 3, "every built-in instruction is editable")
+        MTPlan.cueOverrides = [:]
+        check(MTPlan.pacSteps.map(\.cue) == MTPlan.basePACSteps.map(\.cue), "no overrides, original text")
+
         print("PASS: More Training checks")
     }
 }
