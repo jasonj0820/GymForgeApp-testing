@@ -467,6 +467,12 @@ struct ExerciseProgressView: View {
             } label: {
                 moreRow("sparkles.rectangle.stack", "Year in review", "Your year in one page, ready to share")
             }
+            Divider()
+            NavigationLink {
+                BadgesView()
+            } label: {
+                moreRow("medal", "Badges", "\(store.badges.filter(\.earned).count) earned: sessions, streaks, records, tonnes")
+            }
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 16)

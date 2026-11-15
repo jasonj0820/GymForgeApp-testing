@@ -236,6 +236,8 @@ enum ProteinNotifier {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: ids)
         center.removeDeliveredNotifications(withIdentifiers: ids)   // stale once you've logged more
+        defer { NotificationBudget.enforceSoon() }   // MK24 (147)
+        guard UserDefaults.standard.object(forKey: "protein.nags") as? Bool ?? true else { return }   // MK24: Settings → Notifications
         guard let target = store.proteinTargetG, target > 0 else { return }
         let cal = Calendar.current
         for day in 0...1 {

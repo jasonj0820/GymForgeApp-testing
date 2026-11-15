@@ -943,10 +943,13 @@ struct GymForgeChecks {
         g1.points = 10; g1.fgMade = 4; g1.fgAttempts = 10; g2.points = 20; g2.fgMade = 8; g2.fgAttempts = 10
         let avg = GameAverages.make([g1, g2])
         check(avg?.points == 15 && avg?.fgPercent == 60 && avg?.ftPercent == nil, "game averages")
-        let plan = IntervalPlan(workSeconds: 30, restSeconds: 15, rounds: 3)
-        check(plan.totalSeconds == 120, "3 × 30 s with 15 s between = 2 min")
-        check(plan.phase(at: 40).map { $0.round == 1 && !$0.working && $0.left == 5 } == true
-              && plan.phase(at: 50).map { $0.round == 2 && $0.working } == true && plan.phase(at: 120) == nil, "interval phases")
+        let intervals = IntervalPlan(workSeconds: 30, restSeconds: 15, rounds: 3)
+        check(intervals.totalSeconds == 120, "3 × 30 s with 15 s between = 2 min")
+        let rest40 = intervals.phase(at: 40)
+        check(rest40?.round == 1 && rest40?.working == false && rest40?.left == 5, "40 s in: resting before round 2")
+        let work50 = intervals.phase(at: 50)
+        check(work50?.round == 2 && work50?.working == true, "50 s in: round 2")
+        check(intervals.phase(at: 120) == nil, "finished at 2 min")
         let sched = SleepSchedule(bedtime: Dictionary(uniqueKeysWithValues: (1...7).map { ($0, 23 * 60) }),
                                   wake: Dictionary(uniqueKeysWithValues: (1...7).map { ($0, 7 * 60) }))
         check(SleepMath.need(sched) == 8 && SleepMath.need(nil) == 8, "sleep need from the schedule")
@@ -955,6 +958,24 @@ struct GymForgeChecks {
                                               start: nightsNow.addingTimeInterval(-Double($0) * 86_400 - 8 * 3600 + Double($0 % 2) * 3600)) }
         check(SleepMath.debt(nights, need: 8, now: nightsNow).hours == 7, "an hour short for 7 nights = 7 h debt")
         check(abs((SleepMath.bedtimeSpread(nights, now: nightsNow) ?? 0) - 29.69) < 0.5, "bedtime spread about half an hour")
+
+        // MK24 J: streak freezes, badges, quiet hours.
+        let freeze = StreakFreeze.run([.hit, .hit, .hit, .hit, .miss, .hit, .pause, .hit])
+        check(freeze.streak == 6 && freeze.banked == 0 && freeze.used == 1, "4 goal weeks earn a freeze that covers the next miss")
+        check(StreakFreeze.run([.hit, .miss, .hit]).streak == 1, "no freeze yet: a miss resets")
+        let badges = Milestones.badges(.init(sessions: 30, bestStreakWeeks: 4, prs: 0, volumeTonnes: 12, routineSteps: 0, proteinDaysInARow: 0))
+        check(badges.filter(\.earned).map(\.id) == ["sessions.10", "sessions.25", "streak.4", "volume.10"], "badges earned")
+        let proteinDays = (0..<5).map { NutritionDay(day: jan5.addingTimeInterval(-Double($0) * 86_400), proteinG: $0 == 0 ? 50 : 160) }
+        check(Milestones.proteinRun(proteinDays, target: 150, now: jan5, calendar: gregorian) == 4, "protein run starts yesterday when today isn't hit yet")
+        let night = QuietWindow(start: 22 * 60 + 30, end: 6 * 60 + 30)
+        let work = QuietWindow(start: 9 * 60, end: 17 * 60, weekdays: [2, 3, 4, 5, 6])
+        func at(_ h: Int, _ m: Int, dayOffset: Double = 0) -> Date {
+            gregorian.date(bySettingHour: h, minute: m, second: 0, of: jan5.addingTimeInterval(dayOffset * 86_400))!
+        }
+        check(night.contains(at(23, 0), calendar: gregorian) && night.contains(at(5, 0), calendar: gregorian)
+              && !night.contains(at(12, 0), calendar: gregorian), "overnight quiet hours")
+        check(work.contains(at(10, 0), calendar: gregorian) && !work.contains(at(10, 0, dayOffset: 5), calendar: gregorian), "work hours on weekdays only")
+        check(QuietWindow.firstFree(after: at(23, 0), windows: [night], calendar: gregorian) == at(6, 30, dayOffset: 1), "moved to the end of quiet hours")
 
         print("PASS: all GymForge checks")
     }

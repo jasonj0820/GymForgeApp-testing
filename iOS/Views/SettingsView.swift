@@ -230,6 +230,12 @@ struct SettingsSoundsPage: View {
     var body: some View {
         Form {
             Section {
+                // MK24 (143): every notification, its times, quiet hours.
+                NavigationLink {
+                    NotificationsHubView()
+                } label: {
+                    Label("All notifications, times and quiet hours", systemImage: "bell.and.waves.left.and.right")
+                }
                 NavigationLink {
                     NotificationCheckView()
                 } label: {

@@ -30,6 +30,14 @@ struct WeeklyReviewView: View {
                     LabeledContent("Planned workouts done", value: "\(review.plannedDone) / \(review.planned)")
                 }
                 LabeledContent("PRs", value: "\(review.prs)")
+                // MK24 (152): the week as a picture.
+                let card = WeeklyRecapCard(title: weekTitle(review), sessions: review.sessions, goal: review.goal, prs: review.prs,
+                                           volumeKg: store.workoutLogs.filter { $0.countsAsTraining && $0.startedAt >= start && $0.startedAt < start.addingTimeInterval(7 * 86_400) }
+                                               .reduce(0) { $0 + $1.totalVolumeKg },
+                                           streak: store.consistency.streakWeeks, verdict: verdict(review))
+                ShareLink(item: card.image, preview: SharePreview("My week in training", image: card.image)) {
+                    Label("Share the week as a picture", systemImage: "square.and.arrow.up")
+                }
             } footer: {
                 Text(verdict(review))
             }
@@ -160,5 +168,50 @@ struct WeeklyReviewView: View {
         if !low.isEmpty { parts.append("Under target: " + low.joined(separator: ", ") + ".") }
         if review.prs > 0 { parts.append("\(review.prs) PR\(review.prs == 1 ? "" : "s") — nice.") }
         return parts.joined(separator: " ")
+    }
+}
+
+/// MK24 (152): the weekly recap, drawn for sharing.
+struct WeeklyRecapCard: View {
+    let title: String
+    let sessions: Int
+    let goal: Int
+    let prs: Int
+    let volumeKg: Double
+    let streak: Int
+    let verdict: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title.uppercased()).font(.caption.bold()).foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(sessions)").font(.system(size: 56, weight: .bold, design: .rounded))
+                Text("/ \(goal) sessions").font(.title3).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 18) {
+                stat("\(prs)", "records", "trophy.fill")
+                stat(String(format: "%.1f t", volumeKg / 1000), "lifted", "scalemass.fill")
+                if streak > 0 { stat("\(streak)", "week streak", "flame.fill") }
+            }
+            Text(verdict).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+            Text("Splitday").font(.caption.bold()).foregroundStyle(.orange)
+        }
+        .padding(22)
+        .frame(width: 360, alignment: .leading)
+        .background(Color(.systemBackground))
+    }
+
+    private func stat(_ value: String, _ label: String, _ icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(value, systemImage: icon).font(.headline).foregroundStyle(.orange)
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    @MainActor
+    var image: Image {
+        let renderer = ImageRenderer(content: self)
+        renderer.scale = 3
+        return renderer.uiImage.map { Image(uiImage: $0) } ?? Image(systemName: "photo")
     }
 }

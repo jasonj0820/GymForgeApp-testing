@@ -270,7 +270,8 @@ enum QuoteLibrary {
 }
 
 enum QuotePicker {
-    static let slotHours = [8, 13, 18]
+    /// MK24 (144): 8:00, 13:00 and 18:00 unless changed in Settings → Notifications.
+    static var slotHours: [Int] { NotificationTimes.quoteHours }
 
     static func slot(at date: Date, calendar: Calendar = .current) -> Int {
         let origin = calendar.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? .distantPast

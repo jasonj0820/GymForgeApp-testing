@@ -2,7 +2,7 @@ import AppIntents
 import CoreLocation
 import SwiftUI
 import Foundation
-import UserNotifications
+@preconcurrency import UserNotifications
 import WidgetKit
 
 // MARK: - MK24 (H): the routine beyond the list — widget, per-step reminders, "when I get home",

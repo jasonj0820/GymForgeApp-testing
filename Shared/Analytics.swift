@@ -63,6 +63,9 @@ public struct ConsistencyStats: Equatable {
     public var streakWeeks: Int
     public var averagePerWeek: Double
     public var weeksTracked: Int
+    /// MK24 (151): freezes in the bank, and missed weeks one saved.
+    public var freezesBanked: Int = 0
+    public var freezesUsed: Int = 0
 
     public var thisWeekAdherence: Double {
         weeklyGoal > 0 ? min(1, Double(thisWeekCount) / Double(weeklyGoal)) : 0
@@ -82,7 +85,8 @@ public enum ConsistencyCalculator {
         weeklyGoal: Int,
         now: Date = .now,
         calendar: Calendar = .current,
-        breaks: [DateInterval] = []
+        breaks: [DateInterval] = [],
+        freezes: Bool = false
     ) -> ConsistencyStats {
         let goal = max(weeklyGoal, 1)
         let logs = logs.filter(\.countsAsTraining)   // MK10.2: cardio is an extra, not a session
@@ -126,6 +130,17 @@ public enum ConsistencyCalculator {
             offset += 1
         }
         if thisWeek >= goal { streak += 1 }
+        // MK24 (151): with freezes, the streak is worked out oldest week first so earned freezes can cover misses.
+        var banked = 0, used = 0
+        if freezes, weeksTracked > 0 {
+            let weeks: [StreakFreeze.Week] = (1...min(weeksTracked, 260)).reversed().map { offset in
+                onBreak(weeksAgo: offset) ? .pause : (count(weeksAgo: offset) >= goal ? .hit : .miss)
+            }
+            let result = StreakFreeze.run(weeks)
+            streak = result.streak + (thisWeek >= goal ? 1 : 0)
+            banked = result.banked
+            used = result.used
+        }
 
         let averageWeeks = weeksTracked > 0 ? (1...min(8, weeksTracked)).filter { !onBreak(weeksAgo: $0) } : []
         let average: Double
@@ -146,7 +161,9 @@ public enum ConsistencyCalculator {
             missedLast4Weeks: trackedLastFour.reduce(0) { $0 + max(0, goal - $1) },
             streakWeeks: streak,
             averagePerWeek: average,
-            weeksTracked: weeksTracked
+            weeksTracked: weeksTracked,
+            freezesBanked: banked,
+            freezesUsed: used
         )
     }
 }

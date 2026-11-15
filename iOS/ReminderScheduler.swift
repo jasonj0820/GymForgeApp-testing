@@ -119,7 +119,9 @@ enum WeighInReminder {
     private static let planned = 4
     /// All 8 old slots are cleared so reminders planned by an earlier build don't linger.
     private static let ids = (0..<8).map { "gymforge.weighin.\($0)" }
-    static let hour = 9, minute = 0
+    /// MK24 (144): 9:00 unless changed in Settings → Notifications.
+    static var hour: Int { NotificationTimes.minutes(NotificationTimes.weighIn) / 60 }
+    static var minute: Int { NotificationTimes.minutes(NotificationTimes.weighIn) % 60 }
 
     static var enabled: Bool {
         get { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }

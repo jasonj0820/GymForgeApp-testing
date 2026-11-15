@@ -347,6 +347,10 @@ struct HomeWeekCard: View {
                     if stats.streakWeeks > 0 {
                         chip("\(stats.streakWeeks)-week streak", icon: "flame.fill", color: .orange)
                     }
+                    // MK24 (151): freezes you've earned (4 goal weeks each) cover a missed week.
+                    if stats.freezesBanked > 0 {
+                        chip("\(stats.freezesBanked) streak freeze\(stats.freezesBanked == 1 ? "" : "s")", icon: "snowflake", color: .cyan)
+                    }
                     if stats.last4WeeksTarget > 0 {
                         chip("Last 4 weeks \(stats.last4WeeksCount)/\(stats.last4WeeksTarget)", icon: nil, color: .secondary)
                     }

@@ -178,7 +178,8 @@ final class PhoneAppStore: ObservableObject {
     }
 
     var consistency: ConsistencyStats {
-        var stats = ConsistencyCalculator.stats(logs: workoutLogs, weeklyGoal: weeklyGoal, breaks: extras.breaks.map(\.interval))
+        var stats = ConsistencyCalculator.stats(logs: workoutLogs, weeklyGoal: weeklyGoal, breaks: extras.breaks.map(\.interval),
+                                                freezes: StreakFreeze.enabled)   // MK24 (151)
         // Sick / travel days take sessions off this week's goal.
         stats.weeklyGoal = thisWeekGoal
         return stats
@@ -319,6 +320,8 @@ final class PhoneAppStore: ObservableObject {
         rescheduleReminders()
         AutoBackup.runIfDue(store: self)
         DailyNudges.reschedule(store: self)
+        CluckPraise.check(store: self)   // MK24 (153)
+        NotificationBudget.enforceSoon()   // MK24 (147): last, once everything's planned
     }
 
     // MARK: Routines
@@ -480,7 +483,8 @@ final class PhoneAppStore: ObservableObject {
         var dates = workoutLogs.filter(\.countsAsTraining).map(\.startedAt).filter { $0 >= cutoff }
         if let active = activeWorkout, active.routine.exercises.contains(where: { !$0.exercise.isCardio }) { dates.append(active.startedAt) }
         // MK11: streak, worry signals, gym pattern and sleep for his new moods.
-        let stats = ConsistencyCalculator.stats(logs: workoutLogs, weeklyGoal: weeklyGoal, breaks: extras.breaks.map(\.interval))
+        let stats = ConsistencyCalculator.stats(logs: workoutLogs, weeklyGoal: weeklyGoal, breaks: extras.breaks.map(\.interval),
+                                                freezes: StreakFreeze.enabled)
         let streak = stats.streakWeeks - (stats.thisWeekCount >= stats.weeklyGoal ? 1 : 0)
         let report = sleepReport
         let painRecent = extras.painFlags.contains { !$0.resolved && $0.date > Date().addingTimeInterval(-14 * 86_400) }

@@ -102,7 +102,8 @@ enum CluckEngine {
     static let cutoffHour = 17
     static let cutoffMinute = 10
     /// Notification times: 5:10pm, 7:00pm, 8:30pm.
-    static let stages: [(hour: Int, minute: Int)] = [(17, 10), (19, 0), (20, 30)]
+    /// MK24 (144): 5:10, 7:00 and 8:30 pm unless changed in Settings → Notifications.
+    static var stages: [(hour: Int, minute: Int)] { NotificationTimes.cluckStages }
 
     static var calendar: Calendar { Calendar.current }
 
@@ -590,4 +591,47 @@ enum SharedGroup {
         }
         shared.set(true, forKey: "sharedGroup.migrated")
     }
+}
+
+/// MK24 (144): notification times you can change in Settings → Notifications. Kept in the shared defaults,
+/// so the widgets and the Watch agree with the app.
+enum NotificationTimes {
+    struct Slot: Identifiable {
+        let key: String
+        let title: String
+        let defaultMinutes: Int
+        var id: String { key }
+    }
+
+    static let cluck = [Slot(key: "cluck.1", title: "First nudge", defaultMinutes: 17 * 60 + 10),
+                        Slot(key: "cluck.2", title: "Second nudge", defaultMinutes: 19 * 60),
+                        Slot(key: "cluck.3", title: "Last call", defaultMinutes: 20 * 60 + 30)]
+    static let quotes = [Slot(key: "quote.1", title: "Morning", defaultMinutes: 8 * 60),
+                         Slot(key: "quote.2", title: "Midday", defaultMinutes: 13 * 60),
+                         Slot(key: "quote.3", title: "Evening", defaultMinutes: 18 * 60)]
+    static let protein = [Slot(key: "protein.1", title: "Lunch check", defaultMinutes: 12 * 60),
+                          Slot(key: "protein.2", title: "Afternoon check", defaultMinutes: 16 * 60),
+                          Slot(key: "protein.3", title: "Evening check", defaultMinutes: 19 * 60 + 30)]
+    static let weighIn = Slot(key: "weighin", title: "Weigh-in reminder", defaultMinutes: 9 * 60)
+
+    static func minutes(_ slot: Slot) -> Int {
+        CluckStore.defaults.object(forKey: "time." + slot.key) as? Int ?? slot.defaultMinutes
+    }
+
+    static func set(_ slot: Slot, _ minutes: Int) {
+        CluckStore.defaults.set(minutes, forKey: "time." + slot.key)
+    }
+
+    static func reset(_ slots: [Slot]) {
+        for slot in slots { CluckStore.defaults.removeObject(forKey: "time." + slot.key) }
+    }
+
+    /// In order through the day (so the stages stay first → last even if one is moved past another).
+    static var cluckStages: [(hour: Int, minute: Int)] {
+        cluck.map(minutes).sorted().map { ($0 / 60, $0 % 60) }
+    }
+
+    static var quoteHours: [Int] { quotes.map { minutes($0) / 60 }.sorted() }
+
+    static var proteinTimes: [(hour: Int, minute: Int)] { protein.map(minutes).map { ($0 / 60, $0 % 60) } }
 }

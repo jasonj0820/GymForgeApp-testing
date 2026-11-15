@@ -366,9 +366,10 @@ public enum ProteinNag {
         public let share: Double
     }
 
-    public static let checkpoints = [Checkpoint(hour: 12, minute: 0, share: 0.35),
-                                     Checkpoint(hour: 16, minute: 0, share: 0.6),
-                                     Checkpoint(hour: 19, minute: 30, share: 0.85)]
+    /// 12:00, 16:00 and 19:30 unless changed (MK24: Settings → Notifications).
+    public static var checkpoints: [Checkpoint] {
+        zip(NotificationTimes.proteinTimes, [0.35, 0.6, 0.85]).map { Checkpoint(hour: $0.0.hour, minute: $0.0.minute, share: $0.1) }
+    }
 
     /// Checkpoints you'd miss at the current intake.
     public static func behind(eaten: Double, target: Double) -> [Checkpoint] {

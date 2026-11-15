@@ -73,6 +73,7 @@ extension PhoneAppStore {
         }
         RoutineWidgetFeed.publish(store: self)   // MK24 (111)
         RoutineStepReminders.reschedule(store: self)   // MK24 (115, 116)
+        NotificationBudget.enforceSoon()
     }
 
     // MARK: MK15 — rest days, nightly recap, wake-up checklist
