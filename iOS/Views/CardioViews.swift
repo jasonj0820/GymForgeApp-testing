@@ -192,6 +192,10 @@ struct CardioHistoryView: View {
                 .onDelete { offsets in if let index = offsets.first { deleting = runs[index] } }   // MK22.1: asks first
             }
             Section("Basketball") {
+                // MK24 (I)
+                NavigationLink { BasketballHubView() } label: {
+                    Label("Shots, drills, jumps and game stats", systemImage: "basketball.fill")
+                }
                 if games.isEmpty { Text("No basketball yet.").foregroundStyle(.secondary) }
                 ForEach(games) { game in
                     NavigationLink { BasketballDetailView(session: game) } label: { row(game) }
@@ -332,6 +336,7 @@ struct RunDetailView: View {
 struct BasketballDetailView: View {
     @EnvironmentObject private var store: PhoneAppStore
     let session: CardioSession
+    @State private var editingStats: GameStats?
 
     private var current: CardioSession { store.cardioSessions.first { $0.id == session.id } ?? session }
 
@@ -366,10 +371,27 @@ struct BasketballDetailView: View {
             } header: {
                 Text("Your numbers")
             }
+            // MK24 (137, 141): this session's shot chart and box score.
+            Section {
+                NavigationLink { ShotChartView(sessionID: game.id) } label: {
+                    Label("Shot chart · \(store.extras.hoops.shots.filter { $0.sessionID == game.id }.count) shots", systemImage: "circle.dotted.and.circle")
+                }
+                Button {
+                    editingStats = store.extras.hoops.games.first { $0.sessionID == game.id } ?? {
+                        var stats = GameStats(date: game.startedAt, sessionID: game.id)
+                        stats.fgMade = game.shotsMade ?? 0
+                        stats.fgAttempts = game.shotsAttempted ?? 0
+                        return stats
+                    }()
+                } label: {
+                    Label("Game stats", systemImage: "list.number")
+                }
+            }
             ZoneSection(session: game)
         }
         .navigationTitle("Basketball")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $editingStats) { GameStatsEditor(game: $0).environmentObject(store) }
     }
 
     private func binding<Value>(_ keyPath: WritableKeyPath<CardioSession, Value?>, default fallback: Value) -> Binding<Value> {

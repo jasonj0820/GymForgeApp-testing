@@ -89,6 +89,7 @@ struct RecoveryView: View {
                 // MK24: the score from three taps, when there's no sleep or heart-rate data (or to correct it).
                 ReadinessCheckInCard()
                 SleepCard()
+                SleepDebtCard()   // MK24 (128)
                 if !recent.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .firstTextBaseline) {

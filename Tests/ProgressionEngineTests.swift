@@ -934,6 +934,28 @@ struct GymForgeChecks {
             check(abs(perWeek + 0.4) < 0.001, "4 kg in 10 weeks needs −0.4 kg a week")
         } else { check(false, "goal weight should need a rate") }
 
+        // MK24 I: court zones, game averages, intervals, sleep debt.
+        check(CourtZone.of(x: 0, y: 2) == .paint && CourtZone.of(x: 7, y: 1) == .corner3
+              && CourtZone.of(x: 0, y: 9) == .aboveBreak3 && CourtZone.of(x: 4, y: 4) == .midRange, "court zones")
+        let zoneStats = ShotStats.byZone([Shot(x: 0, y: 2, made: true), Shot(x: 0, y: 2.5, made: false), Shot(x: 0, y: 9, made: true)])
+        check(zoneStats.first { $0.zone == .paint }.map { $0.made == 1 && $0.attempts == 2 } == true, "paint 1 of 2")
+        var g1 = GameStats(), g2 = GameStats()
+        g1.points = 10; g1.fgMade = 4; g1.fgAttempts = 10; g2.points = 20; g2.fgMade = 8; g2.fgAttempts = 10
+        let avg = GameAverages.make([g1, g2])
+        check(avg?.points == 15 && avg?.fgPercent == 60 && avg?.ftPercent == nil, "game averages")
+        let plan = IntervalPlan(workSeconds: 30, restSeconds: 15, rounds: 3)
+        check(plan.totalSeconds == 120, "3 × 30 s with 15 s between = 2 min")
+        check(plan.phase(at: 40).map { $0.round == 1 && !$0.working && $0.left == 5 } == true
+              && plan.phase(at: 50).map { $0.round == 2 && $0.working } == true && plan.phase(at: 120) == nil, "interval phases")
+        let sched = SleepSchedule(bedtime: Dictionary(uniqueKeysWithValues: (1...7).map { ($0, 23 * 60) }),
+                                  wake: Dictionary(uniqueKeysWithValues: (1...7).map { ($0, 7 * 60) }))
+        check(SleepMath.need(sched) == 8 && SleepMath.need(nil) == 8, "sleep need from the schedule")
+        let nightsNow = jan5.addingTimeInterval(10 * 86_400)
+        let nights = (0..<7).map { SleepNight(date: nightsNow.addingTimeInterval(-Double($0) * 86_400), hoursAsleep: 7,
+                                              start: nightsNow.addingTimeInterval(-Double($0) * 86_400 - 8 * 3600 + Double($0 % 2) * 3600)) }
+        check(SleepMath.debt(nights, need: 8, now: nightsNow).hours == 7, "an hour short for 7 nights = 7 h debt")
+        check(abs((SleepMath.bedtimeSpread(nights, now: nightsNow) ?? 0) - 29.69) < 0.5, "bedtime spread about half an hour")
+
         print("PASS: all GymForge checks")
     }
 }

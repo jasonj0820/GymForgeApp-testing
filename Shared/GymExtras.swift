@@ -48,6 +48,8 @@ public struct GymExtras: Codable, Equatable {
     public var caffeine: [CaffeineEntry]
     public var dayTags: [DayTag]
     public var goalWeight: GoalWeight?
+    /// MK24 (I): shot charts, drills, jumps and game stats.
+    public var hoops: Hoops
 
     public init(restDays: [Date] = [], painFlags: [PainFlag] = [], nutrition: [NutritionDay] = [],
                 tape: [TapeEntry] = [], nutritionPhase: NutritionPhase? = nil, phases: [PhaseRecord] = [],
@@ -79,13 +81,14 @@ public struct GymExtras: Codable, Equatable {
         self.caffeine = []
         self.dayTags = []
         self.goalWeight = nil
+        self.hoops = Hoops()
     }
 
     enum CodingKeys: String, CodingKey {
         case restDays, painFlags, nutrition, tape, nutritionPhase, phases, miniCutThreshold
         case dayPlans, suggestions, priorityMuscles, declinedProposals, plannedRestDays, breaks, weighIns, manualSleep
         case checkIns, dayNotes, liftGoals, busyWeeks
-        case foodLog, savedMeals, recipes, prepPlan, water, caffeine, dayTags, goalWeight
+        case foodLog, savedMeals, recipes, prepPlan, water, caffeine, dayTags, goalWeight, hoops
     }
 
     public init(from decoder: Decoder) throws {
@@ -117,6 +120,7 @@ public struct GymExtras: Codable, Equatable {
         caffeine = try c.decodeIfPresent([CaffeineEntry].self, forKey: .caffeine) ?? []
         dayTags = try c.decodeIfPresent([DayTag].self, forKey: .dayTags) ?? []
         goalWeight = try c.decodeIfPresent(GoalWeight.self, forKey: .goalWeight)
+        hoops = try c.decodeIfPresent(Hoops.self, forKey: .hoops) ?? Hoops()
     }
 
     /// MK20.2: the weigh-in logged on the same day as `date`, if any.

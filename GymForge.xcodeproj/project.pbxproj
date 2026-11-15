@@ -41,6 +41,7 @@
 		594BDAC0708BFCE3B3640F5E /* SyncPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = C249059BF4A8769702B5A5BC /* SyncPayload.swift */; };
 		68C93B9D500FA8135DA7AB00 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA1B043C3E83234A9114A72 /* TodayView.swift */; };
 		297C671665EDD7C19949E123 /* HomeCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F235556C86D0809ACEBABE1 /* HomeCards.swift */; };
+		164F3B8510D1E2F63DAED2E2 /* HoopsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2ADDE7AAF3DE4E92FC4A1FD /* HoopsViews.swift */; };
 		FA09C4B15DD21C84A2721700 /* BodyExtrasViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5EF76CDCBBDFC496DE8563 /* BodyExtrasViews.swift */; };
 		EDA2DAB01E4037E909793DDB /* FoodViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694E0EE3EBC5FC44AC2A5129 /* FoodViews.swift */; };
 		A805D811A1AE9E61FE1A4A2E /* ProgressPhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4CD5487D146DC1E66570422 /* ProgressPhotosView.swift */; };
@@ -138,6 +139,7 @@
 		2116A98B7958672EE7083416 /* GymForgeWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA0754C6DEA6F6C46371E0BE /* GymForgeWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		66E8285EA55450521C1BA320 /* AutoBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E19773868498CFC7A7CDEA /* AutoBackup.swift */; };
 		C2B89BCF5615E52251C29554 /* HealthBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3145E99D8EC01E2796D4109E /* HealthBridge.swift */; };
+		ED570C1D7D97B622B7C1FA81 /* PhoneAppStore+Hoops.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B2D1182DBB7DCA32D93FBB /* PhoneAppStore+Hoops.swift */; };
 		8A4584D030871792784A459C /* RoutineExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30806884C286BCA84F8F93 /* RoutineExtras.swift */; };
 		B6E48509773B6BFC7076C0A8 /* PhoneAppStore+Body24.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D8E511EF024638D45AE4E5C /* PhoneAppStore+Body24.swift */; };
 		46188FEEE74122FF5EDFB1F6 /* PhoneAppStore+Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF9B0F0BB45FA49067B6741C /* PhoneAppStore+Food.swift */; };
@@ -195,6 +197,7 @@
 		F62E6CAB71B7232A6CEFAD9B /* CalorieCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8178DDD0C9B40579B243A260 /* CalorieCoach.swift */; };
 		811299B9EC2FBDD68C0E480D /* CalorieCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFECD7466908B726C9B4054E /* CalorieCard.swift */; };
 		E334E9EA65A6482734520857 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C743BA9BBFCDC897FA48F9 /* Sleep.swift */; };
+		CA57DF37A83F1C7817F02A58 /* Hoops.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7721073CA64D3DF0AE4E613A /* Hoops.swift */; };
 		0C7F09994C5FCB90A73FA92E /* BodyExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = F805B4AD3A1E6F5C2A63553F /* BodyExtras.swift */; };
 		02A72A1EE223C14355C4D89F /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71D10C31C370A77A1A893E00 /* Food.swift */; };
 		22D82E21CBC8B881045BBF67 /* ProgressExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6AD7EC2393767295AD8E53F /* ProgressExtras.swift */; };
@@ -202,6 +205,7 @@
 		C969634E40D5206340ADC5B7 /* LiveWorkoutTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D841FE2220C90E07011D777 /* LiveWorkoutTools.swift */; };
 		F9F77C270989E6F77C2C7889 /* UsualTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48285E8D2D079E63BC80F16 /* UsualTime.swift */; };
 		F23FC5153631955AB997AE08 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C743BA9BBFCDC897FA48F9 /* Sleep.swift */; };
+		7AC7EDAD817519DE02B9C17D /* Hoops.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7721073CA64D3DF0AE4E613A /* Hoops.swift */; };
 		609DCA96DE76EBE4F401FD87 /* BodyExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = F805B4AD3A1E6F5C2A63553F /* BodyExtras.swift */; };
 		73DA56504AB3BCB27A36C9AF /* Food.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71D10C31C370A77A1A893E00 /* Food.swift */; };
 		84502A60DA9B45E09ADB2A2D /* ProgressExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6AD7EC2393767295AD8E53F /* ProgressExtras.swift */; };
@@ -332,6 +336,7 @@
 		E4AFA8FC6EAF9CAF18270799 /* RoutinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutinesView.swift; sourceTree = "<group>"; };
 		ECA1B043C3E83234A9114A72 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		6F235556C86D0809ACEBABE1 /* HomeCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeCards.swift; sourceTree = "<group>"; };
+		A2ADDE7AAF3DE4E92FC4A1FD /* HoopsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoopsViews.swift; sourceTree = "<group>"; };
 		1E5EF76CDCBBDFC496DE8563 /* BodyExtrasViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyExtrasViews.swift; sourceTree = "<group>"; };
 		694E0EE3EBC5FC44AC2A5129 /* FoodViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodViews.swift; sourceTree = "<group>"; };
 		C4CD5487D146DC1E66570422 /* ProgressPhotosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressPhotosView.swift; sourceTree = "<group>"; };
@@ -395,6 +400,7 @@
 		6991D52489E3408EC2DE7FA5 /* CluckWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CluckWatchWidget.swift; sourceTree = "<group>"; };
 		81E19773868498CFC7A7CDEA /* AutoBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoBackup.swift; sourceTree = "<group>"; };
 		3145E99D8EC01E2796D4109E /* HealthBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthBridge.swift; sourceTree = "<group>"; };
+		F2B2D1182DBB7DCA32D93FBB /* PhoneAppStore+Hoops.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhoneAppStore+Hoops.swift"; sourceTree = "<group>"; };
 		BB30806884C286BCA84F8F93 /* RoutineExtras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineExtras.swift; sourceTree = "<group>"; };
 		1D8E511EF024638D45AE4E5C /* PhoneAppStore+Body24.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhoneAppStore+Body24.swift"; sourceTree = "<group>"; };
 		AF9B0F0BB45FA49067B6741C /* PhoneAppStore+Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhoneAppStore+Food.swift"; sourceTree = "<group>"; };
@@ -445,6 +451,7 @@
 		8178DDD0C9B40579B243A260 /* CalorieCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieCoach.swift; sourceTree = "<group>"; };
 		CFECD7466908B726C9B4054E /* CalorieCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieCard.swift; sourceTree = "<group>"; };
 		83C743BA9BBFCDC897FA48F9 /* Sleep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sleep.swift; sourceTree = "<group>"; };
+		7721073CA64D3DF0AE4E613A /* Hoops.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hoops.swift; sourceTree = "<group>"; };
 		F805B4AD3A1E6F5C2A63553F /* BodyExtras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyExtras.swift; sourceTree = "<group>"; };
 		71D10C31C370A77A1A893E00 /* Food.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Food.swift; sourceTree = "<group>"; };
 		C6AD7EC2393767295AD8E53F /* ProgressExtras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressExtras.swift; sourceTree = "<group>"; };
@@ -528,6 +535,7 @@
 				8E5D9A8119E8BB75F2561B7E /* CoachPlanner.swift */,
 				3A7243545D5485D8CC42085E /* WorkoutReview.swift */,
 				83C743BA9BBFCDC897FA48F9 /* Sleep.swift */,
+				7721073CA64D3DF0AE4E613A /* Hoops.swift */,
 				F805B4AD3A1E6F5C2A63553F /* BodyExtras.swift */,
 				71D10C31C370A77A1A893E00 /* Food.swift */,
 				C6AD7EC2393767295AD8E53F /* ProgressExtras.swift */,
@@ -576,6 +584,7 @@
 				418A8303F616AF04ACD4AEF4 /* CluckNotifier.swift */,
 				81E19773868498CFC7A7CDEA /* AutoBackup.swift */,
 				3145E99D8EC01E2796D4109E /* HealthBridge.swift */,
+				F2B2D1182DBB7DCA32D93FBB /* PhoneAppStore+Hoops.swift */,
 				BB30806884C286BCA84F8F93 /* RoutineExtras.swift */,
 				1D8E511EF024638D45AE4E5C /* PhoneAppStore+Body24.swift */,
 				AF9B0F0BB45FA49067B6741C /* PhoneAppStore+Food.swift */,
@@ -660,6 +669,7 @@
 				E4AFA8FC6EAF9CAF18270799 /* RoutinesView.swift */,
 				ECA1B043C3E83234A9114A72 /* TodayView.swift */,
 				6F235556C86D0809ACEBABE1 /* HomeCards.swift */,
+				A2ADDE7AAF3DE4E92FC4A1FD /* HoopsViews.swift */,
 				1E5EF76CDCBBDFC496DE8563 /* BodyExtrasViews.swift */,
 				694E0EE3EBC5FC44AC2A5129 /* FoodViews.swift */,
 				C4CD5487D146DC1E66570422 /* ProgressPhotosView.swift */,
@@ -959,6 +969,7 @@
 				1F71F804AECD16D5DAA6A49B /* CoachPlanner.swift in Sources */,
 				9EE4A8134EE3DB0DA13C53D9 /* WorkoutReview.swift in Sources */,
 				F23FC5153631955AB997AE08 /* Sleep.swift in Sources */,
+				7AC7EDAD817519DE02B9C17D /* Hoops.swift in Sources */,
 				609DCA96DE76EBE4F401FD87 /* BodyExtras.swift in Sources */,
 				73DA56504AB3BCB27A36C9AF /* Food.swift in Sources */,
 				84502A60DA9B45E09ADB2A2D /* ProgressExtras.swift in Sources */,
@@ -1012,6 +1023,7 @@
 				EC7F1E25567AA0B43636AC0D /* SyncPayload.swift in Sources */,
 				68C93B9D500FA8135DA7AB00 /* TodayView.swift in Sources */,
 				297C671665EDD7C19949E123 /* HomeCards.swift in Sources */,
+				164F3B8510D1E2F63DAED2E2 /* HoopsViews.swift in Sources */,
 				FA09C4B15DD21C84A2721700 /* BodyExtrasViews.swift in Sources */,
 				EDA2DAB01E4037E909793DDB /* FoodViews.swift in Sources */,
 				A805D811A1AE9E61FE1A4A2E /* ProgressPhotosView.swift in Sources */,
@@ -1064,6 +1076,7 @@
 				B17870E11275205A035C1E8D /* TapeMeasurementsView.swift in Sources */,
 				66E8285EA55450521C1BA320 /* AutoBackup.swift in Sources */,
 				C2B89BCF5615E52251C29554 /* HealthBridge.swift in Sources */,
+				ED570C1D7D97B622B7C1FA81 /* PhoneAppStore+Hoops.swift in Sources */,
 				8A4584D030871792784A459C /* RoutineExtras.swift in Sources */,
 				B6E48509773B6BFC7076C0A8 /* PhoneAppStore+Body24.swift in Sources */,
 				46188FEEE74122FF5EDFB1F6 /* PhoneAppStore+Food.swift in Sources */,
@@ -1110,6 +1123,7 @@
 				F62E6CAB71B7232A6CEFAD9B /* CalorieCoach.swift in Sources */,
 				811299B9EC2FBDD68C0E480D /* CalorieCard.swift in Sources */,
 				E334E9EA65A6482734520857 /* Sleep.swift in Sources */,
+				CA57DF37A83F1C7817F02A58 /* Hoops.swift in Sources */,
 				0C7F09994C5FCB90A73FA92E /* BodyExtras.swift in Sources */,
 				02A72A1EE223C14355C4D89F /* Food.swift in Sources */,
 				22D82E21CBC8B881045BBF67 /* ProgressExtras.swift in Sources */,
