@@ -16,6 +16,8 @@ struct GymForgeApp: App {
     init() {
         // MK20.6: the More Training widget's buttons run here (LiveActivityIntent → app process).
         MTWidgetControl.handler = { MTLiveTimer.handleWidget($0) }
+        // MK24: the workout Live Activity's Done button logs the planned set here.
+        WorkoutWidgetControl.handler = { PhoneAppStore.shared.completeSetFromLockScreen() }
         SharedGroup.migrateIfNeeded()   // MK20.7: sideloaded installs get a renamed App Group
     }
 

@@ -814,6 +814,43 @@ struct GymForgeChecks {
         check(BusyWords.isHeavy("COMP2041 Exam") && BusyWords.isHeavy("Assignment 2 due"), "exams and assignments are heavy")
         check(!BusyWords.isHeavy("Lecture") && !BusyWords.isHeavy("Testing day out") , "lectures (and 'testing') aren't")
 
+        // MK24 D: machine taken, reorder what's left, finish time, say the set.
+        let row = ExerciseDefinition(name: "Row", category: .back, repMin: 8, repMax: 12, defaultSets: 2, restSeconds: 90, weightIncrementKg: 2.5)
+        let fly = ExerciseDefinition(name: "Fly", category: .chest, repMin: 10, repMax: 15, defaultSets: 2, restSeconds: 60, weightIncrementKg: 2.5)
+        let four = WorkoutRoutine(name: "Four", exercises: [
+            RoutineExercise(exercise: press, order: 0), RoutineExercise(exercise: curl, order: 1, supersetWithNext: true),
+            RoutineExercise(exercise: pushdown, order: 2), RoutineExercise(exercise: row, order: 3)])
+        var mt = ActiveWorkoutState(routine: four)
+        check(mt.machineTaken() && mt.routine.exercises.map(\.exercise.name) == ["Curl", "Pushdown", "Incline Press", "Row"]
+              && mt.currentItem?.exercise.name == "Curl", "machine taken: the superset comes up, the press goes after it")
+        check(mt.machineTaken() && mt.routine.exercises.map(\.exercise.name) == ["Incline Press", "Curl", "Pushdown", "Row"]
+              && mt.routine.exercises[1].isSupersetWithNext && !mt.routine.exercises[2].isSupersetWithNext,
+              "a superset moves as a pair and stays linked")
+        var last = ActiveWorkoutState(routine: WorkoutRoutine(name: "One", exercises: [RoutineExercise(exercise: fly, order: 0)]))
+        check(!last.machineTaken(), "machine taken with nothing else left does nothing")
+        var ro = ActiveWorkoutState(routine: four)
+        _ = ro.completeSet(weightKg: 80, reps: 10, targetWeightKg: nil, targetReps: nil)
+        _ = ro.completeSet(weightKg: 80, reps: 10, targetWeightKg: nil, targetReps: nil)
+        _ = ro.completeSet(weightKg: 80, reps: 10, targetWeightKg: nil, targetReps: nil)
+        let rowID = ro.routine.exercises[3].id, curlID = ro.routine.exercises[1].id
+        ro.reorderRemaining([rowID, curlID])
+        check(ro.routine.exercises.map(\.exercise.name) == ["Incline Press", "Row", "Curl", "Pushdown"] && ro.currentItem?.exercise.name == "Row",
+              "reorder: done stays first, the new first comes up")
+        check(ro.setsLeft == 6 && ro.routine.exercises.map(\.order) == [0, 1, 2, 3], "sets left after reordering; order renumbered")
+        check(FinishEstimate.secondsPerSet(elapsed: 900, setsDone: 6, previous: nil) == 150, "pace from this session")
+        check(FinishEstimate.secondsPerSet(elapsed: 60, setsDone: 1, previous: (3600, 20)) == 180, "pace from last time early on")
+        check(FinishEstimate.secondsPerSet(elapsed: 10, setsDone: 5, previous: nil) == 60, "pace never under a minute")
+        check(SpokenSet.parse("80 for 10") == .init(weightKg: 80, reps: 10), "80 for 10")
+        check(SpokenSet.parse("eighty kilos ten reps") == .init(weightKg: 80, reps: 10), "eighty kilos ten reps")
+        check(SpokenSet.parse("22.5kg x 12") == .init(weightKg: 22.5, reps: 12), "22.5kg x 12")
+        check(SpokenSet.parse("one hundred and two point five for eight") == .init(weightKg: 102.5, reps: 8), "102.5 in words")
+        check(SpokenSet.parse("10 reps at 60") == .init(weightKg: 60, reps: 10), "reps first")
+        check(SpokenSet.parse("8 at 100 kg") == .init(weightKg: 100, reps: 8), "kg after the second number")
+        check(SpokenSet.parse("twelve") == .init(weightKg: nil, reps: 12), "a lone number is reps")
+        check(SpokenSet.parse("bodyweight 15") == .init(weightKg: 0, reps: 15, bodyweight: true), "bodyweight")
+        check(SpokenSet.parse("twenty five for twelve") == .init(weightKg: 25, reps: 12), "twenty five")
+        check(SpokenSet.parse("hello") == nil, "no numbers → nothing")
+
         print("PASS: all GymForge checks")
     }
 }

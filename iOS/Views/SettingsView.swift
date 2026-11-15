@@ -296,6 +296,8 @@ struct SettingsSoundsPage: View {
             } footer: {
                 Text("Import your own audio files. Once there's at least one, a player appears on the workout screen. They pause your music while they play.")
             }
+
+            WorkoutMusicSection()
         }
         .navigationTitle("Sounds and reminders")
         .navigationBarTitleDisplayMode(.inline)
@@ -754,6 +756,37 @@ struct HealthExportPicker: UIViewControllerRepresentable {
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { onCancel() }
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
             if let url = urls.first { onPick(url) }
+        }
+    }
+}
+
+/// MK24 (63): a playlist link or a Shortcut when a workout starts.
+struct WorkoutMusicSection: View {
+    @AppStorage(WorkoutStartAction.kindKey) private var kind = WorkoutStartAction.Kind.none.rawValue
+    @AppStorage(WorkoutStartAction.valueKey) private var value = ""
+
+    var body: some View {
+        Section {
+            Picker("When a workout starts", selection: $kind) {
+                ForEach(WorkoutStartAction.Kind.allCases) { Text($0.title).tag($0.rawValue) }
+            }
+            if kind == WorkoutStartAction.Kind.shortcut.rawValue {
+                TextField("Shortcut name, e.g. Gym music", text: $value)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            } else if kind == WorkoutStartAction.Kind.link.rawValue {
+                TextField("Playlist link (Spotify or Apple Music)", text: $value)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
+            if kind != WorkoutStartAction.Kind.none.rawValue, WorkoutStartAction.url != nil {
+                Button { WorkoutStartAction.run() } label: { Label("Try it", systemImage: "play.circle") }
+            }
+        } header: {
+            Text("Music")
+        } footer: {
+            Text("A Shortcut is the smoothest: make one in the Shortcuts app with a \"Play\" music action, and Splitday comes straight back to your workout after it runs. A playlist link opens your music app, so you swipe back yourself. The ♪ button on the workout screen runs it again.")
         }
     }
 }

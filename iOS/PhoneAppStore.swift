@@ -302,7 +302,7 @@ final class PhoneAppStore: ObservableObject {
 
     func appBecameActive() async {
         // Recreates the workout Live Activity if it couldn't start in the background or was swiped away.
-        liveActivity.sync(activeWorkout, style: profile.coachStyle)
+        syncLiveActivity()
         clearStaleCardio()
         await ensureNotifications()
         await healthKit.refreshBodyMetrics()
@@ -887,6 +887,7 @@ final class PhoneAppStore: ObservableObject {
         }
         activeWorkout = state
         showWorkout = true
+        WorkoutStartAction.runSoon()   // MK24: your playlist / Shortcut
         pushSnapshotToWatch()
         watchBridge.sendStartWorkout(state)
         await healthKit.launchWatchStrengthWorkout()
@@ -1097,7 +1098,7 @@ final class PhoneAppStore: ObservableObject {
     }
 
     private func activeWorkoutChanged(from old: ActiveWorkoutState?) {
-        liveActivity.sync(activeWorkout, style: profile.coachStyle)
+        syncLiveActivity()
         persistActiveWorkout()
 
         if let state = activeWorkout, state.isResting, let end = state.restEndDate {

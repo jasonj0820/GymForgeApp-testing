@@ -17,12 +17,15 @@ final class LiveActivityManager {
         activity = Activity<WorkoutActivityAttributes>.activities.first { $0.attributes.workoutID != saved }
     }
 
-    func sync(_ state: ActiveWorkoutState?, style: CoachStyle = .motivating) {
+    func sync(_ state: ActiveWorkoutState?, style: CoachStyle = .motivating, nextSet: String? = nil, finishAt: Date? = nil) {
         guard let state else {
             endAll()
             return
         }
-        let content = ActivityContent(state: Self.contentState(for: state, style: style), staleDate: nil)
+        var contentState = Self.contentState(for: state, style: style)
+        contentState.nextSetText = state.isComplete ? nil : nextSet
+        contentState.finishAt = state.isComplete ? nil : finishAt
+        let content = ActivityContent(state: contentState, staleDate: nil)
 
         if let current = activity, current.attributes.workoutID == state.workoutID,
            current.activityState == .active || current.activityState == .stale {

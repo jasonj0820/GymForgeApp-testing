@@ -131,6 +131,8 @@
 		2116A98B7958672EE7083416 /* GymForgeWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA0754C6DEA6F6C46371E0BE /* GymForgeWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		66E8285EA55450521C1BA320 /* AutoBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E19773868498CFC7A7CDEA /* AutoBackup.swift */; };
 		C2B89BCF5615E52251C29554 /* HealthBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3145E99D8EC01E2796D4109E /* HealthBridge.swift */; };
+		5322B2C6B728119C9594F966 /* SetListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CE091D45967F75CFB28C40 /* SetListener.swift */; };
+		828F83347A4710427E10C3E4 /* PhoneAppStore+Live.swift in Sources */ = {isa = PBXBuildFile; fileRef = B77DF5D750F17BBC29D48E94 /* PhoneAppStore+Live.swift */; };
 		5AE1B40A34F6DC1AB7419DDE /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC552F28ACA8804B64129B53 /* Haptics.swift */; };
 		33C346AF34C050F306C710F1 /* DailyNudges.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0892BED1CED669BA7F267C0 /* DailyNudges.swift */; };
 		CBB83AFCF09FBB65CB7484A0 /* BackupStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A18DC6F0CB840DA375EDD19 /* BackupStatus.swift */; };
@@ -181,8 +183,10 @@
 		F62E6CAB71B7232A6CEFAD9B /* CalorieCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8178DDD0C9B40579B243A260 /* CalorieCoach.swift */; };
 		811299B9EC2FBDD68C0E480D /* CalorieCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFECD7466908B726C9B4054E /* CalorieCard.swift */; };
 		E334E9EA65A6482734520857 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C743BA9BBFCDC897FA48F9 /* Sleep.swift */; };
+		C969634E40D5206340ADC5B7 /* LiveWorkoutTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D841FE2220C90E07011D777 /* LiveWorkoutTools.swift */; };
 		F9F77C270989E6F77C2C7889 /* UsualTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48285E8D2D079E63BC80F16 /* UsualTime.swift */; };
 		F23FC5153631955AB997AE08 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C743BA9BBFCDC897FA48F9 /* Sleep.swift */; };
+		D0390C972233C5B63FD439E2 /* LiveWorkoutTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D841FE2220C90E07011D777 /* LiveWorkoutTools.swift */; };
 		00DEC5908CA85163F63C7008 /* UsualTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48285E8D2D079E63BC80F16 /* UsualTime.swift */; };
 		59CF6026AF0FD9BC15144CCF /* SleepHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D87920DC61A6760A63C4E1D /* SleepHealth.swift */; };
 		B866A49923D6FA0DBD1489A6 /* SleepHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D87920DC61A6760A63C4E1D /* SleepHealth.swift */; };
@@ -365,6 +369,8 @@
 		6991D52489E3408EC2DE7FA5 /* CluckWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CluckWatchWidget.swift; sourceTree = "<group>"; };
 		81E19773868498CFC7A7CDEA /* AutoBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoBackup.swift; sourceTree = "<group>"; };
 		3145E99D8EC01E2796D4109E /* HealthBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthBridge.swift; sourceTree = "<group>"; };
+		14CE091D45967F75CFB28C40 /* SetListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetListener.swift; sourceTree = "<group>"; };
+		B77DF5D750F17BBC29D48E94 /* PhoneAppStore+Live.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneAppStore+Live.swift; sourceTree = "<group>"; };
 		CC552F28ACA8804B64129B53 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		C0892BED1CED669BA7F267C0 /* DailyNudges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyNudges.swift; sourceTree = "<group>"; };
 		9A18DC6F0CB840DA375EDD19 /* BackupStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupStatus.swift; sourceTree = "<group>"; };
@@ -408,6 +414,7 @@
 		8178DDD0C9B40579B243A260 /* CalorieCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieCoach.swift; sourceTree = "<group>"; };
 		CFECD7466908B726C9B4054E /* CalorieCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieCard.swift; sourceTree = "<group>"; };
 		83C743BA9BBFCDC897FA48F9 /* Sleep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sleep.swift; sourceTree = "<group>"; };
+		3D841FE2220C90E07011D777 /* LiveWorkoutTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWorkoutTools.swift; sourceTree = "<group>"; };
 		D48285E8D2D079E63BC80F16 /* UsualTime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsualTime.swift; sourceTree = "<group>"; };
 		7D87920DC61A6760A63C4E1D /* SleepHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepHealth.swift; sourceTree = "<group>"; };
 		D23E489D123171E0317A6D87 /* PhoneAppStore+Sleep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhoneAppStore+Sleep.swift"; sourceTree = "<group>"; };
@@ -486,6 +493,7 @@
 				8E5D9A8119E8BB75F2561B7E /* CoachPlanner.swift */,
 				3A7243545D5485D8CC42085E /* WorkoutReview.swift */,
 				83C743BA9BBFCDC897FA48F9 /* Sleep.swift */,
+				3D841FE2220C90E07011D777 /* LiveWorkoutTools.swift */,
 				D48285E8D2D079E63BC80F16 /* UsualTime.swift */,
 				7D87920DC61A6760A63C4E1D /* SleepHealth.swift */,
 				D77F750532ECF854CB53ECBC /* CluckCoach.swift */,
@@ -529,6 +537,8 @@
 				418A8303F616AF04ACD4AEF4 /* CluckNotifier.swift */,
 				81E19773868498CFC7A7CDEA /* AutoBackup.swift */,
 				3145E99D8EC01E2796D4109E /* HealthBridge.swift */,
+				14CE091D45967F75CFB28C40 /* SetListener.swift */,
+				B77DF5D750F17BBC29D48E94 /* PhoneAppStore+Live.swift */,
 				CC552F28ACA8804B64129B53 /* Haptics.swift */,
 				C0892BED1CED669BA7F267C0 /* DailyNudges.swift */,
 				9A18DC6F0CB840DA375EDD19 /* BackupStatus.swift */,
@@ -899,6 +909,7 @@
 				1F71F804AECD16D5DAA6A49B /* CoachPlanner.swift in Sources */,
 				9EE4A8134EE3DB0DA13C53D9 /* WorkoutReview.swift in Sources */,
 				F23FC5153631955AB997AE08 /* Sleep.swift in Sources */,
+				D0390C972233C5B63FD439E2 /* LiveWorkoutTools.swift in Sources */,
 				00DEC5908CA85163F63C7008 /* UsualTime.swift in Sources */,
 				B866A49923D6FA0DBD1489A6 /* SleepHealth.swift in Sources */,
 				435D0C4A97BC19560AB2B558 /* WatchSleepView.swift in Sources */,
@@ -993,6 +1004,8 @@
 				B17870E11275205A035C1E8D /* TapeMeasurementsView.swift in Sources */,
 				66E8285EA55450521C1BA320 /* AutoBackup.swift in Sources */,
 				C2B89BCF5615E52251C29554 /* HealthBridge.swift in Sources */,
+				5322B2C6B728119C9594F966 /* SetListener.swift in Sources */,
+				828F83347A4710427E10C3E4 /* PhoneAppStore+Live.swift in Sources */,
 				5AE1B40A34F6DC1AB7419DDE /* Haptics.swift in Sources */,
 				33C346AF34C050F306C710F1 /* DailyNudges.swift in Sources */,
 				CBB83AFCF09FBB65CB7484A0 /* BackupStatus.swift in Sources */,
@@ -1032,6 +1045,7 @@
 				F62E6CAB71B7232A6CEFAD9B /* CalorieCoach.swift in Sources */,
 				811299B9EC2FBDD68C0E480D /* CalorieCard.swift in Sources */,
 				E334E9EA65A6482734520857 /* Sleep.swift in Sources */,
+				C969634E40D5206340ADC5B7 /* LiveWorkoutTools.swift in Sources */,
 				F9F77C270989E6F77C2C7889 /* UsualTime.swift in Sources */,
 				59CF6026AF0FD9BC15144CCF /* SleepHealth.swift in Sources */,
 				BCE7AFA11650A7D388196719 /* PhoneAppStore+Sleep.swift in Sources */,

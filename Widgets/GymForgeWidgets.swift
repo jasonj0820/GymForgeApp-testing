@@ -1,4 +1,5 @@
 import ActivityKit
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -44,6 +45,16 @@ struct WorkoutLiveActivity: Widget {
                             .monospacedDigit()
                             .foregroundStyle(.cyan)
                             .frame(maxWidth: 80)
+                    } else if let next = context.state.nextSetText {
+                        // MK24: log the planned set without opening the app.
+                        Button(intent: CompleteSetIntent()) {
+                            Label(next, systemImage: "checkmark")
+                                .font(.caption.bold())
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .tint(.green)
+                        .frame(maxWidth: 120)
                     } else {
                         Image(systemName: "figure.strengthtraining.traditional")
                             .font(.title2)
@@ -112,6 +123,11 @@ struct LockScreenWorkoutView: View {
                     .font(.caption.bold())
                     .foregroundStyle(.orange)
                 Spacer()
+                if let finish = state.finishAt {
+                    Text("done ≈ \(finish.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
                 Text(attributes.startedAt, style: .timer)
                     .font(.caption)
                     .monospacedDigit()
@@ -155,6 +171,16 @@ struct LockScreenWorkoutView: View {
                         .foregroundStyle(.cyan)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 100)
+                } else if let next = state.nextSetText, !state.isCardio {
+                    // MK24: log the planned set from the Lock Screen (fix the numbers in the app if they're off).
+                    Button(intent: CompleteSetIntent()) {
+                        VStack(spacing: 1) {
+                            Image(systemName: "checkmark").font(.headline)
+                            Text(next).font(.caption2.bold()).lineLimit(1).minimumScaleFactor(0.7)
+                        }
+                        .frame(minWidth: 70)
+                    }
+                    .tint(.green)
                 }
             }
 

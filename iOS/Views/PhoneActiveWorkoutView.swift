@@ -24,6 +24,12 @@ struct PhoneActiveWorkoutView: View {
     @State private var addingSwapTo: UUID?
     @State private var swapNameDraft = ""
     @State private var addingExercise = false
+    // MK24 (D)
+    @StateObject private var listener = SetListener()
+    @State private var spokenResult: String?
+    @State private var spokenSetID: UUID?
+    @State private var reordering = false
+    @State private var nothingElse = false
     @FocusState private var focusedField: Field?
 
     private enum Field { case weight, reps, minutes, km }
@@ -117,6 +123,12 @@ struct PhoneActiveWorkoutView: View {
                 }
                 .accessibilityLabel("Add exercise")
             }
+            if WorkoutStartAction.url != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { WorkoutStartAction.run() } label: { Image(systemName: "music.note") }
+                        .accessibilityLabel("Start your music")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Finish") { store.finishWorkout() }
                     .bold()
@@ -170,6 +182,14 @@ struct PhoneActiveWorkoutView: View {
         .sheet(item: $managingExercise) { target in
             ExerciseSetsSheet(target: target)
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $reordering) {
+            ReorderRemainingSheet().environmentObject(store)
+        }
+        .alert("Nothing else to do first", isPresented: $nothingElse) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Every other exercise is done. Wait for the machine, or swap to another exercise.")
         }
         .alert("New swap option", isPresented: Binding(
             get: { addingSwapTo != nil },
@@ -278,7 +298,15 @@ struct PhoneActiveWorkoutView: View {
                     }
                 }
             } header: {
-                Text("Exercises")
+                HStack {
+                    Text("Exercises")
+                    Spacer()
+                    if state.groups.filter({ group in !group.allSatisfy { state.isFinished(state.routine.exercises[$0]) } }).count > 1 {
+                        Button("Reorder") { reordering = true }
+                            .font(.caption.bold())
+                            .textCase(nil)
+                    }
+                }
             }
 
             Section {
@@ -307,6 +335,11 @@ struct PhoneActiveWorkoutView: View {
             HStack(spacing: 8) {
                 Label(GFFormat.duration(context.date.timeIntervalSince(state.startedAt)), systemImage: "timer")
                 Spacer()
+                // MK24: when you'll be done at this pace.
+                if let finish = store.estimatedFinish(state, now: context.date) {
+                    Text("done ≈ \(finish.formatted(date: .omitted, time: .shortened))")
+                        .foregroundStyle(.secondary)
+                }
                 Text("\(state.totalCompletedSets) / \(state.totalPlannedSets) sets")
                     .foregroundStyle(.secondary)
             }
@@ -323,6 +356,7 @@ struct PhoneActiveWorkoutView: View {
                 restRow(state: state, end: end)
                     .font(.subheadline)
             }
+            spokenBanner
             if let item = state.currentItem, !state.isComplete {
                 let exercise = item.exercise
                 // MK23: with the boxes empty, Complete logs the planned (grey) numbers, and says which.
@@ -344,6 +378,9 @@ struct PhoneActiveWorkoutView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .disabled(exercise.isCardio ? (typedSeconds ?? 0) <= 0 : entry == nil)
+                .overlay(alignment: .leading) {
+                    if !exercise.isCardio { micButton.padding(.leading, 6) }
+                }
             } else {
                 Button {
                     store.finishWorkout()
@@ -608,6 +645,13 @@ struct PhoneActiveWorkoutView: View {
                     if !exercise.isCardio {
                         VariationRow(state: state, item: item, compact: true)
                     }
+                    // MK24: someone's on it. The next exercise comes up; this one waits until after.
+                    Button {
+                        if store.machineTaken() { Haptics.tap() } else { nothingElse = true }
+                    } label: {
+                        Label("In use", systemImage: "hourglass").frame(maxWidth: .infinity)
+                    }
+                    .accessibilityLabel("Machine taken: do the next exercise first")
                     Button {
                         flaggingPain = exercise
                     } label: {
@@ -847,6 +891,68 @@ struct PhoneActiveWorkoutView: View {
 
     /// What Complete will log: what you typed, and for a box left empty, the planned number shown in grey.
     /// nil when there's nothing sensible to log (no plan and nothing typed).
+    // MARK: MK24 — say the set
+
+    private var micButton: some View {
+        Button {
+            Task {
+                if listener.listening { await finishListening() } else { await listener.start { Task { await finishListening() } } }
+            }
+        } label: {
+            Image(systemName: listener.listening ? "waveform" : "mic.fill")
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(listener.listening ? Color.red : Color.white.opacity(0.22), in: Circle())
+                .symbolEffect(.variableColor.iterative, isActive: listener.listening)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(listener.listening ? "Stop listening" : "Say the set, like 80 for 10")
+    }
+
+    @ViewBuilder
+    private var spokenBanner: some View {
+        if listener.listening {
+            Label(listener.heard.isEmpty ? "Listening… say \"80 for 10\"" : "“\(listener.heard)”", systemImage: "mic.fill")
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if let problem = listener.problem {
+            Label(problem, systemImage: "mic.slash").font(.footnote).foregroundStyle(.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if let result = spokenResult {
+            HStack {
+                Label(result, systemImage: spokenSetID == nil ? "questionmark.bubble" : "checkmark.bubble")
+                    .font(.subheadline)
+                Spacer()
+                if let id = spokenSetID {
+                    Button("Undo") {
+                        store.deleteSet(id: id)
+                        spokenSetID = nil
+                        spokenResult = nil
+                        Haptics.warning()
+                    }
+                    .font(.subheadline.bold())
+                }
+            }
+        }
+    }
+
+    private func finishListening() async {
+        let heard = await listener.stop()
+        guard !heard.isEmpty else { return }
+        if let logged = store.logSpoken(heard) {
+            spokenSetID = store.activeWorkout?.lastLoggedSet?.id
+            spokenResult = "Logged \(logged)"
+            Haptics.success()
+        } else {
+            spokenSetID = nil
+            spokenResult = "Didn't catch a set in “\(heard)”. Try “80 for 10”."
+        }
+        let shown = spokenResult
+        try? await Task.sleep(nanoseconds: 8_000_000_000)
+        if spokenResult == shown { spokenResult = nil; spokenSetID = nil }
+    }
+
     private func setEntry(_ item: RoutineExercise) -> (weight: Double, reps: Int)? {
         let hint = store.prefill(for: item)
         let reps = typedReps ?? hint.reps
@@ -885,5 +991,61 @@ struct PRBanner: View {
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.yellow.opacity(0.6), lineWidth: 1))
+    }
+}
+
+/// MK24 (59): drag what's left into the order you want. Supersets move as one row; done exercises stay put.
+struct ReorderRemainingSheet: View {
+    @EnvironmentObject private var store: PhoneAppStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var rows: [Row] = []
+
+    struct Row: Identifiable, Equatable {
+        let id: UUID          // first exercise of the group
+        let title: String
+        let detail: String
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(rows) { row in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.title).font(.headline)
+                            Text(row.detail).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .onMove { rows.move(fromOffsets: $0, toOffset: $1) }
+                } footer: {
+                    Text("The top one comes up next. A half-done exercise stays where you are until it's finished.")
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("What's left")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        store.reorderRemaining(rows.map(\.id))
+                        Haptics.success()
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear { rows = Self.rows(store.activeWorkout) }
+        }
+    }
+
+    static func rows(_ state: ActiveWorkoutState?) -> [Row] {
+        guard let state else { return [] }
+        return state.groups.compactMap { group in
+            let items = group.map { state.routine.exercises[$0] }
+            guard let first = items.first, !items.allSatisfy({ state.isFinished($0) }) else { return nil }
+            let left = items.reduce(0) { $0 + max(0, $1.exercise.defaultSets - state.sets(for: $1).count) }
+            return Row(id: first.id, title: items.map(\.exercise.name).joined(separator: " + "),
+                       detail: (items.count > 1 ? "Superset · " : "") + "\(left) set\(left == 1 ? "" : "s") left")
+        }
     }
 }
