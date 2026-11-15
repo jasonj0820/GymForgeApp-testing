@@ -40,6 +40,7 @@ struct BodyView: View {
                 .pickerStyle(.segmented)
 
                 SundayWeighInCard()
+                GoalWeightCard()   // MK24 (104)
 
                 metricSection(title: "Body weight", suffix: "kg", points: weights)
                 metricSection(title: "Body fat", suffix: "%", points: fats)
@@ -183,13 +184,17 @@ struct SundayWeighInCard: View {
     @State private var adding = false
     @State private var addingPast = false
     @State private var remind = WeighInReminder.enabled
+    // MK24 (105): your weigh-in day, or every day with a weekly average.
+    @AppStorage("weighin.weekday") private var weekday = 1
+    @AppStorage("weighin.daily") private var daily = false
 
     var body: some View {
-        let thisWeek = store.thisWeeksWeighIn
+        let thisWeek = daily ? store.extras.weighIn(on: .now) : store.thisWeeksWeighIn
+        let dayName = Calendar.current.weekdaySymbols[min(max(weekday, 1), 7) - 1]
         let recent = Array(store.extras.weighIns.suffix(6).reversed())
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label("Sunday weigh-in", systemImage: "scalemass.fill").font(.headline)
+                Label(daily ? "Daily weigh-in" : "\(dayName) weigh-in", systemImage: "scalemass.fill").font(.headline)
                 Spacer()
                 Button {
                     if let thisWeek { editing = thisWeek } else { adding = true }
@@ -198,18 +203,32 @@ struct SundayWeighInCard: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
+            if daily, let average = store.weekAverageWeight {
+                Text("7-day average: \(GFFormat.kg(average)) kg" + (store.weekAverageChange.map { String(format: " (%+.1f kg on the week before)", $0) } ?? ""))
+                    .font(.subheadline.weight(.semibold))
+            }
             if let thisWeek {
-                Text("This week: " + WeighInSheet.summary(thisWeek) + " · " + thisWeek.date.formatted(.dateTime.weekday(.wide).day().month()))
+                Text((daily ? "Today: " : "This week: ") + WeighInSheet.summary(thisWeek) + " · " + thisWeek.date.formatted(.dateTime.weekday(.wide).day().month()))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                Text(Calendar.current.component(.weekday, from: .now) == 1
-                     ? "It's Sunday — log your weight and body fat."
-                     : "Not logged since Sunday. You can still add it.")
+                Text(daily ? "Not logged today. Same time each morning, before food."
+                     : (Calendar.current.component(.weekday, from: .now) == weekday
+                        ? "It's \(dayName) — log your weight and body fat."
+                        : "Not logged since \(dayName). You can still add it."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            Toggle("Remind me Sundays at 9:00am", isOn: $remind)
+            Picker("Weigh in", selection: Binding(get: { daily ? 0 : weekday }, set: { value in
+                daily = value == 0
+                if value > 0 { weekday = value }
+                WeighInReminder.reschedule(weighIns: store.extras.weighIns)
+            })) {
+                Text("Every day (weekly average)").tag(0)
+                ForEach(1...7, id: \.self) { Text("Weekly on \(Calendar.current.weekdaySymbols[$0 - 1])").tag($0) }
+            }
+            .font(.subheadline)
+            Toggle(daily ? "Remind me each morning at 9:00am" : "Remind me \(dayName)s at 9:00am", isOn: $remind)
                 .font(.subheadline)
                 .onChange(of: remind) { _, on in
                     WeighInReminder.enabled = on

@@ -115,6 +115,7 @@ struct TodayView: View {
                         .card()
                 }
                 BreakBanner()
+                BigNightBanner()   // MK24 (110)
                 // MK23: a failed save used to be silent.
                 if let problem = store.saveProblem {
                     NavigationLink { DiagnosticsView() } label: {

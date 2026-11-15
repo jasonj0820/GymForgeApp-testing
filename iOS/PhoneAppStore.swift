@@ -885,6 +885,9 @@ final class PhoneAppStore: ObservableObject {
         if activeBreak != nil, state.sessionTags == nil {
             state.sessionTags = [.limitedTime]   // MK11.3: break sessions stay out of trends
         }
+        if dayAfterBigNight, !(state.sessionTags ?? []).contains(.unusualFatigue) {
+            state.sessionTags = (state.sessionTags ?? []) + [.unusualFatigue]   // MK24 (110)
+        }
         activeWorkout = state
         showWorkout = true
         WorkoutStartAction.runSoon()   // MK24: your playlist / Shortcut

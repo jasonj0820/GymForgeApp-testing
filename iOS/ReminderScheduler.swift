@@ -136,15 +136,19 @@ enum WeighInReminder {
         center.removePendingNotificationRequests(withIdentifiers: ids)
         guard enabled, !coveredByRoutine() else { return }
         let calendar = Calendar.current
-        var next = WeighIn.sunday(onOrBefore: now, calendar: calendar)
+        // MK24 (105): your weigh-in day, or every morning.
+        let step = WeighIn.daily ? 1 : 7
+        var next = WeighIn.daily ? calendar.startOfDay(for: now) : WeighIn.sunday(onOrBefore: now, calendar: calendar)
         var index = 0
-        while index < planned {
-            defer { next = calendar.date(byAdding: .day, value: 7, to: next) ?? next.addingTimeInterval(7 * 86_400) }
+        var tries = 0
+        while index < planned, tries < 14 {
+            tries += 1
+            defer { next = calendar.date(byAdding: .day, value: step, to: next) ?? next.addingTimeInterval(Double(step) * 86_400) }
             guard let fire = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: next), fire > now,
                   !weighIns.contains(where: { calendar.isDate($0.date, inSameDayAs: next) }) else { continue }
             let content = UNMutableNotificationContent()
-            content.title = "Sunday weigh-in"
-            content.body = "Log your weight and body fat for the week."
+            content.title = WeighIn.daily ? "Morning weigh-in" : "\(WeighIn.dayName) weigh-in"
+            content.body = WeighIn.daily ? "Before food, after the bathroom. The weekly average does the rest." : "Log your weight and body fat for the week."
             content.sound = .default
             content.userInfo = ["open": "weighin"]
             let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)

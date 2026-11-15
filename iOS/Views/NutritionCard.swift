@@ -116,8 +116,14 @@ struct NutritionView: View {
             VStack(alignment: .leading, spacing: 16) {
                 NutritionCard()
                 FoodTodayCard()   // MK24 (G1)
+                WaterCard()       // MK24 (G2)
+                CaffeineCard()
                 CalorieCard()
                 PhaseCard()
+                NavigationLink { WeeklyAveragesView() } label: {
+                    Label("Weekly averages vs weight change", systemImage: "tablecells").frame(maxWidth: .infinity, alignment: .leading).card()
+                }
+                .buttonStyle(.plain)
             }
             .padding()
         }

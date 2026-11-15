@@ -329,10 +329,10 @@ public struct WeighIn: Identifiable, Codable, Equatable {
          bodyFatPercent.map { BodyMetricPoint(metric: .bodyFatPercentage, date: date, value: $0) }].compactMap { $0 }
     }
 
-    /// The Sunday this weigh-in is for: today if it's Sunday, otherwise the most recent Sunday.
+    /// The weigh-in day this is for: today if it's the weigh-in day (Sunday unless changed, MK24), otherwise the most recent one.
     public static func sunday(onOrBefore date: Date, calendar: Calendar = .current) -> Date {
         let day = calendar.startOfDay(for: date)
-        let back = (calendar.component(.weekday, from: day) - 1 + 7) % 7   // weekday 1 = Sunday
+        let back = (calendar.component(.weekday, from: day) - weekday + 7) % 7   // weekday 1 = Sunday
         return calendar.date(byAdding: .day, value: -back, to: day) ?? day
     }
 }

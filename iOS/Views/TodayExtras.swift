@@ -9,6 +9,7 @@ enum QuickAdd: String, Identifiable {
 
 /// The + in Today's toolbar: protein, calories, weight or a note in two taps.
 struct QuickAddMenu: View {
+    @EnvironmentObject private var store: PhoneAppStore
     @Binding var sheet: QuickAdd?
     @Binding var showWeighIn: Bool
 
@@ -18,6 +19,11 @@ struct QuickAddMenu: View {
             Button { sheet = .calories } label: { Label("Calories", systemImage: "flame") }
             Button { showWeighIn = true } label: { Label("Weight", systemImage: "scalemass") }
             Button { sheet = .note } label: { Label("Note", systemImage: "note.text") }
+            Divider()
+            // MK24 (110): tonight's a big one.
+            Button { store.toggleBigNight() } label: {
+                Label(store.isBigNight(store.bigNightTonightDate) ? "Not a big night after all" : "Big night out tonight", systemImage: "party.popper")
+            }
         } label: {
             Image(systemName: "plus.circle.fill")
         }

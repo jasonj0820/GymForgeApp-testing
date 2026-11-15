@@ -915,6 +915,25 @@ struct GymForgeChecks {
         let guessed = FoodEstimate.guess("200g chicken and rice, 3 eggs")
         check(guessed.count == 3 && guessed[0].proteinG == 62 && guessed[2].proteinG == 19, "table guess with grams and counts")
 
+        // MK24 G2: water, caffeine, weekly averages, goal weight.
+        check(WaterMath.target(weightKg: 80, training: true) == 3250 && WaterMath.target(weightKg: nil, training: false) == 3000, "water target")
+        let coffee = CaffeineEntry(date: jan5, mg: 200)
+        check(abs(CaffeineMath.remaining([coffee], at: jan5.addingTimeInterval(5 * 3600)) - 100) < 0.01, "half the caffeine left after 5 hours")
+        check(CaffeineMath.cutoff(bedtime: jan5.addingTimeInterval(22 * 3600)) == jan5.addingTimeInterval(14 * 3600), "cut-off 8 h before bed")
+        let nutritionDays = (0..<14).map { NutritionDay(day: jan5.addingTimeInterval(Double($0) * 86_400), proteinG: 150, calories: 2500) }
+        let weighs = (0..<14).map { (date: jan5.addingTimeInterval(Double($0) * 86_400 + 3600), kg: 80 - Double($0) * 0.1) }
+        let averages = WeeklyAverages.make(nutrition: nutritionDays, weights: weighs, weeks: 2,
+                                           now: jan5.addingTimeInterval(13 * 86_400), calendar: gregorian)
+        check(averages.count == 2 && averages[0].calories == 2500 && abs((averages[0].weightChange ?? 0) + 0.7) < 0.001,
+              "weekly averages: 2500 kcal, 0.7 kg down week on week")
+        let falling = (0..<8).map { (date: jan5.addingTimeInterval(Double($0) * 3 * 86_400), kg: 85 - Double($0) * 0.15) }
+        let trendNow = jan5.addingTimeInterval(21 * 86_400)
+        check(abs((WeightGoalMath.trend(falling, now: trendNow) ?? 0) + 0.35) < 0.01, "weight trend −0.35 kg a week")
+        if case .needs(let perWeek, _) = WeightGoalMath.status(goal: GoalWeight(kg: 80, by: trendNow.addingTimeInterval(10 * 7 * 86_400)),
+                                                             current: 84, weights: falling, now: trendNow) {
+            check(abs(perWeek + 0.4) < 0.001, "4 kg in 10 weeks needs −0.4 kg a week")
+        } else { check(false, "goal weight should need a rate") }
+
         print("PASS: all GymForge checks")
     }
 }
