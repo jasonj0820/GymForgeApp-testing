@@ -190,8 +190,11 @@ struct MTChecks {
         let sixMonths = paceNow.addingTimeInterval(6 * MTPace.monthDays * 86_400)
         check(abs((MTPace.needed(current: 13.5, target: 14.478, now: paceNow, deadline: sixMonths) ?? 0) - 0.163) < 0.001,
               "≈0.98 cm in 6 months needs ≈0.16 cm a month")
-        check(MTPace.status(current: 13.5, target: 14.478, trendPerMonth: 0.2, now: paceNow, deadline: sixMonths)
-              == .onPace(needed: (14.478 - 13.5) / 6, trend: 0.2), "trend above what's needed is on pace")
+        if case .onPace(let needed, let trend) = MTPace.status(current: 13.5, target: 14.478, trendPerMonth: 0.2, now: paceNow, deadline: sixMonths) {
+            check(abs(needed - 0.163) < 0.001 && trend == 0.2, "trend above what's needed is on pace")
+        } else {
+            check(false, "a fast enough trend should be on pace")
+        }
         if case .behind = MTPace.status(current: 13.5, target: 14.478, trendPerMonth: 0.05, now: paceNow, deadline: sixMonths) {} else {
             check(false, "a slow trend is behind")
         }
