@@ -185,6 +185,22 @@ struct MTChecks {
         MTPlan.cueOverrides = [:]
         check(MTPlan.pacSteps.map(\.cue) == MTPlan.basePACSteps.map(\.cue), "no overrides, original text")
 
+        // MK24.1: pace toward a goal by a date.
+        let paceNow = Date(timeIntervalSince1970: 1_800_000_000)
+        let sixMonths = paceNow.addingTimeInterval(6 * MTPace.monthDays * 86_400)
+        check(abs((MTPace.needed(current: 13.5, target: 14.478, now: paceNow, deadline: sixMonths) ?? 0) - 0.163) < 0.001,
+              "≈0.98 cm in 6 months needs ≈0.16 cm a month")
+        check(MTPace.status(current: 13.5, target: 14.478, trendPerMonth: 0.2, now: paceNow, deadline: sixMonths)
+              == .onPace(needed: (14.478 - 13.5) / 6, trend: 0.2), "trend above what's needed is on pace")
+        if case .behind = MTPace.status(current: 13.5, target: 14.478, trendPerMonth: 0.05, now: paceNow, deadline: sixMonths) {} else {
+            check(false, "a slow trend is behind")
+        }
+        check(MTPace.status(current: 14.5, target: 14.478, trendPerMonth: nil, now: paceNow, deadline: sixMonths) == .reached, "reached")
+        check(MTPace.status(current: 13, target: 14, trendPerMonth: 0.3, now: sixMonths.addingTimeInterval(86_400), deadline: sixMonths) == .overdue,
+              "past the date")
+        let seeded = MTPlan.firstShortGoal(current: 13.6, girth: 11.5, now: paceNow)
+        check(abs(seeded.lengthCM - 14.478) < 0.001 && abs(seeded.girthCM - 12.192) < 0.001 && seeded.length == .nbpl, "5.7 × 4.8 in, NBP")
+
         print("PASS: More Training checks")
     }
 }

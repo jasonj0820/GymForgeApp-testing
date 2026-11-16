@@ -238,6 +238,19 @@ enum MTMetric: String, CaseIterable, Identifiable {
     }
 }
 
+/// MK24.1: a length and a girth to reach by a date. All in centimetres.
+struct MTGoalPair: Codable, Equatable {
+    var lengthMetric: String = MTMetric.nbpl.rawValue
+    var lengthCM: Double
+    var girthCM: Double
+    var deadline: Date
+    var setOn: Date
+    var startLengthCM: Double?
+    var startGirthCM: Double?
+
+    var length: MTMetric { MTMetric(rawValue: lengthMetric) ?? .nbpl }
+}
+
 /// All values stored in centimetres.
 struct MTMeasurement: Identifiable, Codable, Hashable {
     var id = UUID()
@@ -312,6 +325,10 @@ struct MTSettings: Codable, Hashable {
     var goalsCM: [String: Double]?
     var goalStartCM: [String: Double]?
     var goalStartDates: [String: Date]?
+    /// MK24.1: a short-term size goal — a length and a girth by a date (the long-term goals above stay as they are).
+    var shortGoal: MTGoalPair?
+    /// Set once the first short-term goal has been filled in for you, so removing it keeps it removed.
+    var shortGoalSeeded: Bool?
     /// Average to compare against: "herbenick" (self-measured US men, default) or "veale" (clinician-measured).
     var averageReference: String?
     /// MK10.2: quiet "⏱" after 3 days without training (nil = on).

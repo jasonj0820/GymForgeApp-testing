@@ -400,3 +400,156 @@ struct MTPreferredSizeSection: View {
         }
     }
 }
+
+// MARK: - MK24.1: short-term goal (a length and a girth by a date)
+
+struct MTShortGoalSection: View {
+    @EnvironmentObject private var vault: MTVault
+    @State private var editing = false
+
+    private var unit: MTUnit { vault.data.settings.unit }
+
+    private func format(_ cm: Double) -> String {
+        String(format: unit == .cm ? "%.1f" : "%.2f", unit.display(cm))
+    }
+
+    var body: some View {
+        Section {
+            if let goal = vault.data.settings.shortGoal {
+                let monthsLeft = max(goal.deadline.timeIntervalSince(.now) / (MTPace.monthDays * 86_400), 0)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(format(goal.lengthCM)) × \(format(goal.girthCM)) \(unit.label)").font(.title2.bold())
+                    Text("\(goal.length.title) × MG by \(goal.deadline.formatted(date: .abbreviated, time: .omitted))"
+                         + (monthsLeft > 0 ? String(format: " · %.1f months left", monthsLeft) : " · date passed"))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                row(goal.length, target: goal.lengthCM, start: goal.startLengthCM, goal: goal)
+                row(.mg, target: goal.girthCM, start: goal.startGirthCM, goal: goal)
+                Button("Change") { editing = true }
+            } else {
+                Button("Set a short-term goal") { editing = true }
+            }
+        } header: {
+            Text("Short-term goal")
+        } footer: {
+            Text("Pace compares the change still needed per month with your trend over the last 4 months (from the recent average of your measurements).")
+        }
+        .sheet(isPresented: $editing) {
+            MTShortGoalEditor(goal: vault.data.settings.shortGoal).environmentObject(vault)
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ metric: MTMetric, target: Double, start: Double?, goal: MTGoalPair) -> some View {
+        let current = MTGoals.current(metric, vault.data)?.value
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(metric.title).font(.headline)
+                Spacer()
+                Text(current.map { "\(format($0)) → \(format(target)) \(unit.label)" } ?? "No \(metric.title) yet → \(format(target)) \(unit.label)")
+                    .font(.subheadline.monospacedDigit())
+            }
+            if let current {
+                let from = start ?? current
+                let fraction = target > from ? min(max((current - from) / (target - from), 0), 1) : (current >= target ? 1 : 0)
+                SwiftUI.ProgressView(value: fraction).tint(fraction >= 1 ? .green : .indigo)
+                let window = vault.data.measurements.filter { $0.date >= Date.now.addingTimeInterval(-120 * 86_400) }
+                    .compactMap { m in m.value(metric).map { (date: m.date, value: $0) } }
+                let trend = MTInsights.trend(window)?.perMonth
+                Text(line(MTPace.status(current: current, target: target, trendPerMonth: trend, now: .now, deadline: goal.deadline)))
+                    .font(.caption)
+                    .foregroundStyle(color(MTPace.status(current: current, target: target, trendPerMonth: trend, now: .now, deadline: goal.deadline)))
+            }
+        }
+    }
+
+    private func line(_ status: MTPace.Status) -> String {
+        switch status {
+        case .reached: return "Reached."
+        case .onPace(let needed, let trend):
+            return "On pace: needs +\(format(needed))/month, trend +\(format(trend))/month."
+        case .behind(let needed, let trend):
+            return "Behind: needs +\(format(needed))/month, trend \(trend >= 0 ? "+" : "")\(format(trend))/month."
+        case .noTrend(let needed):
+            return "Needs +\(format(needed))/month. Your trend shows after 3 measurements over 2+ weeks."
+        case .overdue:
+            return "The date has passed. Set a new date or a new goal."
+        }
+    }
+
+    private func color(_ status: MTPace.Status) -> Color {
+        switch status {
+        case .reached, .onPace: return .green
+        case .behind, .overdue: return .orange
+        case .noTrend: return .secondary
+        }
+    }
+}
+
+struct MTShortGoalEditor: View {
+    @EnvironmentObject private var vault: MTVault
+    @Environment(\.dismiss) private var dismiss
+    let goal: MTGoalPair?
+    @State private var lengthMetric: MTMetric = .nbpl
+    @State private var length = ""
+    @State private var girth = ""
+    @State private var deadline = Calendar.current.date(byAdding: .month, value: 6, to: .now) ?? .now
+
+    private var unit: MTUnit { vault.data.settings.unit }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Picker("Length", selection: $lengthMetric) {
+                    Text("NBPL").tag(MTMetric.nbpl)
+                    Text("BPEL").tag(MTMetric.bpel)
+                }
+                .pickerStyle(.segmented)
+                TextField("\(lengthMetric.title) (\(unit.label))", text: $length).keyboardType(.decimalPad)
+                TextField("MG, mid-shaft girth (\(unit.label))", text: $girth).keyboardType(.decimalPad)
+                DatePicker("By", selection: $deadline, in: Date.now..., displayedComponents: .date)
+                if goal != nil {
+                    Button("Remove goal", role: .destructive) { save(nil) }
+                }
+            }
+            .navigationTitle("Short-term goal")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        guard let l = number(length), let g = number(girth) else { return }
+                        let keepStart = goal?.length == lengthMetric
+                        save(MTGoalPair(lengthMetric: lengthMetric.rawValue, lengthCM: unit.toCM(l), girthCM: unit.toCM(g),
+                                        deadline: deadline, setOn: goal?.setOn ?? .now,
+                                        startLengthCM: keepStart ? goal?.startLengthCM : MTGoals.current(lengthMetric, vault.data)?.value,
+                                        startGirthCM: goal?.startGirthCM ?? MTGoals.current(.mg, vault.data)?.value))
+                    }
+                    .disabled(number(length) == nil || number(girth) == nil)
+                }
+            }
+            .onAppear {
+                if let goal {
+                    lengthMetric = goal.length
+                    length = String(format: unit == .cm ? "%.1f" : "%.2f", unit.display(goal.lengthCM))
+                    girth = String(format: unit == .cm ? "%.1f" : "%.2f", unit.display(goal.girthCM))
+                    deadline = goal.deadline
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func number(_ text: String) -> Double? {
+        Double(text.replacingOccurrences(of: ",", with: ".")).flatMap { $0 > 0 ? $0 : nil }
+    }
+
+    private func save(_ pair: MTGoalPair?) {
+        var settings = vault.data.settings
+        settings.shortGoal = pair
+        settings.shortGoalSeeded = true
+        vault.updateSettings(settings)
+        dismiss()
+    }
+}

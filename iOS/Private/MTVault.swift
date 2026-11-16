@@ -61,6 +61,7 @@ final class MTVault: ObservableObject {
             loadThumbnails()
             isUnlocked = true
             MTPlan.cueOverrides = data.settings.cueOverrides ?? [:]   // MK24 (173)
+            seedShortGoalIfNeeded()   // MK24.1
             advanceInterval()
             MTLiveTimer.sync(data)   // a timer that kept running while locked gets its card back
             rescheduleMeasureReminder()
@@ -672,6 +673,18 @@ final class MTVault: ObservableObject {
     }
 
     var exportReminderDays: Int { data.settings.exportReminderDays ?? 30 }
+
+    /// MK24.1: your 5.7 × 4.8 in (NBP × girth) goal, once, unless you've already set a short-term goal.
+    private func seedShortGoalIfNeeded() {
+        guard data.settings.shortGoalSeeded != true else { return }
+        var settings = data.settings
+        if settings.shortGoal == nil {
+            settings.shortGoal = MTPlan.firstShortGoal(current: MTGoals.current(.nbpl, data)?.value, girth: MTGoals.current(.mg, data)?.value)
+        }
+        settings.shortGoalSeeded = true
+        data.settings = settings
+        save()
+    }
 
     /// Days since the last full export (nil = never).
     var daysSinceExport: Int? {

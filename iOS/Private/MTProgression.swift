@@ -103,6 +103,15 @@ enum MTPlan {
         }
     }
 
+    /// MK24.1: the short-term goal you gave (5.7 in NBP × 4.8 in girth within 6 months of 16 Nov 2026),
+    /// filled in once if you haven't set one yourself.
+    static func firstShortGoal(current length: Double?, girth: Double?, now: Date = .now, calendar: Calendar = .current) -> MTGoalPair {
+        let deadline = calendar.date(from: DateComponents(year: 2027, month: 5, day: 16)) ?? now.addingTimeInterval(182 * 86_400)
+        return MTGoalPair(lengthMetric: "nbpl", lengthCM: 5.7 * 2.54, girthCM: 4.8 * 2.54,
+                          deadline: max(deadline, now.addingTimeInterval(30 * 86_400)), setOn: now,
+                          startLengthCM: length, startGirthCM: girth)
+    }
+
     /// MK24 (173): your own wording for the built-in steps (key → text), set by the vault from your settings.
     static var cueOverrides: [String: String] = [:]
 
@@ -382,5 +391,35 @@ enum MTProgression {
         }
         return card(.addTime, "add time, not pressure",
                     "Good stretch (\(pct)) but \(track.metric.title) is flat (\(gainText)) after ~3 months. \(track.addTimeHow) More often beats harder.")
+    }
+}
+
+// MARK: - MK24.1: pace toward a goal by a date
+
+enum MTPace {
+    enum Status: Equatable {
+        case reached
+        /// Needed and actual change, cm per month.
+        case onPace(needed: Double, trend: Double)
+        case behind(needed: Double, trend: Double)
+        case noTrend(needed: Double)
+        case overdue
+    }
+
+    static let monthDays = 30.44
+
+    /// cm per month still needed to get from `current` to `target` by `deadline`.
+    static func needed(current: Double, target: Double, now: Date, deadline: Date) -> Double? {
+        let months = deadline.timeIntervalSince(now) / (monthDays * 86_400)
+        guard months > 0 else { return nil }
+        return max(target - current, 0) / months
+    }
+
+    /// On pace means the trend covers at least 90% of what's needed.
+    static func status(current: Double, target: Double, trendPerMonth: Double?, now: Date, deadline: Date) -> Status {
+        if current >= target - 0.02 { return .reached }
+        guard let needed = needed(current: current, target: target, now: now, deadline: deadline) else { return .overdue }
+        guard let trend = trendPerMonth else { return .noTrend(needed: needed) }
+        return trend >= needed * 0.9 ? .onPace(needed: needed, trend: trend) : .behind(needed: needed, trend: trend)
     }
 }

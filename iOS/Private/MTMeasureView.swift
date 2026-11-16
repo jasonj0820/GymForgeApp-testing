@@ -20,6 +20,8 @@ struct MTMeasureView: View {
         }
 
         List {
+            // MK24.1: your short-term goal first.
+            MTShortGoalSection()
             // MK10.1: first thing on the Measure tab.
             MTPreferredSizeSection()
 
