@@ -239,7 +239,7 @@ enum MTMetric: String, CaseIterable, Identifiable {
 }
 
 /// MK24.1: a length and a girth to reach by a date. All in centimetres.
-struct MTGoalPair: Codable, Equatable {
+struct MTGoalPair: Codable, Hashable {
     var lengthMetric: String = MTMetric.nbpl.rawValue
     var lengthCM: Double
     var girthCM: Double
