@@ -55,7 +55,7 @@ struct HealthShortcutsView: View {
             } header: {
                 Text("2 · After the wake-up alarm")
             } footer: {
-                Text("Why 2 minutes and not 5: iOS ends a shortcut running in the background after about 3 minutes, so a 5-minute Wait never reaches the next step. 2 minutes gives the Watch time to hand last night over. If the night isn't in yet, Today's check-in card has Get last night from Apple Health.")
+                Text("Why 2 minutes and not 5: iOS ends a shortcut running in the background after about 3 minutes, so a 5-minute Wait never reaches the next step. 2 minutes gives the Watch time to hand last night over. Off the charger with the screen off, iOS can also stretch the wait; the Is Opened automation below catches whatever this one misses.")
             }
 
             Section {
@@ -72,9 +72,9 @@ struct HealthShortcutsView: View {
                 step(1, "Automation → + → App → Splitday → Is Opened. Run Immediately, Notify When Run off.")
                 step(2, "Add Run Shortcut: \(HealthShortcut.name).")
             } header: {
-                Text("Optional · Each time you open Splitday")
+                Text("Recommended · Each time you open Splitday")
             } footer: {
-                Text("Keeps everything current without a tap: weigh in, open Splitday, and it's logged. Readings Splitday already has are skipped.")
+                Text("The safety net, and no taps: weigh in, open Splitday, and it's logged; a night the alarm run missed arrives the first time you open the app. Readings Splitday already has are skipped, and a fuller copy of last night replaces an earlier one.")
             }
 
             Section {

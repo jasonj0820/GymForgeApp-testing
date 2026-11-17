@@ -213,8 +213,12 @@ struct SundayResetView: View {
                           icon: "calendar.badge.checkmark", done: reviewed))
         let nextWeek = (1...7).compactMap { cal.date(byAdding: .day, value: $0, to: cal.startOfDay(for: now)) }
         let planned = nextWeek.contains { store.extras.dayPlan(on: $0) != nil || store.extras.isRestDay($0) }
-        steps.append(Step(id: "plan", title: "Plan next week", detail: planned ? "Planned" : "Which days you'll train",
-                          icon: "calendar", done: planned))
+        // MK24.2: with the fixed split on, the split already sets the days (Today stopped asking in MK21), so
+        // this one is done unless you want to mark sick, travel or rest days.
+        let bySplit = !planned && store.fixedSplitOn
+        steps.append(Step(id: "plan", title: "Plan next week",
+                          detail: planned ? "Planned" : (bySplit ? "Your fixed split sets the days" : "Which days you'll train"),
+                          icon: "calendar", done: planned || bySplit))
         if let prep = dayfold?.rows(.weekly, now: now).first(where: { $0.task.id == RoutineTask.mealPrepID }) {
             steps.append(Step(id: "prep", title: "Meal prep", detail: prep.task.title, icon: "takeoutbag.and.cup.and.straw", done: prep.done))
         }

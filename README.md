@@ -5,7 +5,7 @@
 **Sleep and weigh-ins come in by themselves**
 - **One Shortcut, "Splitday Health"**, reads Apple Health for Splitday (sideloaded installs can't read it, Shortcuts can). The guide is in Settings → Data and devices → Daily, through Shortcuts (under Apple Health), with the name it should have and a **Run it now** test.
 - **Sleep arrives as the night itself**: the sleep samples' start and end times go to Splitday, which works out when you fell asleep and woke up and how long you slept. Samples written by both the iPhone and the Watch count once, and an afternoon nap doesn't replace last night. Bedtime consistency now works from Shortcuts data too.
-- **After the wake-up alarm**: an automation (Alarm → Is Stopped) waits 2 minutes and runs the Shortcut. Not 5: iOS ends a shortcut running in the background after about 3 minutes, so a 5-minute Wait never reaches the next step. If the night isn't in yet, Today's check-in card has **Get last night from Apple Health**.
+- **After the wake-up alarm**: an automation (Alarm → Is Stopped) waits 2 minutes and runs the Shortcut. Not 5: iOS ends a shortcut running in the background after about 3 minutes, so a 5-minute Wait never reaches the next step. A second automation, **Splitday Is Opened**, is the safety net: a night the alarm run missed (or got half of) arrives the first time you open the app, and a weigh-in arrives with no tap at all. If the night still isn't in, Today's check-in card has **Get last night from Apple Health**.
 - **Weigh-in button**: **Get from Apple Health** on the Body tab's weigh-in card and in the weigh-in sheet. Weigh yourself, let the scale's app sync to Health, tap: the Shortcut runs, comes straight back and today's weigh-in is saved at the time you stepped on the scale. On your weigh-in day, a weight from that day arriving any other way is saved as the weigh-in too (unless one's logged).
 - **No more repeated weights**: the Shortcut now sends when the weight was taken ("Weighed at"), so yesterday's reading sent again this morning isn't saved as a new one. Without it, the same number within 3 days is treated as the same reading. A reading saved both as a weigh-in and from Health shows once on the charts.
 
@@ -24,6 +24,7 @@
 - **Weigh-in card**: the reminder said 9:00am whatever time you'd set, and the sheet said "Sunday weigh-in" on any weigh-in day.
 - **Workout screen**: the Variation and Edit note buttons were cut off ("Varia…").
 - **Leave for the gym**: "You usually start around 17:39" follows the iPhone's 12/24-hour setting.
+- **Sunday reset**: with the fixed split on it no longer asks you to plan next week (the split sets the days, as on Today since MK21).
 - README: the Health numbers in MK24's section B were one off (they're 38–42).
 
 **Still open**
