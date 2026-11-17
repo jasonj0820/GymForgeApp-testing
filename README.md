@@ -1,4 +1,34 @@
-# Splitday MK24 — gym and daily routine in one app (iPhone + Apple Watch)
+# Splitday MK24.2 — gym and daily routine in one app (iPhone + Apple Watch)
+
+## MK24.2 — sleep and weigh-ins from Apple Health, travel days, and fixes from going through MK23–24
+
+**Sleep and weigh-ins come in by themselves**
+- **One Shortcut, "Splitday Health"**, reads Apple Health for Splitday (sideloaded installs can't read it, Shortcuts can). The guide is in Settings → Data and devices → Daily, through Shortcuts (under Apple Health), with the name it should have and a **Run it now** test.
+- **Sleep arrives as the night itself**: the sleep samples' start and end times go to Splitday, which works out when you fell asleep and woke up and how long you slept. Samples written by both the iPhone and the Watch count once, and an afternoon nap doesn't replace last night. Bedtime consistency now works from Shortcuts data too.
+- **After the wake-up alarm**: an automation (Alarm → Is Stopped) waits 2 minutes and runs the Shortcut. Not 5: iOS ends a shortcut running in the background after about 3 minutes, so a 5-minute Wait never reaches the next step. If the night isn't in yet, Today's check-in card has **Get last night from Apple Health**.
+- **Weigh-in button**: **Get from Apple Health** on the Body tab's weigh-in card and in the weigh-in sheet. Weigh yourself, let the scale's app sync to Health, tap: the Shortcut runs, comes straight back and today's weigh-in is saved at the time you stepped on the scale. On your weigh-in day, a weight from that day arriving any other way is saved as the weigh-in too (unless one's logged).
+- **No more repeated weights**: the Shortcut now sends when the weight was taken ("Weighed at"), so yesterday's reading sent again this morning isn't saved as a new one. Without it, the same number within 3 days is treated as the same reading. A reading saved both as a weigh-in and from Health shows once on the charts.
+
+**Sergeant Cluck on travel days**
+- He used to give the sick-day line ("Get better first"). On a travel day he's at ease and wishes you a safe trip ("Safe travels"); train anyway and he notices.
+
+**Fixes from checking MK23 and MK24**
+- **Quote times** set to 8:30 fired at 8:00 (the minutes were dropped).
+- **Quiet hours** removed a repeating reminder (the weekly backup, the monthly Health import) that fell inside them, switching it off for good. Repeating reminders are left alone now, also when there are too many notifications.
+- **More Training's timer alerts** weren't in the notification budget's list, so they ranked below Sergeant Cluck and were the first to be dropped when a long program filled iOS's 64. They now rank with the rest timer.
+- **Time pickers** on the Notifications page closed while you were turning them.
+- **Lock Screen ✓**: a double tap logged two sets. A second tap within 8 seconds of the last set is ignored.
+- **Say the set**: speech recognition often writes "80 for 10" as "80 4 10", which logged 80 × 4. It's 80 × 10 now, and anything over 500 kg or 100 reps isn't logged.
+- **Food log**: deleting a food from an earlier day left it in that day's protein and calories. "200 grams of chicken" and "2 cups of rice" are understood by the food guess.
+- **Goal weight**: going past it (a bulk that overshoots) said to lose weight. It counts as reached now; goals remember where you started.
+- **Weigh-in card**: the reminder said 9:00am whatever time you'd set, and the sheet said "Sunday weigh-in" on any weigh-in day.
+- **Workout screen**: the Variation and Edit note buttons were cut off ("Varia…").
+- **Leave for the gym**: "You usually start around 17:39" follows the iPhone's 12/24-hour setting.
+- README: the Health numbers in MK24's section B were one off (they're 38–42).
+
+**Still open**
+- **16 (split days written into the code)** is on the Do-now list but needs the split editor (69), which was marked Discuss.
+
 
 ## MK24 — everything marked "Do now" on the list (sections A to L)
 Numbers are the ones on the 204-item list.
@@ -10,10 +40,10 @@ Numbers are the ones on the 204-item list.
 - **Warnings fixed (35)**, and the home screen's cards moved out of TodayView.swift into HomeCards.swift (34).
 
 **B. Health without HealthKit**
-- **Shortcuts bridge (37, 38):** Settings → Data and devices → Apple Health → Health through Shortcuts walks you through two personal automations: one reads weight, body fat, sleep, resting HR and HRV from Health each morning and hands them to Splitday ("Log health readings"), the other reads your recent Splitday workouts ("Recent Splitday workouts") and saves them to Health.
-- **Export import adds only what's new (39)**, says how many readings it added, and can remind you on the 1st of each month.
-- **Watch heart rate check (40)** in Diagnostics.
-- **Readiness check-in (41):** with no sleep or heart data for today, Today asks three questions (sleep, soreness, energy) before 3 pm.
+- **Shortcuts bridge (38, 39):** Settings → Data and devices → Apple Health → Health through Shortcuts walks you through two personal automations: one reads weight, body fat, sleep, resting HR and HRV from Health each morning and hands them to Splitday ("Log health readings"), the other reads your recent Splitday workouts ("Recent Splitday workouts") and saves them to Health.
+- **Export import adds only what's new (40)**, says how many readings it added, and can remind you on the 1st of each month.
+- **Watch heart rate check (41)** in Diagnostics.
+- **Readiness check-in (42):** with no sleep or heart data for today, Today asks three questions (sleep, soreness, energy) before 3 pm.
 
 **C. Today**
 - **+ button (44):** protein, calories, weight or a note. Today's notes show on Today (long-press to delete).

@@ -69,6 +69,35 @@ extension PhoneAppStore {
         return now - before.map(\.kg).reduce(0, +) / Double(before.count)
     }
 
+    // MARK: Weigh-in from Apple Health (MK24.2)
+
+    /// A weight that came in through the Splitday Health Shortcut becomes the day's weigh-in, dated when the
+    /// scale took it. `force` is the "Get from Apple Health" button: any reading measured today, replacing
+    /// what's logged today. Otherwise (every time readings arrive) only on your weigh-in day, or any day with
+    /// daily weigh-ins, and only when nothing is logged yet that day. Returns the weigh-in, or why there isn't one
+    /// (nil problem = nothing to do).
+    @discardableResult
+    func adoptHealthWeighIn(force: Bool, now: Date = .now) -> (entry: WeighIn?, problem: String?) {
+        let cal = Calendar.current
+        guard let reading = HealthBridge.lastReading, reading.weightKg != nil || reading.bodyFat != nil else {
+            return (nil, force ? "No weight or body fat came back from Apple Health." : nil)
+        }
+        guard let measured = reading.weighedAt else {
+            return (nil, force ? "The Shortcut didn't say when the weight was taken. In its last action, set Weighed at to the weight's Start Date." : nil)
+        }
+        guard cal.isDate(measured, inSameDayAs: now) else {
+            return (nil, force ? "The newest weight in Apple Health is from \(measured.formatted(date: .abbreviated, time: .shortened)). If you've just weighed in, give the scale's app a minute to sync, then try again." : nil)
+        }
+        let logged = extras.weighIn(on: now)
+        if !force {
+            let weighInDay = WeighIn.daily || cal.component(.weekday, from: now) == WeighIn.weekday
+            guard weighInDay, logged == nil else { return (nil, nil) }
+        }
+        let entry = WeighIn(id: logged?.id ?? UUID(), date: measured, weightKg: reading.weightKg, bodyFatPercent: reading.bodyFat)
+        if logged != entry { saveWeighIn(entry) }
+        return (entry, nil)
+    }
+
     // MARK: Goal weight (104)
 
     func setGoalWeight(_ goal: GoalWeight?) {

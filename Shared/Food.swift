@@ -173,9 +173,12 @@ public struct DayTag: Codable, Equatable {
 public struct GoalWeight: Codable, Equatable {
     public var kg: Double
     public var by: Date?
-    public init(kg: Double, by: Date?) {
+    /// MK24.2: your weight when the goal was set, so going past the goal counts as reaching it.
+    public var startKg: Double?
+    public init(kg: Double, by: Date?, startKg: Double? = nil) {
         self.kg = kg
         self.by = by
+        self.startKg = startKg
     }
 }
 
@@ -285,6 +288,11 @@ public enum FoodEstimate {
         (["potato", "potatoes"], "Potato", (4, 160), (2, 77)),
     ]
 
+    /// Words between a number and the food ("2 cups of rice"): the number is still the count.
+    static let measures: Set<String> = ["cup", "cups", "slice", "slices", "scoop", "scoops", "tin", "tins", "can", "cans",
+                                        "serve", "serves", "serving", "servings", "piece", "pieces", "bowl", "bowls",
+                                        "glass", "glasses", "tbsp", "tablespoon", "tablespoons"]
+
     /// A rough guess from a table of common foods: "200g chicken and rice", "3 eggs", "two slices of toast".
     public static func guess(_ text: String) -> [Item] {
         let tokens = SpokenSet.normalise(text)
@@ -293,12 +301,17 @@ public enum FoodEstimate {
         for (index, token) in tokens.enumerated() {
             guard let entry = table.first(where: { $0.words.contains(token) }), !used.contains(entry.name) else { continue }
             used.insert(entry.name)
-            // A number just before ("3 eggs", "200 g chicken").
+            // A number just before ("3 eggs", "200 g chicken", "200 grams of chicken", "2 cups of rice").
             var count = 1.0
             var grams: Double?
-            if index >= 1, let n = Double(tokens[index - 1]) { count = n }
-            if index >= 2, tokens[index - 1] == "g", let n = Double(tokens[index - 2]) { grams = n }
-            if index >= 3, ["of"].contains(tokens[index - 1]), let n = Double(tokens[index - 2]) { count = n }
+            var back = index - 1
+            if back >= 0, tokens[back] == "of" { back -= 1 }
+            if back >= 1, tokens[back] == "g", let n = Double(tokens[back - 1]) {
+                grams = n
+            } else {
+                if back >= 0, measures.contains(tokens[back]) { back -= 1 }
+                if back >= 0, let n = Double(tokens[back]) { count = n }
+            }
             if let grams, let per100 = entry.per100 {
                 items.append(Item(name: "\(entry.name), \(GFNumber.text(grams)) g", proteinG: (per100.0 * grams / 100).rounded(),
                                   calories: (per100.1 * grams / 100).rounded()))

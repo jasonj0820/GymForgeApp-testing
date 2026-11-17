@@ -1,9 +1,12 @@
 import SwiftUI
 
 /// MK24: how to get Apple Health into Splitday every day through the Shortcuts app, which keeps its own
-/// Health access when a sideloaded app loses it. Two automations, set up once.
+/// Health access when a sideloaded app loses it.
+/// MK24.2: one Shortcut ("Splitday Health") does the reading; an automation runs it after the wake-up alarm,
+/// and the weigh-in and sleep buttons run it on demand and come straight back.
 struct HealthShortcutsView: View {
     @State private var refresh = 0
+    @State private var name = HealthShortcut.name
 
     var body: some View {
         let _ = refresh
@@ -15,6 +18,7 @@ struct HealthShortcutsView: View {
                 } else {
                     Label("Nothing received yet", systemImage: "hourglass").foregroundStyle(.secondary)
                 }
+                HealthPullButton(purpose: .test)
             } header: {
                 Text("Status")
             } footer: {
@@ -22,15 +26,55 @@ struct HealthShortcutsView: View {
             }
 
             Section {
-                step(1, "Open Shortcuts → Automation → + → Time of Day. Pick a morning time after your scale and Watch have synced (e.g. 9:30), Daily, and Run Immediately.")
-                step(2, "Add Find Health Samples: Weight, Sort by Start Date, Latest First, Limit 1. Do the same for Body Fat Percentage, Resting Heart Rate and Heart Rate Variability.")
-                step(3, "For sleep, add Find Health Samples: Sleep, Start Date is in the last 1 day, Value is Asleep (or Core, Deep and REM). Then Calculate Statistics → Sum of their Duration, and Convert it to hours.")
-                step(4, "Add Send Health readings to Splitday, and fill each box with the matching result. Leave out anything you don't track.")
-                step(5, "Run it once by hand. Allow Shortcuts to read Health when it asks; the status above should change.")
+                TextField(HealthShortcut.defaultName, text: $name)
+                    .autocorrectionDisabled()
+                    .onChange(of: name) { _, value in HealthShortcut.name = value }
             } header: {
-                Text("Health → Splitday (each morning)")
+                Text("Shortcut name")
             } footer: {
-                Text("Body fat can be passed as 0.15 or 15: both are read as 15%. Empty or zero values are ignored.")
+                Text("The buttons run the Shortcut with this name, so it has to match exactly.")
+            }
+
+            Section {
+                step(1, "In Shortcuts, tap + and name the new shortcut \(HealthShortcut.name).")
+                step(2, "Add Find Health Samples: Type is Sleep Analysis. Add filters Start Date is in the last 1 day, Value is not In Bed and Value is not Awake. Sort by Start Date, Oldest First, no limit.")
+                step(3, "Add Get Details of Health Samples → Start Date. Add it again → End Date, and set its input (the first blue word) to the Health Samples from step 2.")
+                step(4, "Add Find Health Samples: Weight, sorted by Start Date, Latest First, Limit 1. Then Get Details of Health Samples → Start Date: that's when you weighed in.")
+                step(5, "The same way (Latest First, Limit 1): Body Fat Percentage, Resting Heart Rate and Heart Rate Variability.")
+                step(6, "Add Send Health readings to Splitday and tap Show More. Weight → the weight sample · Weighed at → its Start Date · Body fat · Sleep starts → the Start Dates from step 3 · Sleep ends → the End Dates · Resting heart rate · HRV.")
+                step(7, "Tap ▶︎ once and allow Shortcuts to read Apple Health. The status above should change.")
+            } header: {
+                Text("1 · The Shortcut (once)")
+            } footer: {
+                Text("Overlapping samples (iPhone and Watch) count once, and an afternoon nap doesn't replace last night. Body fat can come as 0.15 or 15. Leave out anything you don't track.")
+            }
+
+            Section {
+                step(1, "Automation → + → Alarm. Pick Is Stopped and your wake-up alarm (or Any Alarm). Choose Run Immediately and turn off Notify When Run.")
+                step(2, "Add Wait: 120 seconds. Then Run Shortcut: \(HealthShortcut.name).")
+            } header: {
+                Text("2 · After the wake-up alarm")
+            } footer: {
+                Text("Why 2 minutes and not 5: iOS ends a shortcut running in the background after about 3 minutes, so a 5-minute Wait never reaches the next step. 2 minutes gives the Watch time to hand last night over. If the night isn't in yet, Today's check-in card has Get last night from Apple Health.")
+            }
+
+            Section {
+                Text("Body → weigh-in → Get from Apple Health (it's in the weigh-in sheet too). Step on the scale, let its app sync to Apple Health, then tap: the Shortcut runs, comes straight back and today's weigh-in is saved at the time you weighed. Nothing else to set up.")
+                    .font(.subheadline)
+                Text("On your weigh-in day, a weight from that day arriving any other way (the alarm automation, or the one below) is saved as the weigh-in too, unless you've already logged one.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("3 · Weigh-in button")
+            }
+
+            Section {
+                step(1, "Automation → + → App → Splitday → Is Opened. Run Immediately, Notify When Run off.")
+                step(2, "Add Run Shortcut: \(HealthShortcut.name).")
+            } header: {
+                Text("Optional · Each time you open Splitday")
+            } footer: {
+                Text("Keeps everything current without a tap: weigh in, open Splitday, and it's logged. Readings Splitday already has are skipped.")
             }
 
             Section {
@@ -58,6 +102,103 @@ struct HealthShortcutsView: View {
     }
 }
 
+/// MK24.2: runs the Splitday Health Shortcut, waits for it to hand back, and says what came in. For the weigh-in
+/// it saves today's weigh-in from the reading; for sleep it's last night (the check-in card on Today goes once
+/// it's there).
+struct HealthPullButton: View {
+    enum Purpose { case weighIn, sleep, test }
+    let purpose: Purpose
+    /// After a weigh-in was saved (the sheet closes itself).
+    var onSaved: (() -> Void)? = nil
+    @EnvironmentObject private var store: PhoneAppStore
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var waiting = false
+    @State private var note: String?
+    @State private var good = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                note = nil
+                waiting = true
+                HealthShortcut.run()
+            } label: {
+                Label(waiting ? "Waiting for Apple Health…" : title, systemImage: "heart.text.square")
+            }
+            .disabled(waiting || Demo.isOn)
+            if let note {
+                Label(note, systemImage: good ? "checkmark.circle.fill" : "exclamationmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(good ? Color.green : Color.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .healthShortcutReturned)) { returned in
+            guard waiting else { return }
+            finish(returned.object as? String)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Back without the return link (switched back by hand): look at what arrived after a moment.
+            guard phase == .active, waiting else { return }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                if waiting { finish(nil) }
+            }
+        }
+    }
+
+    private var title: String {
+        switch purpose {
+        case .weighIn: return "Get from Apple Health"
+        case .sleep: return "Get last night from Apple Health"
+        case .test: return "Run it now"
+        }
+    }
+
+    private func finish(_ host: String?) {
+        waiting = false
+        good = false
+        switch host {
+        case "health-error"?:
+            note = "Shortcuts couldn't run \"\(HealthShortcut.name)\". Check the name in Settings → Data and devices → Daily, through Shortcuts (under Apple Health)."
+            return
+        case "health-cancel"?:
+            note = "The Shortcut stopped before it finished."
+            return
+        default:
+            break
+        }
+        guard let reading = HealthShortcut.freshReading else {
+            note = "Nothing came back. The Shortcut's last action should be Send Health readings to Splitday."
+            return
+        }
+        switch purpose {
+        case .weighIn:
+            let result = store.adoptHealthWeighIn(force: true)
+            if let entry = result.entry {
+                good = true
+                note = "Saved \(WeighInSheet.summary(entry)), weighed at \(entry.date.formatted(date: .omitted, time: .shortened))."
+                Haptics.success()
+                onSaved?()
+            } else {
+                note = result.problem ?? "No weight came back."
+            }
+        case .sleep:
+            if let night = reading.night, Calendar.current.isDateInToday(night.date) {
+                good = true
+                note = String(format: "Last night: %.1f h asleep.", night.hoursAsleep)
+                Haptics.success()
+            } else {
+                note = "No night in Apple Health yet. If you've just woken up, give the Watch a few minutes to hand it over."
+            }
+        case .test:
+            good = true
+            note = "Received: " + (HealthBridge.last?.summary ?? "readings")
+            Haptics.success()
+        }
+    }
+}
+
 /// MK24: three taps instead of sleep and heart-rate data. Shown on Today until you've checked in (or
 /// when there's no recovery data at all), and from Body → Sleep & recovery.
 struct ReadinessCheckInCard: View {
@@ -70,6 +211,11 @@ struct ReadinessCheckInCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("How do you feel?", systemImage: "heart.text.square").font(.headline)
+            // MK24.2: the Shortcut is set up, so last night can come straight from Apple Health instead.
+            if HealthBridge.last != nil {
+                HealthPullButton(purpose: .sleep)
+                    .font(.subheadline.weight(.semibold))
+            }
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text("Slept")

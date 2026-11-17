@@ -18,6 +18,8 @@ struct CluckSnapshot: Codable, Equatable {
     var restDays: [Date]? = nil
     /// Sick / travel days: they lower that week's goal and he stands down on the day.
     var excusedDays: [Date]? = nil
+    /// MK24.2: which of those are travel days, so he talks about the trip instead of getting better.
+    var travelDays: [Date]? = nil
     /// MK10: rest days planned the day before or earlier. He's chill on those (they don't lower the goal).
     var plannedRestDays: [Date]? = nil
     /// MK11: weeks in a row at the goal (before this one).
@@ -95,6 +97,11 @@ struct CluckState: Equatable {
     var lateNights: Int = 0
     var patternLine: String? = nil
     var onBreak: Bool = false
+    /// MK24.2: today is a travel day.
+    var travelling: Bool = false
+
+    /// The mood's name, or "Safe travels" while he's standing down for a trip.
+    var title: String { travelling && mood == .chill ? "Safe travels" : mood.title }
 }
 
 enum CluckEngine {
@@ -112,6 +119,7 @@ enum CluckEngine {
         let week = cal.dateInterval(of: .weekOfYear, for: date) ?? DateInterval(start: date, duration: 7 * 86_400)
         let excused = (snapshot.excusedDays ?? []).filter { $0 >= week.start && $0 < week.end }
         let excusedToday = excused.contains { cal.isDate($0, inSameDayAs: date) }
+        let travelToday = (snapshot.travelDays ?? []).contains { cal.isDate($0, inSameDayAs: date) }
         // Each sick / travel day takes one session off this week's goal.
         let goal = max(snapshot.goal - excused.count, excused.isEmpty ? 1 : 0)
         let inWeek = snapshot.workoutDates.filter { $0 >= week.start && $0 < week.end && $0 <= date }
@@ -166,8 +174,9 @@ enum CluckEngine {
             // MK11: after bedtime he only wants you asleep.
             mood = .sleepy
         } else if excusedToday && !trainedToday {
-            // Sick or travelling: he stands down — and he's on your side (MK11.1).
-            mood = (remaining == 0 && done > 0) ? .celebrating : .empathetic
+            // Sick or travelling: he stands down — and he's on your side (MK11.1). MK24.2: a trip isn't an
+            // illness, so travel days get him at ease with his own lines instead of "get better".
+            mood = (remaining == 0 && done > 0) ? .celebrating : (travelToday ? .chill : .empathetic)
         } else if plannedRestToday && !trainedToday {
             // A rest day you planned: recovery is part of the plan.
             mood = (remaining == 0 && done > 0) ? .celebrating : .chill
@@ -209,7 +218,8 @@ enum CluckEngine {
                           snoozeAvailable: !snoozedThisWeek, restDay: restDay, plannedRest: plannedRestToday,
                           streakWeeks: streak, gapDays: gapDays, lateNights: snapshot.lateNights ?? 0,
                           patternLine: snapshot.patternLine,
-                          onBreak: snapshot.breakUntil.map { date < $0 } ?? false)
+                          onBreak: snapshot.breakUntil.map { date < $0 } ?? false,
+                          travelling: travelToday)
     }
 
     /// MK11: bedtimes (he turns sleepy) and 4am (back to normal) for the next 3 days, for widget timelines.
@@ -258,10 +268,18 @@ enum CluckEngine {
             return pick(["Quota smashed. I'm… proud. Don't make it weird.",
                          "\(s.goal)/\(s.goal). The coop salutes you, recruit.",
                          "Week complete. Sergeant Cluck stands down."], date)
+        case .proud where s.travelling:
+            return pick(["Trained on a travel day. That's commitment, recruit.",
+                         "Hotel workout done. The coop is impressed. Enjoy the trip.",
+                         "Travelling and still trained. Now go enjoy where you are."], date)
         case .proud:
             return pick(["Session logged. I'll allow it.",
                          "Good. You showed up. Feathers unruffled.",
                          "That's what I like to see. \(r) to go."], date)
+        case .chill where s.travelling:
+            return pick(["Travel day. Safe trip, recruit. It's off this week's goal, so nothing's owed today.",
+                         "On the road? Walk everywhere, drink your water, sleep when you can. I'll guard the coop.",
+                         "Travelling today. A hotel-room workout is a bonus, not a debt. See you when you land."], date)
         case .chill where s.plannedRest:
             return pick(["Planned rest day. Eat, sleep, grow. Back at it tomorrow.",
                          "Rest day on the plan — approved. Recovery is training too.",
@@ -632,6 +650,8 @@ enum NotificationTimes {
     }
 
     static var quoteHours: [Int] { quotes.map { minutes($0) / 60 }.sorted() }
+    /// Minutes after midnight, in order (a quote set for 8:30 comes at 8:30, not 8:00).
+    static var quoteMinutes: [Int] { quotes.map(minutes).sorted() }
 
     static var proteinTimes: [(hour: Int, minute: Int)] { protein.map(minutes).map { ($0 / 60, $0 % 60) } }
 }

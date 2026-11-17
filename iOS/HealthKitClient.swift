@@ -171,8 +171,9 @@ final class HealthKitClient: ObservableObject {
             let seen = Set(live.map { "\(Int($0.date.timeIntervalSince1970 / 60))|\(Int(($0.value * 10).rounded()))" })
             return old.filter { !seen.contains("\(Int($0.date.timeIntervalSince1970 / 60))|\(Int(($0.value * 10).rounded()))") }
         }
-        bodyWeight = (healthWeight + dedupe(healthWeight, imported?.weights ?? []) + manualWeight).sorted { $0.date < $1.date }
-        bodyFat = (healthFat + dedupe(healthFat, imported?.fats ?? []) + manualFat).sorted { $0.date < $1.date }
+        // MK24.2: …and so does one that's also a weigh-in (the weigh-in button saves the Shortcut's reading as one).
+        bodyWeight = (healthWeight + dedupe(healthWeight + manualWeight, imported?.weights ?? []) + manualWeight).sorted { $0.date < $1.date }
+        bodyFat = (healthFat + dedupe(healthFat + manualFat, imported?.fats ?? []) + manualFat).sorted { $0.date < $1.date }
     }
 
     /// Sleep, resting heart rate and HRV for readiness and the monthly report (last ~120 days).

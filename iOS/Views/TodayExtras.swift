@@ -323,7 +323,7 @@ struct YourDaySettingsSection: View {
                 Stepper("Travel time: \(travel) min", value: $travel, in: 0...90, step: 5)
                 let weekday = Calendar.current.component(.weekday, from: .now)
                 if let usual = store.usualStartMinutes(weekday: weekday) {
-                    Text("You usually start around \(String(format: "%d:%02d", usual / 60, usual % 60)) on \(Date.now.formatted(.dateTime.weekday(.wide)))s.")
+                    Text("You usually start around \((Calendar.current.date(byAdding: .minute, value: usual, to: Calendar.current.startOfDay(for: .now)) ?? .now).formatted(date: .omitted, time: .shortened)) on \(Date.now.formatted(.dateTime.weekday(.wide)))s.")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
                     Text("Starts once there are a few weeks of sessions to learn your usual time from.")

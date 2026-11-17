@@ -501,6 +501,7 @@ final class PhoneAppStore: ObservableObject {
                              updatedAt: .now, restDays: extras.restDays.filter { $0 >= cutoff },
                              excusedDays: extras.dayPlans.filter { $0.kind.isExcused && $0.day >= cutoff }.map(\.day),
                              plannedRestDays: extras.plannedRestDays.filter { $0 >= cutoff && extras.isRestDay($0) })
+        snapshot.travelDays = extras.dayPlans.filter { $0.kind == .travel && $0.day >= cutoff }.map(\.day)   // MK24.2
         snapshot.streakWeeks = max(streak, 0)
         snapshot.worried = worried
         // MK11.1: Locked In mid-workout, Protective with a pain flag, Empathetic after a run-down session.
@@ -706,6 +707,9 @@ final class PhoneAppStore: ObservableObject {
 
     func toggleCreatine() { updateNutrition { $0.creatine.toggle() } }
     func addProtein(_ grams: Double) { updateNutrition { $0.proteinG = max(0, $0.proteinG + grams) } }
+    /// For a food logged on (or deleted from) a day that isn't today.
+    func addProtein(_ grams: Double, on date: Date) { updateNutrition(date) { $0.proteinG = max(0, $0.proteinG + grams) } }
+    func addCalories(_ kcal: Double, on date: Date) { updateNutrition(date) { $0.calories = max(0, ($0.calories ?? 0) + kcal) } }
     func setProtein(_ grams: Double) { updateNutrition { $0.proteinG = max(0, grams) } }
     func addCalories(_ kcal: Double) { updateNutrition { $0.calories = max(0, ($0.calories ?? 0) + kcal) } }
     func setCalories(_ kcal: Double?) { updateNutrition { $0.calories = kcal.map { max(0, $0) } } }
@@ -779,6 +783,7 @@ final class PhoneAppStore: ObservableObject {
     /// MK24: readings sent from a Shortcuts automation (see HealthBridge) — pick them up straight away.
     func healthBridgeChanged() {
         healthKit.setImported(HealthImportData.load())
+        adoptHealthWeighIn(force: false)   // MK24.2: a weight from today on your weigh-in day counts as the weigh-in
         checkBodyAlerts()
         dayfold?.autoTickWeighIn(weightDates: healthKit.bodyWeight.map(\.date))
         objectWillChange.send()

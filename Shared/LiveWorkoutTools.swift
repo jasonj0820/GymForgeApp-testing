@@ -132,6 +132,7 @@ public enum SpokenSet {
     private static let synonyms: [String: String] = [
         "kgs": "kg", "kilograms": "kg", "kilogram": "kg", "kilos": "kg", "kilo": "kg", "k": "kg",
         "x": "for", "by": "for", "at": "for", "times": "for", "rep": "reps", "bodyweight": "bw",
+        "grams": "g", "gram": "g", "gm": "g",
     ]
 
     /// Words → digits ("one hundred and two point five" → "102.5"), units tidied ("80kg" → "80 kg").
@@ -195,6 +196,12 @@ public enum SpokenSet {
             if let v = Double(t) { numbers.append((v, i + 1 < tokens.count ? tokens[i + 1] : nil)) }
         }
         guard !numbers.isEmpty else { return nil }
+        // Speech recognition often writes "80 for 10" as "80 4 10" (and "80 to 10" as "80 2 10"): a lone
+        // 4 or 2 between two other numbers is the word, not a number.
+        if numbers.count == 3, numbers[1].value == 4 || numbers[1].value == 2,
+           numbers[1].next != "kg", numbers[1].next != "reps", numbers[0].next != "kg" || numbers[2].next != "kg" {
+            numbers.remove(at: 1)
+        }
         if numbers.count == 1 {
             let n = numbers[0]
             if n.next == "kg" { return Parsed(weightKg: n.value, reps: nil) }

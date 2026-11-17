@@ -176,7 +176,9 @@ struct GoalWeightCard: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save") {
                             if let kg = Double(kgText.replacingOccurrences(of: ",", with: ".")), kg > 20 {
-                                store.setGoalWeight(GoalWeight(kg: kg, by: hasDate ? by : nil))
+                                let old = store.extras.goalWeight
+                                let start = (old?.kg == kg ? old?.startKg : nil) ?? store.weekAverageWeight ?? store.latestBodyWeightKg
+                                store.setGoalWeight(GoalWeight(kg: kg, by: hasDate ? by : nil, startKg: start))
                             }
                             editing = false
                         }

@@ -273,8 +273,8 @@ enum QuoteNotifier {
         let cal = Calendar.current
         for day in 0...1 {
             guard let date = cal.date(byAdding: .day, value: day, to: cal.startOfDay(for: now)) else { continue }
-            for (index, hour) in QuotePicker.slotHours.enumerated() {
-                guard let fire = cal.date(bySettingHour: hour, minute: 0, second: 0, of: date), fire > now else { continue }
+            for (index, minutes) in QuotePicker.slotMinutes.enumerated() {
+                guard let fire = cal.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: date), fire > now else { continue }
                 let quote = QuoteSettings.current(at: fire)
                 let content = UNMutableNotificationContent()
                 content.title = quote.topic.title

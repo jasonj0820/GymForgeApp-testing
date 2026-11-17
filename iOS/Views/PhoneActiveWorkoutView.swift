@@ -638,6 +638,8 @@ struct PhoneActiveWorkoutView: View {
                         editingNote = true
                     } label: {
                         Label((exercise.notes ?? "").isEmpty ? "Note" : "Edit note", systemImage: "note.text.badge.plus")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .frame(maxWidth: .infinity)
                     }
                 }

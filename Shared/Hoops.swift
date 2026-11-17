@@ -193,6 +193,43 @@ public enum SleepMath {
         return (max(total, 0), recent.count)
     }
 
+    /// MK24.2: last night from Apple Health's sleep samples, as Shortcuts hands them over: two lists, the samples'
+    /// start times and end times, in the same order. Samples that overlap (the iPhone and the Watch both writing)
+    /// count once. Gaps of 3 hours or more split the list into stretches; the night is the latest stretch with at
+    /// least 3 hours asleep that has ended, so an afternoon nap doesn't replace it. nil when there's no such night.
+    public static func night(starts: [Date], ends: [Date], now: Date = .now, calendar: Calendar = .current) -> SleepNight? {
+        let spans = zip(starts, ends)
+            .filter { start, end in
+                end > start && end.timeIntervalSince(start) <= 16 * 3600
+                    && end <= now.addingTimeInterval(600) && end > now.addingTimeInterval(-36 * 3600)
+            }
+            .sorted { $0.0 < $1.0 }
+        guard !spans.isEmpty else { return nil }
+        var merged: [(start: Date, end: Date)] = []
+        for (start, end) in spans {
+            if let last = merged.last, start <= last.end {
+                merged[merged.count - 1].end = max(last.end, end)
+            } else {
+                merged.append((start, end))
+            }
+        }
+        var stretches: [[(start: Date, end: Date)]] = []
+        for span in merged {
+            if let last = stretches.last?.last, span.start.timeIntervalSince(last.end) < 3 * 3600 {
+                stretches[stretches.count - 1].append(span)
+            } else {
+                stretches.append([span])
+            }
+        }
+        for stretch in stretches.reversed() {
+            let asleep = stretch.reduce(0) { $0 + $1.end.timeIntervalSince($1.start) } / 3600
+            guard asleep >= 3, let first = stretch.first, let last = stretch.last else { continue }
+            return SleepNight(date: calendar.startOfDay(for: last.end), hoursAsleep: (asleep * 100).rounded() / 100,
+                              start: first.start, end: last.end)
+        }
+        return nil
+    }
+
     /// How much your sleep time moves night to night: the spread (standard deviation, minutes) of when you fell asleep.
     public static func bedtimeSpread(_ nights: [SleepNight], days: Int = 14, now: Date = .now, calendar: Calendar = .current) -> Double? {
         let starts = nights.filter { $0.date > now.addingTimeInterval(-Double(days) * 86_400) }.compactMap(\.start)

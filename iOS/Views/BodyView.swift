@@ -188,6 +188,13 @@ struct SundayWeighInCard: View {
     @AppStorage("weighin.weekday") private var weekday = 1
     @AppStorage("weighin.daily") private var daily = false
 
+    /// MK24.2: the time set in Settings → Notifications (it said 9:00am whatever you picked).
+    private var reminderTime: String {
+        let minutes = WeighInReminder.hour * 60 + WeighInReminder.minute
+        let date = Calendar.current.date(byAdding: .minute, value: minutes, to: Calendar.current.startOfDay(for: .now)) ?? .now
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+
     var body: some View {
         let thisWeek = daily ? store.extras.weighIn(on: .now) : store.thisWeeksWeighIn
         let dayName = Calendar.current.weekdaySymbols[min(max(weekday, 1), 7) - 1]
@@ -203,6 +210,9 @@ struct SundayWeighInCard: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
+            // MK24.2: step on the scale, tap, done (through the Splitday Health Shortcut).
+            HealthPullButton(purpose: .weighIn)
+                .font(.subheadline.weight(.semibold))
             if daily, let average = store.weekAverageWeight {
                 Text("7-day average: \(GFFormat.kg(average)) kg" + (store.weekAverageChange.map { String(format: " (%+.1f kg on the week before)", $0) } ?? ""))
                     .font(.subheadline.weight(.semibold))
@@ -228,7 +238,7 @@ struct SundayWeighInCard: View {
                 ForEach(1...7, id: \.self) { Text("Weekly on \(Calendar.current.weekdaySymbols[$0 - 1])").tag($0) }
             }
             .font(.subheadline)
-            Toggle(daily ? "Remind me each morning at 9:00am" : "Remind me \(dayName)s at 9:00am", isOn: $remind)
+            Toggle(daily ? "Remind me each morning at \(reminderTime)" : "Remind me \(dayName)s at \(reminderTime)", isOn: $remind)
                 .font(.subheadline)
                 .onChange(of: remind) { _, on in
                     WeighInReminder.enabled = on
@@ -306,6 +316,23 @@ struct WeighInSheet: View {
         let lastFat = store.healthKit.bodyFat.last?.value
         NavigationStack {
             Form {
+                // MK24.2: today's weigh-in straight from Apple Health (the scale's reading, at the time it was taken).
+                if !past, existing.map({ Calendar.current.isDateInToday($0.date) }) ?? true {
+                    Section {
+                        HealthPullButton(purpose: .weighIn) {
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                                dismiss()
+                            }
+                        }
+                        if HealthBridge.last == nil {
+                            NavigationLink("Set up the Splitday Health Shortcut") { HealthShortcutsView() }
+                                .font(.footnote)
+                        }
+                    } footer: {
+                        Text("Weigh yourself, let the scale's app sync to Apple Health, then tap. Runs your \"\(HealthShortcut.name)\" Shortcut and comes straight back.")
+                    }
+                }
                 DatePicker("Date", selection: $date, in: ...Date(), displayedComponents: .date)
                 if store.extras.weighIn(on: date).map({ $0.id != existing?.id }) == true {
                     Text("You already have a weigh-in on this day — saving replaces it.")
@@ -331,7 +358,7 @@ struct WeighInSheet: View {
                         Text("%").foregroundStyle(.secondary)
                     }
                 } footer: {
-                    Text("Grey numbers are your latest reading. Leave one blank if you only have the other. Same conditions each Sunday (morning, after the bathroom, before eating) keeps the trend honest.")
+                    Text("Grey numbers are your latest reading. Leave one blank if you only have the other. Same conditions each \(WeighIn.daily ? "morning" : WeighIn.dayName) (after the bathroom, before eating) keeps the trend honest.")
                 }
                 if existing == nil {
                     Section {
@@ -358,7 +385,7 @@ struct WeighInSheet: View {
                     }
                 }
             }
-            .navigationTitle(existing != nil ? "Edit weigh-in" : (past ? "Past weigh-ins" : "Sunday weigh-in"))
+            .navigationTitle(existing != nil ? "Edit weigh-in" : (past ? "Past weigh-ins" : (WeighIn.daily ? "Today's weigh-in" : "\(WeighIn.dayName) weigh-in")))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

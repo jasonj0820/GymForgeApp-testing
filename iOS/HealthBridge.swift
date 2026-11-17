@@ -1,5 +1,6 @@
 import AppIntents
 import Foundation
+import UIKit
 import UserNotifications
 
 // MK24: Apple Health without HealthKit. Sideloading removes Splitday's Health access, but the Shortcuts
@@ -9,6 +10,8 @@ import UserNotifications
 
 extension Notification.Name {
     static let healthBridgeChanged = Notification.Name("splitday.healthBridgeChanged")
+    /// MK24.2: the Health Shortcut handed control back (object: "health-done", "health-cancel" or "health-error").
+    static let healthShortcutReturned = Notification.Name("splitday.healthShortcutReturned")
 }
 
 extension HealthImportData {
@@ -51,6 +54,7 @@ extension HealthImportData {
 enum HealthBridge {
     private static let lastKey = "healthbridge.last"
     private static let lastSummaryKey = "healthbridge.lastSummary"
+    private static let readingKey = "healthbridge.reading"
 
     /// When the Shortcut last sent something, and what.
     static var last: (date: Date, summary: String)? {
@@ -58,28 +62,73 @@ enum HealthBridge {
         return (date, UserDefaults.standard.string(forKey: lastSummaryKey) ?? "")
     }
 
+    /// MK24.2: what the latest run brought in, for the weigh-in and sleep buttons.
+    struct Reading: Codable, Equatable {
+        var receivedAt: Date
+        var weightKg: Double?
+        var bodyFat: Double?
+        /// When the scale took the weight (the Shortcut's "Weighed at"). nil = an older Shortcut that doesn't send it.
+        var weighedAt: Date?
+        var night: SleepNight?
+    }
+
+    static var lastReading: Reading? {
+        guard let data = UserDefaults.standard.data(forKey: readingKey) else { return nil }
+        return try? JSONDecoder().decode(Reading.self, from: data)
+    }
+
     /// Saves readings from the Shortcut. Values outside sensible ranges are ignored (a Shortcut that found
     /// nothing tends to send 0).
+    ///
+    /// MK24.2: sleep can come as the Health samples' start and end times (two lists), which gives the real
+    /// night (fell asleep, woke, hours asleep without counting overlaps twice) instead of a sum worked out in
+    /// Shortcuts. A weight carries the time it was measured, so yesterday's reading sent again this morning
+    /// isn't saved as a new one.
     @discardableResult
-    static func record(weightKg: Double?, bodyFatPercent: Double?, sleepHours: Double?, restingHR: Double?,
-                       hrv: Double?, at date: Date) -> String {
+    static func record(weightKg: Double?, weighedAt: Date? = nil, bodyFatPercent: Double?, sleepHours: Double?,
+                       sleepStarts: [Date] = [], sleepEnds: [Date] = [], restingHR: Double?, hrv: Double?,
+                       at date: Date) -> String {
+        let existing = HealthImportData.load() ?? HealthImportData(importedAt: .distantPast)
         var batch = HealthImportData()
         var parts: [String] = []
+        var reading = Reading(receivedAt: Date())
+        // A time in the future (a typo in the Shortcut) is treated as "now".
+        let weighed = weighedAt.map { min($0, date) }
         if let weightKg, (25...300).contains(weightKg) {
-            batch.weights = [BodyMetricPoint(metric: .bodyWeight, date: date, value: weightKg)]
+            reading.weightKg = weightKg
+            reading.weighedAt = weighed
+            // Without a time, the same number as the last reading in the past 3 days is the same reading again.
+            let repeated = weighed == nil && existing.weights.last.map {
+                abs($0.value - weightKg) < 0.05 && date.timeIntervalSince($0.date) < 3 * 86_400
+            } == true
+            if !repeated { batch.weights = [BodyMetricPoint(metric: .bodyWeight, date: weighed ?? date, value: weightKg)] }
             parts.append(String(format: "weight %.1f kg", weightKg))
         }
         // Health hands body fat to Shortcuts as 0.156 or 15.6 depending on how it's read: accept both.
         if var fat = bodyFatPercent, fat > 0 {
             if fat < 1 { fat *= 100 }
             if (3...60).contains(fat) {
-                batch.fats = [BodyMetricPoint(metric: .bodyFatPercentage, date: date, value: fat)]
+                reading.bodyFat = fat
+                let repeated = weighed == nil && existing.fats.last.map {
+                    abs($0.value - fat) < 0.05 && date.timeIntervalSince($0.date) < 3 * 86_400
+                } == true
+                if !repeated { batch.fats = [BodyMetricPoint(metric: .bodyFatPercentage, date: weighed ?? date, value: fat)] }
                 parts.append(String(format: "body fat %.1f%%", fat))
             }
         }
-        if let sleepHours, (1...16).contains(sleepHours) {
-            batch.sleep = [SleepNight(date: Calendar.current.startOfDay(for: date), hoursAsleep: sleepHours)]
+        if let night = SleepMath.night(starts: sleepStarts, ends: sleepEnds, now: date) {
+            batch.sleep = [night]
+            reading.night = night
+            parts.append(String(format: "sleep %.1f h", night.hoursAsleep)
+                         + (night.start.map { ", " + $0.formatted(date: .omitted, time: .shortened) } ?? "")
+                         + (night.end.map { "–" + $0.formatted(date: .omitted, time: .shortened) } ?? ""))
+        } else if let sleepHours, (1...16).contains(sleepHours) {
+            let night = SleepNight(date: Calendar.current.startOfDay(for: date), hoursAsleep: sleepHours)
+            batch.sleep = [night]
+            reading.night = night
             parts.append(String(format: "sleep %.1f h", sleepHours))
+        } else if !sleepStarts.isEmpty {
+            parts.append("no night of 3+ hours in the sleep samples")
         }
         if let restingHR, (30...130).contains(restingHR) {
             batch.restingHeartRate = [BodyMetricPoint(metric: .restingHeartRate, date: date, value: restingHR)]
@@ -90,7 +139,6 @@ enum HealthBridge {
             parts.append("HRV \(Int(hrv.rounded())) ms")
         }
         guard !parts.isEmpty else { return "Nothing to save: every value was empty or out of range." }
-        let existing = HealthImportData.load() ?? HealthImportData(importedAt: .distantPast)
         var merged = existing.merging(batch).data
         merged.importedAt = existing.importedAt   // the date of the last full export, not of this reading
         do {
@@ -102,8 +150,56 @@ enum HealthBridge {
         let summary = parts.joined(separator: ", ")
         UserDefaults.standard.set(Date(), forKey: lastKey)
         UserDefaults.standard.set(summary, forKey: lastSummaryKey)
+        if let data = try? JSONEncoder().encode(reading) { UserDefaults.standard.set(data, forKey: readingKey) }
         DispatchQueue.main.async { NotificationCenter.default.post(name: .healthBridgeChanged, object: nil) }
         return "Saved " + summary + "."
+    }
+}
+
+/// MK24.2: runs your "Splitday Health" Shortcut from inside Splitday and comes straight back
+/// (gymforge://health-done), for the weigh-in and sleep buttons. Shortcuts keeps its own Apple Health access,
+/// which a sideloaded app loses.
+@MainActor
+enum HealthShortcut {
+    nonisolated static let nameKey = "healthShortcut.name"
+    static let defaultName = "Splitday Health"
+
+    static var name: String {
+        get {
+            let saved = (UserDefaults.standard.string(forKey: nameKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return saved.isEmpty ? defaultName : saved
+        }
+        set { UserDefaults.standard.set(newValue, forKey: nameKey) }
+    }
+
+    /// When the last run was started from a button.
+    private(set) static var startedAt: Date?
+
+    static var url: URL? {
+        var parts = URLComponents(string: "shortcuts://x-callback-url/run-shortcut")
+        parts?.queryItems = [URLQueryItem(name: "name", value: name),
+                             URLQueryItem(name: "x-success", value: "gymforge://health-done"),
+                             URLQueryItem(name: "x-cancel", value: "gymforge://health-cancel"),
+                             URLQueryItem(name: "x-error", value: "gymforge://health-error")]
+        return parts?.url
+    }
+
+    static func run() {
+        guard !Demo.isOn, let url else { return }
+        startedAt = Date()
+        UIApplication.shared.open(url)
+    }
+
+    /// From the app's link handler.
+    static func returned(_ host: String) {
+        NotificationCenter.default.post(name: .healthShortcutReturned, object: host)
+    }
+
+    /// Readings from the run started at `startedAt` (a few seconds of slack for the clock).
+    static var freshReading: HealthBridge.Reading? {
+        guard let started = startedAt, let reading = HealthBridge.lastReading,
+              reading.receivedAt >= started.addingTimeInterval(-5) else { return nil }
+        return reading
     }
 }
 
@@ -114,14 +210,20 @@ struct LogHealthReadingsIntent: AppIntent {
     static var openAppWhenRun = false
 
     @Parameter(title: "Weight (kg)") var weightKg: Double?
+    /// MK24.2: the weight sample's Start Date, so an old reading isn't saved as today's.
+    @Parameter(title: "Weighed at") var weighedAt: Date?
     @Parameter(title: "Body fat (%)") var bodyFatPercent: Double?
+    /// MK24.2: the sleep samples' Start Dates and End Dates (Get Details of Health Samples, twice).
+    @Parameter(title: "Sleep starts") var sleepStarts: [Date]?
+    @Parameter(title: "Sleep ends") var sleepEnds: [Date]?
     @Parameter(title: "Sleep last night (hours)") var sleepHours: Double?
     @Parameter(title: "Resting heart rate (bpm)") var restingHeartRate: Double?
     @Parameter(title: "HRV (ms)") var hrv: Double?
     @Parameter(title: "Date (default: now)") var date: Date?
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        let message = HealthBridge.record(weightKg: weightKg, bodyFatPercent: bodyFatPercent, sleepHours: sleepHours,
+        let message = HealthBridge.record(weightKg: weightKg, weighedAt: weighedAt, bodyFatPercent: bodyFatPercent,
+                                          sleepHours: sleepHours, sleepStarts: sleepStarts ?? [], sleepEnds: sleepEnds ?? [],
                                           restingHR: restingHeartRate, hrv: hrv, at: date ?? Date())
         return .result(value: message)
     }

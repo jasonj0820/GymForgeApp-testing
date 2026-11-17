@@ -85,8 +85,10 @@ public enum WeightGoalMath {
     }
 
     public static func status(goal: GoalWeight, current: Double, weights: [(date: Date, kg: Double)], now: Date = .now) -> Status {
-        let losing = goal.kg < current
-        if abs(goal.kg - current) < 0.3 || (losing ? current <= goal.kg : current >= goal.kg) { return .reached }
+        // Which way you're going comes from where you started (MK24.2), so a bulk that overshoots its goal
+        // is "reached", not "now lose weight". Goals set before that guess from where you are.
+        let gaining = goal.startKg.map { goal.kg >= $0 } ?? (goal.kg >= current)
+        if abs(goal.kg - current) < 0.3 || (gaining ? current >= goal.kg : current <= goal.kg) { return .reached }
         let t = trend(weights, now: now)
         guard let by = goal.by, by > now else { return .noDate(trend: t) }
         let weeks = by.timeIntervalSince(now) / (7 * 86_400)

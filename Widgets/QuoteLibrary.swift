@@ -272,13 +272,16 @@ enum QuoteLibrary {
 enum QuotePicker {
     /// MK24 (144): 8:00, 13:00 and 18:00 unless changed in Settings → Notifications.
     static var slotHours: [Int] { NotificationTimes.quoteHours }
+    /// Minutes after midnight for each slot, in order.
+    static var slotMinutes: [Int] { NotificationTimes.quoteMinutes }
 
     static func slot(at date: Date, calendar: Calendar = .current) -> Int {
         let origin = calendar.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? .distantPast
         let day = calendar.dateComponents([.day], from: origin, to: calendar.startOfDay(for: date)).day ?? 0
-        let hour = calendar.component(.hour, from: date)
-        let within = slotHours.lastIndex { hour >= $0 } ?? -1
-        return day * slotHours.count + within
+        let minute = calendar.component(.hour, from: date) * 60 + calendar.component(.minute, from: date)
+        let slots = slotMinutes
+        let within = slots.lastIndex { minute >= $0 } ?? -1
+        return day * slots.count + within
     }
 
     /// 5-minute slot for the Widget timeline so quotes automatically rotate every 5 minutes.
@@ -290,8 +293,8 @@ enum QuotePicker {
         let day = calendar.startOfDay(for: date)
         for offset in 0...1 {
             guard let base = calendar.date(byAdding: .day, value: offset, to: day) else { continue }
-            for hour in slotHours {
-                if let start = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: base), start > date { return start }
+            for minutes in slotMinutes {
+                if let start = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: base), start > date { return start }
             }
         }
         return date.addingTimeInterval(3600)

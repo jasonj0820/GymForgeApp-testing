@@ -6,18 +6,15 @@ extension PhoneAppStore {
     func logFood(_ entry: FoodEntry) {
         extras.foodLog.append(entry)
         extras.foodLog.removeAll { $0.date < Date.now.addingTimeInterval(-400 * 86_400) }
-        if entry.proteinG > 0 { addProtein(entry.proteinG) } else { saveExtras() }
-        if let kcal = entry.calories, kcal > 0 { addCalories(kcal) }
+        if entry.proteinG > 0 { addProtein(entry.proteinG, on: entry.date) } else { saveExtras() }
+        if let kcal = entry.calories, kcal > 0 { addCalories(kcal, on: entry.date) }
     }
 
     func deleteFood(_ entry: FoodEntry) {
         extras.foodLog.removeAll { $0.id == entry.id }
-        if Calendar.current.isDateInToday(entry.date) {
-            if entry.proteinG > 0 { addProtein(-entry.proteinG) } else { saveExtras() }
-            if let kcal = entry.calories, kcal > 0 { addCalories(-kcal) }
-        } else {
-            saveExtras()
-        }
+        // Off the totals of the day it was eaten (it used to stay in an earlier day's protein and calories).
+        if entry.proteinG > 0 { addProtein(-entry.proteinG, on: entry.date) } else { saveExtras() }
+        if let kcal = entry.calories, kcal > 0 { addCalories(-kcal, on: entry.date) }
     }
 
     func moveFood(_ entry: FoodEntry, to meal: Meal) {

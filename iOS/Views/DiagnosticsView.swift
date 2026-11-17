@@ -212,26 +212,16 @@ struct WhatsNewView: View {
     }
 
     static let notes: [Note] = [
-        Note(icon: "checklist", title: "Routine has its own tab",
-             text: "Today · Workouts · Routine · Progress · Body. Coach is at the top of Workouts, with Ask the coach and this week's changes."),
-        Note(icon: "plus.circle", title: "The + on Today",
-             text: "Protein, calories, weight or a note in two taps. A morning brief, your calendar next to the gym and bedtime, and a leave-for-the-gym nudge (Settings → Sounds and reminders → Your day)."),
-        Note(icon: "lock.iphone", title: "Log a set from the Lock Screen",
-             text: "The workout card has a ✓ button with the planned set. Also: In use (machine taken), Reorder, a finish time, and the mic: say \"80 for 10\"."),
-        Note(icon: "flag.checkered", title: "Goals and coaching",
-             text: "A goal on any lift with the date you'd reach it, busy weeks that ease the goal, accessory rotation each block."),
-        Note(icon: "heart.text.square", title: "Health through Shortcuts",
-             text: "Settings → Data and devices → Apple Health: two automations bring weight, sleep and heart data in and send workouts out. Plus a 3-tap readiness check-in."),
-        Note(icon: "fork.knife", title: "Food, water and caffeine",
-             text: "Body → Nutrition: a food log by meal, recipes with a shopping list, barcode and label scans, water, a caffeine cut-off and weekly averages."),
-        Note(icon: "checklist", title: "A routine that does more",
-             text: "Tick it from a widget, Siri or the notification. Steps get timers, links, their own times and streaks; sick days pause it."),
-        Note(icon: "bell.badge", title: "Notifications on one page",
-             text: "Every type with its times, quiet hours, and an at-work window. Plus badges and streak freezes."),
-        Note(icon: "basketball.fill", title: "Basketball",
-             text: "Shot chart, drills, a drill timer, vertical jump and game stats (Cardio history → Basketball)."),
-        Note(icon: "stethoscope", title: "Data check-up",
-             text: "Settings → Data and devices finds typos, double saves and split histories, with a fix for each.")
+        Note(icon: "heart.text.square", title: "Sleep and weigh-ins from Apple Health",
+             text: "One Shortcut, Splitday Health, reads Apple Health for Splitday. An automation runs it 2 minutes after your wake-up alarm, and Get from Apple Health on the weigh-in saves today's weigh-in in one tap. Set it up in Settings → Data and devices → Daily, through Shortcuts (under Apple Health)."),
+        Note(icon: "airplane", title: "Travel days",
+             text: "Sergeant Cluck wishes you a safe trip instead of telling you to get better."),
+        Note(icon: "bell.badge", title: "Notifications you can rely on",
+             text: "Quotes come at the minute you set, quiet hours no longer switch off the weekly backup or monthly Health reminders, and More Training's timer alerts are never the ones dropped when iOS's 64 fill up."),
+        Note(icon: "lock.iphone", title: "Live workout",
+             text: "A double tap on the Lock Screen ✓ logs one set, not two. \"80 for 10\" heard as \"80 4 10\" logs 80 × 10."),
+        Note(icon: "fork.knife", title: "Food and body",
+             text: "Deleting a food from an earlier day takes it off that day's totals. \"200 grams of chicken\" and \"2 cups of rice\" are understood. A goal weight you go past counts as reached.")
     ]
 
     var body: some View {

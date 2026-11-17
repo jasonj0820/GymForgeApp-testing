@@ -78,6 +78,7 @@ struct GymForgeApp: App {
     }
 
     /// gymforge://bedtime · wakeup · winddown · weighin · mt · dayfold (the routine) · gym (just opens the app)
+    /// · health-done / health-cancel / health-error (the Health Shortcut handing back, MK24.2)
     private func open(_ url: URL) {
         AppLink.pending = nil
         guard url.scheme == "gymforge" else { return }
@@ -91,6 +92,8 @@ struct GymForgeApp: App {
             showWindDown = true
         case "weighin":   // MK20.2: the Sunday 9am reminder.
             showWeighIn = true
+        case "health-done", "health-cancel", "health-error":   // MK24.2: back from the Splitday Health Shortcut.
+            HealthShortcut.returned(url.host ?? "")
         case "mt":   // MK17: the More Training timer card. Still unlocked mid-timer; otherwise asks first.
             NotificationCenter.default.post(name: .openMoreTraining, object: nil)
         case "dayfold":   // A routine reminder was tapped, or the "Routine" quick action.

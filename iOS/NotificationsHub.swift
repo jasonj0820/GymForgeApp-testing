@@ -9,8 +9,13 @@ enum NotificationBudget {
 
     /// Higher keeps. Prefixes are the identifiers each scheduler uses.
     static func priority(_ id: String) -> Int {
+        // MK24.2: More Training's timer alerts are timers too. Unlisted, they ranked 30 and were the first to go
+        // (before Sergeant Cluck) whenever a long program pushed the total past the limit.
         let table: [(String, Int)] = [
-            ("gymforge.rest", 100), ("gymforge.preview", 100), ("gymforge.sleep", 90), ("gymforge.wake", 90), ("gymforge.bed", 90),
+            ("gymforge.rest", 100), ("gymforge.preview", 100), ("gymforge.mt.int.", 95), ("gymforge.mt.stamina", 95),
+            ("gymforge.mt.limit", 90), ("gymforge.sleep", 90), ("gymforge.wake", 90), ("gymforge.bed", 90),
+            ("gymforge.mt.train", 60), ("gymforge.mt.daily", 60), ("gymforge.mt.", 55), ("gymforge.fullbackup", 55),
+            ("gymforge.reminder", 55),
             ("dayfold.timer", 85), ("dayfold.step", 80), ("dayfold.home", 80), ("gymforge.weighin", 75), ("dayfold.", 70),
             ("gymnudge.", 65), ("brief.", 60), ("gymforge.protein", 50), ("gymforge.review", 50), ("gymforge.recap", 45),
             ("gymforge.cluck.m", 15), ("gymforge.cluck", 40), ("health.import", 35), ("gymforge.quote", 10),
@@ -36,6 +41,11 @@ enum NotificationBudget {
             ?? (request.trigger as? UNTimeIntervalNotificationTrigger)?.nextTriggerDate()
     }
 
+    static func repeats(_ request: UNNotificationRequest) -> Bool {
+        (request.trigger as? UNCalendarNotificationTrigger)?.repeats == true
+            || (request.trigger as? UNTimeIntervalNotificationTrigger)?.repeats == true
+    }
+
     static func enforce() async {
         let center = UNUserNotificationCenter.current()
         var pending = await center.pendingNotificationRequests()
@@ -45,7 +55,9 @@ enum NotificationBudget {
         if !windows.isEmpty {
             for request in pending {
                 let p = priority(request.identifier)
-                guard p < 80, let fire = fireDate(request), QuietHours.isQuiet(fire, windows: windows) else { continue }
+                // A repeating reminder (weekly backup, monthly import) can't be moved once without losing its
+                // repeat, and removing it would switch it off for good. Those are left as they are.
+                guard p < 80, !repeats(request), let fire = fireDate(request), QuietHours.isQuiet(fire, windows: windows) else { continue }
                 if p >= 45, let content = request.content.mutableCopy() as? UNMutableNotificationContent {
                     let moved = QuietWindow.firstFree(after: fire, windows: windows)
                     let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: moved)
@@ -58,14 +70,17 @@ enum NotificationBudget {
             center.removePendingNotificationRequests(withIdentifiers: removed)
             pending = await center.pendingNotificationRequests()
         }
-        // Over the limit: keep the most important, soonest first.
+        // Over the limit: keep the most important, soonest first. Repeating reminders (wind-down, the weekly
+        // backup, the monthly Health import) are never removed: they're only planned again when their setting
+        // changes, so dropping one would switch it off for good (MK24.2).
         guard pending.count > limit else { return }
-        let ranked = pending.sorted {
+        let repeating = pending.filter(repeats)
+        let ranked = pending.filter { !repeats($0) }.sorted {
             let a = priority($0.identifier), b = priority($1.identifier)
             if a != b { return a > b }
             return (fireDate($0) ?? .distantFuture) < (fireDate($1) ?? .distantFuture)
         }
-        center.removePendingNotificationRequests(withIdentifiers: ranked.dropFirst(limit).map(\.identifier))
+        center.removePendingNotificationRequests(withIdentifiers: ranked.dropFirst(max(limit - repeating.count, 0)).map(\.identifier))
     }
 }
 
@@ -117,6 +132,8 @@ struct NotificationsHubView: View {
     @State private var quotesOn = QuoteSettings.notify
     @State private var weighInOn = WeighInReminder.enabled
     @State private var tick = 0
+    /// Only "Reset all times" rebuilds the pickers. Rebuilding on every change closed the wheel mid-scroll.
+    @State private var resetTick = 0
 
     var body: some View {
         Form {
@@ -206,6 +223,7 @@ struct NotificationsHubView: View {
                 Button("Reset all times to the defaults") {
                     NotificationTimes.reset(NotificationTimes.cluck + NotificationTimes.quotes + NotificationTimes.protein + [NotificationTimes.weighIn])
                     tick += 1
+                    resetTick += 1
                     Task { await store.appBecameActive() }
                 }
             }
@@ -254,7 +272,7 @@ struct NotificationsHubView: View {
             }
         ), displayedComponents: .hourAndMinute)
         .font(.subheadline)
-        .id("\(slot.key)-\(tick)")
+        .id("\(slot.key)-\(resetTick)")
     }
 
     @ViewBuilder

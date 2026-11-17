@@ -36,6 +36,9 @@ extension PhoneAppStore {
     /// The Lock Screen / Dynamic Island Done button.
     func completeSetFromLockScreen() {
         guard let state = activeWorkout, let item = state.currentItem, !item.exercise.isCardio, !state.isComplete else { return }
+        // MK24.2: the card takes a moment to update, so a second tap would log the next set too. Nobody finishes
+        // a real set within 8 seconds of the last one.
+        if let last = state.lastLoggedSet?.completedAt, Date().timeIntervalSince(last) < 8 { return }
         let target = state.prefill(for: item, logs: workoutLogs)
         guard target.reps > 0, item.exercise.isBodyweight || target.weightKg > 0 else { return }
         completeSetOnPhone(weightKg: item.exercise.isBodyweight ? 0 : target.weightKg, reps: target.reps)
@@ -64,7 +67,8 @@ extension PhoneAppStore {
         let target = state.prefill(for: item, logs: workoutLogs)
         let reps = parsed.reps ?? target.reps
         let weight = item.exercise.isBodyweight ? (parsed.weightKg ?? 0) : (parsed.weightKg ?? target.weightKg)
-        guard reps > 0, item.exercise.isBodyweight || weight > 0 else { return nil }
+        // "80 10" misheard as "8010" must not be logged as a set.
+        guard reps > 0, reps <= 100, weight <= 500, item.exercise.isBodyweight || weight > 0 else { return nil }
         completeSetOnPhone(weightKg: weight, reps: reps)
         return item.exercise.isBodyweight && weight <= 0 ? "\(reps) reps" : "\(item.exercise.formatLoad(weight)) × \(reps)"
     }

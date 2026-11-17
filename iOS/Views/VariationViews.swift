@@ -33,6 +33,8 @@ struct VariationRow: View {
         } label: {
             if compact {
                 Label(today ?? "Variation", systemImage: today == nil ? "hand.raised.fingers.spread" : "checkmark")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .frame(maxWidth: .infinity)
             } else {
                 VStack(alignment: .leading, spacing: 2) {

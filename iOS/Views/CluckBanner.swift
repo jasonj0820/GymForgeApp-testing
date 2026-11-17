@@ -17,7 +17,7 @@ struct CluckBanner: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text("Sergeant Cluck").font(.caption.bold())
-                        Text(state.mood.title.uppercased())
+                        Text(state.title.uppercased())
                             .font(.caption2.bold())
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(Capsule().fill(state.mood.tint.opacity(0.3)))

@@ -104,7 +104,7 @@ struct CluckWidgetView: View {
             VStack(spacing: 4) {
                 CluckView(mood: mood)
                 Text(countText).font(.headline.weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
-                Text(mood.title).font(.caption2.bold()).foregroundStyle(.secondary)
+                Text(entry.state?.title ?? mood.title).font(.caption2.bold()).foregroundStyle(.secondary)
             }
             .containerBackground(for: .widget) { mood.tint.opacity(0.25) }
         }

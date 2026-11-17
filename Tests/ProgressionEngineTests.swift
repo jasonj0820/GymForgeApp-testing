@@ -575,6 +575,18 @@ struct GymForgeChecks {
         var cluck13 = CluckSnapshot(goal: 2, workoutDates: [], snoozedDay: nil, coachStyle: "pushMe", enabled: true, updatedAt: now10)
         cluck13.breakUntil = now10.addingTimeInterval(day10)
         check(CluckEngine.evaluate(cluck13, at: now10).mood == .empathetic, "on a break Cluck stands down")
+        // MK24.2: a travel day isn't a sick day.
+        var trip = CluckSnapshot(goal: 4, workoutDates: [], snoozedDay: nil, coachStyle: "pushMe", enabled: true, updatedAt: now10)
+        trip.excusedDays = [now10]
+        trip.travelDays = [now10]
+        let tripState = CluckEngine.evaluate(trip, at: now10)
+        check(tripState.mood == .chill && tripState.travelling && tripState.title == "Safe travels"
+              && ["trip", "road", "Travelling"].contains { CluckEngine.line(tripState, at: now10).contains($0) },
+              "travel day: at ease, with travel lines")
+        var sick = trip
+        sick.travelDays = nil
+        let sickState = CluckEngine.evaluate(sick, at: now10)
+        check(sickState.mood == .empathetic && !sickState.travelling, "sick day: still the get-better lines")
 
         // MK12: bedtime streak (nights in a row in bed by bedtime)
         let cal12 = Calendar.current
@@ -850,6 +862,9 @@ struct GymForgeChecks {
         check(SpokenSet.parse("bodyweight 15") == .init(weightKg: 0, reps: 15, bodyweight: true), "bodyweight")
         check(SpokenSet.parse("twenty five for twelve") == .init(weightKg: 25, reps: 12), "twenty five")
         check(SpokenSet.parse("hello") == nil, "no numbers → nothing")
+        check(SpokenSet.parse("80 4 10") == .init(weightKg: 80, reps: 10), "\"for\" heard as 4")
+        check(SpokenSet.parse("62.5 kg 4 8") == .init(weightKg: 62.5, reps: 8), "\"for\" heard as 4, after kg")
+        check(SpokenSet.parse("100 4") == .init(weightKg: 100, reps: 4), "two numbers: 4 is still 4 reps")
 
         // MK24 E: goal dates and accessory rotation.
         let day0 = Date(timeIntervalSince1970: 1_790_000_000)
@@ -914,6 +929,8 @@ struct GymForgeChecks {
         check(FoodEstimate.parse("Chicken breast | 31 g | 165 kcal\nnonsense\n- Rice | 4 | 205").map(\.name) == ["Chicken breast", "Rice"], "model answer lines")
         let guessed = FoodEstimate.guess("200g chicken and rice, 3 eggs")
         check(guessed.count == 3 && guessed[0].proteinG == 62 && guessed[2].proteinG == 19, "table guess with grams and counts")
+        let worded = FoodEstimate.guess("200 grams of chicken and 2 cups of rice")
+        check(worded.count == 2 && worded[0].proteinG == 62 && worded[1].proteinG == 9, "\"grams of\" and \"cups of\"")
 
         // MK24 G2: water, caffeine, weekly averages, goal weight.
         check(WaterMath.target(weightKg: 80, training: true) == 3250 && WaterMath.target(weightKg: nil, training: false) == 3000, "water target")
@@ -933,6 +950,10 @@ struct GymForgeChecks {
                                                              current: 84, weights: falling, now: trendNow) {
             check(abs(perWeek + 0.4) < 0.001, "4 kg in 10 weeks needs −0.4 kg a week")
         } else { check(false, "goal weight should need a rate") }
+        check(WeightGoalMath.status(goal: GoalWeight(kg: 80, by: nil, startKg: 76), current: 80.6, weights: [], now: trendNow) == .reached,
+              "a bulk that goes past its goal has reached it")
+        check(WeightGoalMath.status(goal: GoalWeight(kg: 80, by: nil, startKg: 84), current: 79.2, weights: [], now: trendNow) == .reached,
+              "a cut that goes past its goal has reached it")
 
         // MK24 I: court zones, game averages, intervals, sleep debt.
         check(CourtZone.of(x: 0, y: 2) == .paint && CourtZone.of(x: 7, y: 1) == .corner3
@@ -954,10 +975,30 @@ struct GymForgeChecks {
                                   wake: Dictionary(uniqueKeysWithValues: (1...7).map { ($0, 7 * 60) }))
         check(SleepMath.need(sched) == 8 && SleepMath.need(nil) == 8, "sleep need from the schedule")
         let nightsNow = jan5.addingTimeInterval(10 * 86_400)
-        let nights = (0..<7).map { SleepNight(date: nightsNow.addingTimeInterval(-Double($0) * 86_400), hoursAsleep: 7,
-                                              start: nightsNow.addingTimeInterval(-Double($0) * 86_400 - 8 * 3600 + Double($0 % 2) * 3600)) }
+        let nights: [SleepNight] = (0..<7).map { (i: Int) -> SleepNight in
+            let day: Date = nightsNow.addingTimeInterval(-Double(i) * 86_400)
+            let late: TimeInterval = Double(i % 2) * 3600
+            return SleepNight(date: day, hoursAsleep: 7, start: day.addingTimeInterval(late - 8 * 3600))
+        }
         check(SleepMath.debt(nights, need: 8, now: nightsNow).hours == 7, "an hour short for 7 nights = 7 h debt")
         check(abs((SleepMath.bedtimeSpread(nights, now: nightsNow) ?? 0) - 29.69) < 0.5, "bedtime spread about half an hour")
+
+        // MK24.2: last night from Health's sleep samples (Shortcuts sends start and end times).
+        let wake = jan5.addingTimeInterval(30 * 86_400 + 6.5 * 3600)   // 6:30 am
+        func beforeWake(_ hours: Double) -> Date { wake.addingTimeInterval(-hours * 3600) }
+        // Watch stages 11:00 pm – 6:30 am with a 20-minute awake gap, plus the iPhone's overlapping copy of one stage.
+        let stageStarts = [beforeWake(7.5), beforeWake(4.0), beforeWake(2.0), beforeWake(3.5)]
+        let stageEnds = [beforeWake(4.33), beforeWake(2.0), beforeWake(0), beforeWake(2.5)]
+        let lastNight = SleepMath.night(starts: stageStarts, ends: stageEnds, now: wake.addingTimeInterval(120), calendar: gregorian)
+        check(lastNight.map { abs($0.hoursAsleep - 7.17) < 0.02 } == true, "overlapping samples count once, the awake gap doesn't count")
+        check(lastNight?.start == beforeWake(7.5) && lastNight?.end == wake && lastNight?.date == gregorian.startOfDay(for: wake),
+              "the night runs from the first sample to the last, dated the morning you woke")
+        let napStarts = stageStarts + [wake.addingTimeInterval(7 * 3600)]
+        let napEnds = stageEnds + [wake.addingTimeInterval(7.75 * 3600)]
+        check(SleepMath.night(starts: napStarts, ends: napEnds, now: wake.addingTimeInterval(9 * 3600), calendar: gregorian)?.start == beforeWake(7.5),
+              "an afternoon nap doesn't replace last night")
+        check(SleepMath.night(starts: [beforeWake(1)], ends: [beforeWake(0)], now: wake, calendar: gregorian) == nil, "an hour isn't a night")
+        check(SleepMath.night(starts: [beforeWake(2)], ends: [beforeWake(3)], now: wake, calendar: gregorian) == nil, "ends before it starts: ignored")
 
         // MK24 J: streak freezes, badges, quiet hours.
         let freeze = StreakFreeze.run([.hit, .hit, .hit, .hit, .miss, .hit, .pause, .hit])
