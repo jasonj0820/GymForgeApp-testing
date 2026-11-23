@@ -1,4 +1,11 @@
-# Splitday MK24.2 — gym and daily routine in one app (iPhone + Apple Watch)
+# Splitday MK24.3 — gym and daily routine in one app (iPhone + Apple Watch)
+
+## MK24.3 — More Training: every measurement counts, expansion as graphs
+- **No more "temporary gain" rule.** Measurements taken within 3 days of a session used to be saved but left out of the progress check. Every measurement now counts: the chart, the trend, the progress check and the goal pace all use all of them. The "won't count" warning when you add one is gone.
+- **Expansion after sessions, as graphs** (Measure tab, under the chart): the girth expansion you log after Pump or PAC, and the stretch after the extender, over time. The range to aim for is shaded (6–12% girth, 3–4% stretch), dots in range are green, with a trend line once there are 3 readings over 2+ weeks, plus the latest reading, the 2-week average and how many were in range.
+- The What's new sheet now comes back only when its notes change, not for every version name.
+- More Training checks: one rule replaced, three added.
+
 
 ## MK24.2 — sleep and weigh-ins from Apple Health, travel days, and fixes from going through MK23–24
 

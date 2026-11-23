@@ -5,6 +5,7 @@ struct MTMeasureView: View {
     @EnvironmentObject private var vault: MTVault
     @State private var metric: MTMetric = .bpel
     @State private var adding = false
+    @State private var expansionTrack: MTProgression.Track = .girth
 
     private var unit: MTUnit { vault.data.settings.unit }
 
@@ -87,6 +88,9 @@ struct MTMeasureView: View {
                 }
             }
 
+            // MK24.3: the after-session readings, as graphs.
+            expansionSection
+
             MTGoalSection(metric: metric)
             MTComparisonSection(metric: metric)
 
@@ -138,6 +142,70 @@ struct MTMeasureView: View {
         .sheet(isPresented: $adding) {
             NavigationStack { MTAddMeasurementView() }
                 .environmentObject(vault)
+        }
+    }
+
+    /// MK24.3: expansion straight after each session over time, girth (Pump / PAC) or stretch (extender), with the
+    /// range you're aiming for shaded.
+    @ViewBuilder
+    private var expansionSection: some View {
+        let tracks = MTProgression.Track.allCases.filter { !MTProgression.expansionSeries(vault.data, track: $0).isEmpty }
+        if let fallback = tracks.first {
+            let track = tracks.contains(expansionTrack) ? expansionTrack : fallback
+            let series = MTProgression.expansionSeries(vault.data, track: track)
+            let band = track.band
+            let firstDate = series.first?.date ?? .now
+            let lastDate = max(series.last?.date ?? .now, firstDate.addingTimeInterval(86_400))
+            let trend = MTInsights.trend(series.map { (date: $0.date, value: $0.percent) })
+            let inBand = series.filter { band.contains($0.percent) }.count
+            Section {
+                if tracks.count > 1 {
+                    Picker("Expansion", selection: $expansionTrack) {
+                        ForEach(tracks, id: \.self) { Text($0 == .girth ? "Girth" : "Stretch").tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                Chart {
+                    RectangleMark(xStart: .value("From", firstDate), xEnd: .value("To", lastDate),
+                                  yStart: .value("Low", band.lowerBound), yEnd: .value("High", band.upperBound))
+                        .foregroundStyle(Color.green.opacity(0.15))
+                    ForEach(series) { point in
+                        LineMark(x: .value("Date", point.date), y: .value("Expansion", point.percent),
+                                 series: .value("Series", "Expansion"))
+                        PointMark(x: .value("Date", point.date), y: .value("Expansion", point.percent))
+                            .foregroundStyle(band.contains(point.percent) ? Color.green : Color.orange)
+                    }
+                    if let trend {
+                        LineMark(x: .value("Date", trend.start.date), y: .value("Expansion", trend.start.value),
+                                 series: .value("Series", "Trend"))
+                            .foregroundStyle(Color.orange)
+                            .lineStyle(StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                        LineMark(x: .value("Date", trend.end.date), y: .value("Expansion", trend.end.value),
+                                 series: .value("Series", "Trend"))
+                            .foregroundStyle(Color.orange)
+                            .lineStyle(StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                    }
+                }
+                .chartYAxisLabel("%")
+                .frame(height: 200)
+                HStack {
+                    stat("Latest", series.last.map { String(format: "%.1f%%", $0.percent) } ?? "–")
+                    stat("Last 2 weeks", MTProgression.averageExpansion(series).map { String(format: "%.1f%%", $0) } ?? "–")
+                    stat("In range", "\(inBand) of \(series.count)")
+                }
+                if let trend {
+                    Label(String(format: "Trend: %@%.1f%% per month", trend.perMonth >= 0 ? "+" : "", trend.perMonth),
+                          systemImage: "chart.line.uptrend.xyaxis")
+                        .font(.footnote.bold())
+                        .foregroundStyle(.orange)
+                }
+            } header: {
+                Text("Expansion after sessions")
+            } footer: {
+                Text(String(format: "Shaded: %.0f–%.0f%%, the range to aim for. ", band.lowerBound, band.upperBound)
+                     + (track == .girth ? "Girth straight after Pump or PAC" : "Stretched length right after the extender")
+                     + ", from the before and after numbers you type when a session ends.")
+            }
         }
     }
 
@@ -259,17 +327,11 @@ struct MTAddMeasurementView: View {
                 Text("Fill in any you measured — the rest can stay empty. For accuracy, measure 3 times and type them with spaces (e.g. 16.1 16.3 16.2): the average is saved.")
             }
             TextField("Notes (optional)", text: $notes, axis: .vertical)
-            // MK18: only measurements after 3+ days off count — swelling and pump make you measure bigger.
-            if let last = vault.data.sessions.map(\.end).filter({ $0 <= date }).max(), date.timeIntervalSince(last) < 3 * 86_400 {
-                Label("Your last session was \(last.formatted(.relative(presentation: .named))). Measure after 3+ days off: this one is saved but won't count in the progress check.",
-                      systemImage: "exclamationmark.triangle.fill")
-                    .font(.footnote)
-                    .foregroundStyle(.orange)
-            }
+            // MK24.3: every measurement counts (the 3-days-off rule and its "won't count" warning are gone).
             Section("Measure the same way every time") {
-                Label("Same time of day (e.g. before training, not after a pump)", systemImage: "clock")
+                Label("Same time of day, so readings line up", systemImage: "clock")
                 Label("Same erection level — as full as you can, standing (a ring keeps it consistent)", systemImage: "figure.stand")
-                Label("Every ~3 months, at least 3 days after your last session", systemImage: "calendar")
+                Label("Every measurement counts toward the chart, the trend and the progress check", systemImage: "calendar")
                 Label("Same tool: rigid ruler for length, soft tape for girth", systemImage: "ruler")
                 Label("BP: pressed firmly to the bone · NBP: touching skin only", systemImage: "arrow.down.to.line")
             }

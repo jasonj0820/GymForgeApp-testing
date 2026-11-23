@@ -196,13 +196,16 @@ struct WhatsNewView: View {
     var asSheet = false
 
     static let seenKey = "whatsnew.seenBuild"
-    /// True when this build hasn't shown its notes yet (and it isn't a brand-new install).
+    /// The version these notes were written for. MK24.3: the sheet comes back when the notes change, not on
+    /// every new version name (so a small update doesn't show the same notes twice).
+    static let notesVersion = "MK24.2"
+    /// True when these notes haven't been shown yet.
     static var isDue: Bool {
         guard !Demo.isOn else { return false }
         let seen = UserDefaults.standard.string(forKey: seenKey)
-        return seen != BuildInfo.name
+        return seen != notesVersion
     }
-    static func markSeen() { UserDefaults.standard.set(BuildInfo.name, forKey: seenKey) }
+    static func markSeen() { UserDefaults.standard.set(notesVersion, forKey: seenKey) }
 
     struct Note: Identifiable {
         let id = UUID()

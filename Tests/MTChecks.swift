@@ -164,18 +164,26 @@ struct MTChecks {
         let mixed = girth(splitPAC + pumpDays)
         check(mixed?.kind == .keep && mixed?.message.contains("changed settings") == false, "pump + guided PAC for 100 days → no false 'hold the new setting'")
 
-        // Long term: rested measurements decide
+        // Long term: the measurements decide. MK24.3: every one counts, including the morning after a session.
         let long = pumps(1...110, pressure: 8.5, expansion: 8)
         func measure(_ daysAgo: Double, mg: Double) -> MTMeasurement { MTMeasurement(date: at(daysAgo, hour: 8), mg: mg) }
-        var restedLong = long.filter { ![101, 102, 103, 3, 4, 5].contains(Int((now.timeIntervalSince($0.start) / day).rounded(.down))) }
-        restedLong.sort { $0.start < $1.start }
-        check(girth(restedLong, [measure(100, mg: 12.0), measure(2, mg: 12.5)])?.message.contains("It's working") == true, "+0.5 cm on rested measurements → it's working, change nothing")
-        check(girth(restedLong, [measure(100, mg: 12.0), measure(2, mg: 12.1)])?.kind == .addTime, "flat (within error) after 3+ months → add time, not pressure")
-        check(MTProgression.rested({ var d = MTData(); d.sessions = long; d.measurements = [measure(2, mg: 13)]; return d }()).isEmpty,
-              "a measurement the morning after a session isn't rested")
+        check(girth(long, [measure(100, mg: 12.0), measure(2, mg: 12.5)])?.message.contains("It's working") == true,
+              "+0.5 cm, measured the morning after sessions → counts: it's working, change nothing")
+        check(girth(long, [measure(100, mg: 12.0), measure(2, mg: 12.1)])?.kind == .addTime, "flat (within error) after 3+ months → add time, not pressure")
+        check(MTProgression.measurements({ var d = MTData(); d.sessions = long; d.measurements = [measure(2, mg: 13), measure(50, mg: 12.8)]; return d }())
+                .map(\.mg) == [12.8, 13], "every measurement counts, oldest first")
+        // MK24.3: after-session expansion as a series.
+        var expansionData = MTData()
+        expansionData.sessions = pumps(1...3, pressure: 8.5, expansion: 9) + pumps(20...21, pressure: 8.5, expansion: 5)
+            + [session(.highTensionExtender, 2, minutes: 30, tension: 2, expansion: 3.5), session(.pump, 4, minutes: 20, pressure: 8.5)]
+        let girthSeries = MTProgression.expansionSeries(expansionData, track: .girth)
+        check(girthSeries.count == 5 && girthSeries.first?.percent == 5 && girthSeries.last?.percent == 9,
+              "girth expansion: Pump / PAC readings only, sessions without one skipped, oldest first")
+        check(MTProgression.expansionSeries(expansionData, track: .length).map(\.percent) == [3.5], "length: the extender's stretch")
+        check(MTProgression.averageExpansion(girthSeries, now: now) == 9, "2-week average leaves out older readings")
         // Already added time and pressure in the last 6 months and still flat → proper break
         let earlier = (125...175).filter { $0 % 2 == 0 }.map { session(.pump, Double($0), minutes: 10, pressure: 7.5, expansion: 8) }
-        let stuck = earlier + restedLong
+        let stuck = earlier + long
         check(girth(stuck, [measure(100, mg: 12.0), measure(2, mg: 12.05)])?.kind == .takeBreak, "flat after adding time and intensity → take a proper break")
         // MK24 (173): your own wording replaces the built-in instruction; blank keeps the original.
         MTPlan.cueOverrides = ["pac.0": "My own first step", "pac.1": "   ", "pump": "Slow and steady"]

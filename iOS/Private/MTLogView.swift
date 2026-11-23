@@ -235,7 +235,7 @@ struct MTLogView: View {
             } header: {
                 Text("When to progress")
             } footer: {
-                Text("Step up only when your settings stop doing their job, one or two things at a time: about 0.5–1 inHg or 1 lb, held for 2+ weeks. Judge growth 2–3 months after a change, on measurements taken after 3+ days off.")
+                Text("Step up only when your settings stop doing their job, one or two things at a time: about 0.5–1 inHg or 1 lb, held for 2+ weeks. Judge growth 2–3 months after a change.")
             }
         }
     }

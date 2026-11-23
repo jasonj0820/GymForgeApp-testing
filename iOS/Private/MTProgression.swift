@@ -226,13 +226,35 @@ enum MTProgression {
         Track.allCases.compactMap { advice(for: $0, data, now: now, calendar: calendar) }
     }
 
-    /// Measurements taken 3+ days after your last session — swelling and pump gone, so they're comparable.
-    static func rested(_ data: MTData) -> [MTMeasurement] {
-        let ends = data.sessions.map(\.end)
-        return data.measurements.filter { measurement in
-            guard let last = ends.filter({ $0 <= measurement.date }).max() else { return true }
-            return measurement.date.timeIntervalSince(last) >= 3 * 86_400
-        }.sorted { $0.date < $1.date }
+    /// Every measurement, oldest first. MK24.3: measurements within 3 days of a session used to be left out of
+    /// the progress check as a temporary gain; now every one counts.
+    static func measurements(_ data: MTData) -> [MTMeasurement] {
+        data.measurements.sorted { $0.date < $1.date }
+    }
+
+    /// MK24.3: one after-session expansion reading (girth after Pump / PAC, stretch after the extender).
+    struct ExpansionPoint: Identifiable, Equatable {
+        let id: UUID
+        let date: Date
+        let percent: Double
+        let type: MTType
+    }
+
+    /// The expansion % logged when sessions on this track ended, oldest first.
+    static func expansionSeries(_ data: MTData, track: Track) -> [ExpansionPoint] {
+        data.sessions
+            .filter { track.types.contains($0.type) }
+            .compactMap { session in
+                session.expansionPercent.map { ExpansionPoint(id: session.id, date: session.start, percent: $0, type: session.type) }
+            }
+            .sorted { $0.date < $1.date }
+    }
+
+    /// Average of the readings in the last `days` days (nil when there are none).
+    static func averageExpansion(_ series: [ExpansionPoint], days: Double = 14, now: Date = .now) -> Double? {
+        let recent = series.filter { $0.date >= now.addingTimeInterval(-days * 86_400) && $0.date <= now }
+        guard !recent.isEmpty else { return nil }
+        return recent.reduce(0) { $0 + $1.percent } / Double(recent.count)
     }
 
     /// When the current pressure (girth) / tension (length) was first used, i.e. the last setting change.
@@ -352,7 +374,7 @@ enum MTProgression {
                         "Stretch has dropped to \(pct) at the same settings. Add about 1 lb\(next), then hold that for at least 2 weeks.")
         }
 
-        // Good stretch. Now the long-term question: are rested measurements going up?
+        // Good stretch. Now the long-term question: are the measurements going up? (All of them, MK24.3.)
         let timeChanged = lastTimeChange(sessions, now: now, calendar: calendar)
         let since = [settingChanged, timeChanged, first.start].compactMap { $0 }.max() ?? first.start
         let sinceDays = now.timeIntervalSince(since) / 86_400
@@ -360,19 +382,19 @@ enum MTProgression {
             return card(.keep, "change nothing",
                         "Good stretch (\(pct)). Your last change was \(Int(sinceDays / 7)) week\(Int(sinceDays / 7) == 1 ? "" : "s") ago — wait 2–3 months before judging growth.")
         }
-        let points = rested(data).compactMap { m in m.value(track.metric).map { (date: m.date, cm: $0) } }
+        let points = measurements(data).compactMap { m in m.value(track.metric).map { (date: m.date, cm: $0) } }
         guard let latest = points.last,
               let baseline = points.last(where: { $0.date <= since.addingTimeInterval(7 * 86_400) }) ?? points.first,
               latest.date.timeIntervalSince(baseline.date) >= judgeDays * 86_400 else {
             return card(.keep, "change nothing",
-                        "Good stretch (\(pct)). To judge growth, log a \(track.metric.title) measurement after 3+ days off — about every 3 months, measured the same way each time.")
+                        "Good stretch (\(pct)). To judge growth, keep logging \(track.metric.title) measurements the same way each time: the check needs two about 2 months apart.")
         }
         let gain = latest.cm - baseline.cm
         let unit = data.settings.unit
         let gainText = String(format: "%+.2f %@", unit.display(gain), unit.label)
         if gain >= noiseCM {
             return card(.keep, "change nothing",
-                        "Good stretch (\(pct)) and \(track.metric.title) \(gainText) since \(baseline.date.formatted(date: .abbreviated, time: .omitted)) on rested measurements. It's working.")
+                        "Good stretch (\(pct)) and \(track.metric.title) \(gainText) since \(baseline.date.formatted(date: .abbreviated, time: .omitted)). It's working.")
         }
         guard sinceDays >= stuckDays else {
             return card(.keep, "change nothing",
